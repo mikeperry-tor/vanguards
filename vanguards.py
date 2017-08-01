@@ -5,9 +5,11 @@ import sys
 import logging
 import copy
 import random
+import os
 
 import stem
 import stem.connection
+import stem.descriptor
 from stem.control import Controller
 
 # MVP Plan:
@@ -205,6 +207,55 @@ class UniformGenerator(NodeGenerator):
     while not self.all_chosen():
       yield random.choice(self.routers)
 
+class BwWeightedGenerator(NodeGenerator):
+  POSITION_GUARD = 'g'
+  POSITION_MIDDLE = 'm'
+  POSITION_EXIT = 'e'
+
+  def flag_to_weight(self, node):
+    if 'Guard' in node.flags and "Exit" in node.flags:
+      return self.bw_weights[u'W'+self.position+'d']/self.WEIGHT_SCALE
+
+    if 'Exit' in node.flags:
+      return self.bw_weights[u'W'+self.position+'e']/self.WEIGHT_SCALE
+
+    if "Guard" in node.flags:
+      return self.bw_weights[u'W'+self.position+'g']/self.WEIGHT_SCALE
+
+    return self.bw_weights[u'Wmm']/self.WEIGHT_SCALE
+
+  def rebuild(self, sorted_r=None):
+    NodeGenerator.rebuild(self, sorted_r)
+    NodeGenerator.rewind(self)
+    # XXX: Use consensus param
+    self.WEIGHT_SCALE = 10000.0
+
+    print self.bw_weights
+    self.node_weights = []
+    for r in self.rstr_routers:
+      assert(not r.is_unmeasured)
+      self.node_weights.append(r.bandwidth*self.flag_to_weight(r))
+
+    self.weight_total = sum(self.node_weights)
+
+  def __init__(self, sorted_r, rstr_list, bw_weights, position):
+    self.position = position
+    self.bw_weights = bw_weights
+    self.node_weights = []
+    NodeGenerator.__init__(self, sorted_r, rstr_list)
+
+  def generate(self):
+    # XXX: hrmm.. different termination condition?
+    while True:
+      choice_val = random.uniform(0, self.weight_total)
+      choose_total = 0
+      choice_idx = 0
+      while choose_total < choice_val:
+        choose_total += self.node_weights[choice_idx]
+        choice_idx += 1
+      yield self.rstr_routers[choice_idx-1]
+
+
 def build_sorted_rlist(controller):
   sorted_r = list(controller.get_network_statuses())
   sorted_r.sort(lambda x, y: cmp(y.measured, x.measured))
@@ -238,15 +289,28 @@ def connect():
 
   return controller
 
+def get_consensus_weights(controller):
+  consensus = os.path.join(controller.get_conf("DataDirectory"),
+                           "cached-microdesc-consensus")
+  parsed_consensus = next(stem.descriptor.parse_file(consensus,
+                          document_handler =
+                            stem.descriptor.DocumentHandler.BARE_DOCUMENT))
+
+  assert(parsed_consensus.is_consensus)
+  return parsed_consensus.bandwidth_weights
+
 def main():
   controller = connect()
   sorted_r = build_sorted_rlist(controller)
+  weights = get_consensus_weights(controller)
 
-  ng = UniformGenerator(sorted_r,
+  ng = BwWeightedGenerator(sorted_r,
                      NodeRestrictionList([FlagsRestriction(["Fast", "Stable", "Guard"],
-                                                           [])]))
+                                                           [])]),
+                           weights, BwWeightedGenerator.POSITION_MIDDLE)
+
   for r in ng.generate():
-    print r
+    print r.nickname
 
 if __name__ == '__main__':
   main()
