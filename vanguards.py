@@ -7,6 +7,7 @@ import copy
 import random
 import os
 import time
+import functools
 
 import stem
 import stem.connection
@@ -23,11 +24,11 @@ NUM_LAYER3_GUARDS = 4
 # In days:
 LAYER1_LIFETIME = 0 # Use tor default
 
-# Hours
+# In hours
 MIN_LAYER2_LIFETIME = 24*1
 MAX_LAYER2_LIFETIME = 24*32
 
-# Hours
+# In hours
 MIN_LAYER3_LIFETIME = 1
 MAX_LAYER3_LIFETIME = 18
 
@@ -512,10 +513,10 @@ def configure_tor(controller, vanguard_state):
 
   controller.save_conf()
 
-def main():
-  options = setup_options()
-
-  controller = connect()
+# TODO: This might be inefficient, because we just 
+# parsed the consensus for the event, and now we're parsing it
+# again, twice.. Oh well. Prototype, and not critical path either.
+def new_consensus_event(controller, state, options, event):
   (sorted_r, dict_r) = get_rlist_and_rdict(controller)
   weights = get_consensus_weights(controller)
 
@@ -524,13 +525,6 @@ def main():
                                                            [])]),
                            weights, BwWeightedGenerator.POSITION_MIDDLE)
   gen = ng.generate()
-
-  try:
-    f = open(options.state_file)
-    state = VanguardState.read_from_file(f)
-  except:
-    state = VanguardState()
-
   state.consensus_update(dict_r, gen)
   state.replace_expired(gen)
 
@@ -538,8 +532,40 @@ def main():
 
   state.write_to_file(open(options.state_file, "w"))
 
-  # XXX: Monitor for new consensus events...
-  # TODO: Monitor+log circuit construction and usage
+def new_circuit_event(event):
+  print event.raw_content()
+
+def cbt_event(event):
+  print event.raw_content()
+
+def main():
+  options = setup_options()
+  try:
+    f = open(options.state_file)
+    state = VanguardState.read_from_file(f)
+  except:
+    state = VanguardState()
+
+  controller = connect()
+  new_consensus_event(controller, state, options, None)
+
+  # This would be thread-unsafe, but we're done with these objects now
+  new_consensus_handler = functools.partial(new_consensus_event,
+                                            controller, state, options)
+  controller.add_event_listener(new_consensus_handler,
+                                stem.control.EventType.NEWCONSENSUS)
+
+  controller.add_event_listener(new_circuit_event,
+                                stem.control.EventType.CIRC)
+  controller.add_event_listener(new_circuit_event,
+                                stem.control.EventType.CIRC_MINOR)
+  controller.add_event_listener(cbt_event,
+                                stem.control.EventType.BUILDTIMEOUT_SET)
+
+
+  # Blah...
+  while controller.is_alive():
+    time.sleep(1)
 
 if __name__ == '__main__':
   main()
