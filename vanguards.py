@@ -258,7 +258,6 @@ class BwWeightedGenerator(NodeGenerator):
     # XXX: Use consensus param
     self.WEIGHT_SCALE = 10000.0
 
-    print self.bw_weights
     self.node_weights = []
     for r in self.rstr_routers:
       assert(not r.is_unmeasured)
@@ -422,6 +421,9 @@ class VanguardState:
   # Adds a new layer2 guard
   def add_new_layer2(self, generator, priority):
     guard = generator.next()
+    while guard.fingerprint in map(lambda g: g.idhex, self.layer2):
+      guard = generator.next()
+
     now = time.time()
     expires = now + min(random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
@@ -431,6 +433,9 @@ class VanguardState:
 
   def add_new_layer3(self, generator, priority):
     guard = generator.next()
+    while guard.fingerprint in map(lambda g: g.idhex, self.layer3):
+      guard = generator.next()
+
     now = time.time()
     expires = now + max(random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER3_LIFETIME*SEC_PER_HOUR),
@@ -478,7 +483,7 @@ class VanguardState:
     while len(self.layer2) < NUM_LAYER2_GUARDS:
       min_up = None
       for g in self.layer2_down:
-        if g.idhex in dict_r:
+        if g.idhex in dict_r and g.idhex not in map(lambda g: g.idhex, self.layer2):
           if not min_up or min_up.priority_index > g.priority_index:
             min_up = g
 
@@ -491,7 +496,7 @@ class VanguardState:
     while len(self.layer3) < NUM_LAYER3_GUARDS:
       min_up = None
       for g in self.layer3_down:
-        if g.idhex in dict_r:
+        if g.idhex in dict_r and g.idhex not in map(lambda g: g.idhex, self.layer3):
           if not min_up or min_up.priority_index > g.priority_index:
             min_up = g
 
@@ -509,7 +514,9 @@ def configure_tor(controller, vanguard_state):
     controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
 
   controller.set_conf("HSLayer2Guards", vanguard_state.layer2_guardset())
-  controller.set_conf("HSLayer3Guards", vanguard_state.layer3_guardset())
+
+  if NUM_LAYER3_GUARDS:
+    controller.set_conf("HSLayer3Guards", vanguard_state.layer3_guardset())
 
   controller.save_conf()
 
@@ -532,11 +539,45 @@ def new_consensus_event(controller, state, options, event):
 
   state.write_to_file(open(options.state_file, "w"))
 
-def new_circuit_event(event):
-  print event.raw_content()
+def circuit_event(state, event):
+  if event.hs_state or event.purpose[0:2] == "HS":
+    if len(event.path) > 1:
+      layer2 = event.path[1][0]
+      if not layer2 in map(lambda x: x.idhex, state.layer2):
+        plog("ERROR", "Circuit with bad layer2 node "+layer2+": "+event.raw_content())
+
+    if len(event.path) > 2 and NUM_LAYER3_GUARDS:
+      layer3 = event.path[2][0]
+      if not layer3 in map(lambda x: x.idhex, state.layer3):
+        plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
+
+    if "status" in event.__dict__ and event.status == "BUILT":
+      if event.purpose == "HS_CLIENT_HSDIR" or event.purpose == "HS_CLIENT_INTRO":
+        if NUM_LAYER3_GUARDS and len(event.path) != 5:
+          plog("ERROR", "Circuit with bad path: "+event.raw_content())
+        elif not NUM_LAYER3_GUARDS and len(event.path) != 4:
+          plog("ERROR", "Circuit with bad path: "+event.raw_content())
+        else:
+          plog("INFO", "Circuit "+event.id+" OK!")
+      elif event.purpose == "HS_CLIENT_REND":
+        if NUM_LAYER3_GUARDS and len(event.path) != 4:
+          plog("ERROR", "Circuit with bad path: "+event.raw_content())
+        elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
+          plog("ERROR", "Circuit with bad path: "+event.raw_content())
+        else:
+          plog("INFO", "Circuit "+event.id+" OK!")
+      elif event.purpose[0:10] == "HS_SERVICE":
+        if len(event.path) != 4:
+          plog("ERROR", "Circuit with bad path: "+event.raw_content())
+        else:
+          plog("INFO", "Circuit "+event.id+" OK!")
+
+    # XXX: Also need to track timeout rate of vanguard circuits..
+
+  plog("INFO", event.raw_content())
 
 def cbt_event(event):
-  print event.raw_content()
+  plog("INFO", event.raw_content())
 
 def main():
   options = setup_options()
@@ -555,9 +596,10 @@ def main():
   controller.add_event_listener(new_consensus_handler,
                                 stem.control.EventType.NEWCONSENSUS)
 
-  controller.add_event_listener(new_circuit_event,
+  circuit_handler = functools.partial(circuit_event, state)
+  controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
-  controller.add_event_listener(new_circuit_event,
+  controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC_MINOR)
   controller.add_event_listener(cbt_event,
                                 stem.control.EventType.BUILDTIMEOUT_SET)
