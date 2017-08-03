@@ -539,8 +539,73 @@ def new_consensus_event(controller, state, options, event):
 
   state.write_to_file(open(options.state_file, "w"))
 
-def circuit_event(state, event):
+class CircuitStat:
+  def __init__(self, circ_id, is_hs):
+    self.circ_id = circ_id
+    self.is_hs = is_hs
+
+class TimeoutStats:
+  def __init__(self):
+    self.circuits = {}
+    self.all_launched = 0
+    self.all_built = 0
+    self.all_timeout = 0
+    self.hs_launched = 0
+    self.hs_built = 0
+    self.hs_timeout = 0
+    self.hs_changed = 0
+
+  def add_circuit(self, circ_id, is_hs):
+    if circ_id in self.circuits:
+      plog("WARN", "Circuit "+circ_id+" already exists in map!")
+    self.circuits[circ_id] = CircuitStat(circ_id, is_hs)
+    self.all_launched += 1
+    if is_hs: self.hs_launched += 1
+
+  def update_circuit(self, circ_id, is_hs):
+    if circ_id not in self.circuits: return
+    if self.circuits[circ_id].is_hs != is_hs:
+      self.hs_changed += 1
+      self.hs_launched += 1
+      self.circuits[circ_id].is_hs = is_hs
+
+  def built_circuit(self, circ_id):
+    if circ_id in self.circuits:
+      self.all_built += 1
+      if self.circuits[circ_id].is_hs:
+        self.hs_built += 1
+      del self.circuits[circ_id]
+
+  def timeout_circuit(self, circ_id):
+    if circ_id in self.circuits:
+      self.all_timeout += 1
+      if self.circuits[circ_id].is_hs:
+        self.hs_timeout += 1
+      del self.circuits[circ_id]
+
+  # TODO: Sum launched == built+timeout+circuits
+
+  def timeout_rate_all(self):
+    if self.all_launched:
+      return float(self.all_timeout)/(self.all_launched)
+    else: return 0
+
+  def timeout_rate_hs(self):
+    if self.hs_launched:
+      return float(self.hs_timeout)/(self.hs_launched)
+    else: return 0
+
+def circuit_event(state, timeouts, event):
   if event.hs_state or event.purpose[0:2] == "HS":
+    if "status" in event.__dict__:
+      if event.status == "LAUNCHED":
+        timeouts.add_circuit(event.id, 0)
+      elif event.status == "BUILT":
+        timeouts.built_circuit(event.id)
+      elif event.reason == "TIMEOUT":
+        timeouts.timeout_circuit(event.id)
+      timeouts.update_circuit(event.id, 1)
+
     if len(event.path) > 1:
       layer2 = event.path[1][0]
       if not layer2 in map(lambda x: x.idhex, state.layer2):
@@ -552,31 +617,37 @@ def circuit_event(state, event):
         plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
 
     if "status" in event.__dict__ and event.status == "BUILT":
-      if event.purpose == "HS_CLIENT_HSDIR" or event.purpose == "HS_CLIENT_INTRO":
-        if NUM_LAYER3_GUARDS and len(event.path) != 5:
-          plog("ERROR", "Circuit with bad path: "+event.raw_content())
-        elif not NUM_LAYER3_GUARDS and len(event.path) != 4:
-          plog("ERROR", "Circuit with bad path: "+event.raw_content())
-        else:
-          plog("INFO", "Circuit "+event.id+" OK!")
-      elif event.purpose == "HS_CLIENT_REND":
-        if NUM_LAYER3_GUARDS and len(event.path) != 4:
-          plog("ERROR", "Circuit with bad path: "+event.raw_content())
-        elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
-          plog("ERROR", "Circuit with bad path: "+event.raw_content())
-        else:
-          plog("INFO", "Circuit "+event.id+" OK!")
-      elif event.purpose[0:10] == "HS_SERVICE":
-        if len(event.path) != 4:
-          plog("ERROR", "Circuit with bad path: "+event.raw_content())
-        else:
-          plog("INFO", "Circuit "+event.id+" OK!")
-
-    # XXX: Also need to track timeout rate of vanguard circuits..
+        if event.purpose == "HS_CLIENT_HSDIR" or event.purpose == "HS_CLIENT_INTRO":
+          if NUM_LAYER3_GUARDS and len(event.path) < 5:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          elif not NUM_LAYER3_GUARDS and len(event.path) < 4:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose == "HS_CLIENT_REND":
+          if NUM_LAYER3_GUARDS and len(event.path) < 4:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          elif not NUM_LAYER3_GUARDS and len(event.path) < 3:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose[0:10] == "HS_SERVICE":
+          if len(event.path) != 4:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+  elif "status" in event.__dict__:
+    if event.status == "LAUNCHED":
+      timeouts.add_circuit(event.id, 0)
+    elif event.status == "BUILT":
+      timeouts.built_circuit(event.id)
+    elif event.reason == "TIMEOUT":
+      timeouts.timeout_circuit(event.id)
 
   plog("INFO", event.raw_content())
 
-def cbt_event(event):
+def cbt_event(timeouts, event):
+  plog("NOTICE", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
   plog("INFO", event.raw_content())
 
 def main():
@@ -589,6 +660,7 @@ def main():
 
   controller = connect()
   new_consensus_event(controller, state, options, None)
+  timeouts = TimeoutStats()
 
   # This would be thread-unsafe, but we're done with these objects now
   new_consensus_handler = functools.partial(new_consensus_event,
@@ -596,14 +668,15 @@ def main():
   controller.add_event_listener(new_consensus_handler,
                                 stem.control.EventType.NEWCONSENSUS)
 
-  circuit_handler = functools.partial(circuit_event, state)
+  circuit_handler = functools.partial(circuit_event, state, timeouts)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC_MINOR)
-  controller.add_event_listener(cbt_event,
-                                stem.control.EventType.BUILDTIMEOUT_SET)
 
+  cbt_handler = functools.partial(cbt_event, timeouts)
+  controller.add_event_listener(cbt_handler,
+                                stem.control.EventType.BUILDTIMEOUT_SET)
 
   # Blah...
   while controller.is_alive():
