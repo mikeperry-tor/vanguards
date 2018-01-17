@@ -54,6 +54,7 @@ def get_rlist_and_rdict(controller):
 
   return (sorted_r, dict_r)
 
+# XXX: Options for tor port
 def connect():
   try:
     controller = Controller.from_port()
@@ -97,6 +98,7 @@ def setup_options():
   global NUM_LAYER2_GUARDS
   global NUM_LAYER3_GUARDS
 
+  # XXX: Advanced vs simple options (--client, --service, etc)
   parser = argparse.ArgumentParser()
   parser.add_argument("--num_guards", type=int, dest="num_layer1",
                     help="Number of entry gurds (default "+str(NUM_LAYER1_GUARDS)+
@@ -275,10 +277,10 @@ def configure_tor(controller, vanguard_state):
   if LAYER1_LIFETIME:
     controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
 
-  controller.set_conf("HSLayer2Guards", vanguard_state.layer2_guardset())
+  controller.set_conf("_HSLayer2Nodes", vanguard_state.layer2_guardset())
 
   if NUM_LAYER3_GUARDS:
-    controller.set_conf("HSLayer3Guards", vanguard_state.layer3_guardset())
+    controller.set_conf("_HSLayer3Nodes", vanguard_state.layer3_guardset())
 
   controller.save_conf()
 
