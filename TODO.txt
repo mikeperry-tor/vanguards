@@ -1,0 +1,10 @@
+TODO items that should maybe go into the bug tracker
+
+0. Make a README
+1. Track previously valid circuits (or perhaps simpler: previous node choices)
+   so we don't get confused when settings change.
+2. Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
+3. Provide an IncludeNodes feature
+4. Make a conf file
+5. Make setup.py, pip requirements, and virtualenv setup scripts
+
