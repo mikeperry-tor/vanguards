@@ -164,8 +164,12 @@ class VanguardState:
   def __init__(self):
     self.layer2 = []
     self.layer2_down = []
+    self.layer2_prev = []
     self.layer3 = []
     self.layer3_down = []
+    self.layer3_prev = []
+    self.largest_circ_id = 0
+    self.last_circ_for_old_guards = 0
 
   def write_to_file(self, outfile):
     return pickle.dump(self, outfile)
@@ -206,6 +210,34 @@ class VanguardState:
                         random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires, priority))
+
+  def load_tor_state(self, controller):
+    circs = controller.get_circuits(None)
+    if len(self.layer2_prev) == 0:
+      layer2_ids = controller.get_conf("_HSLayer2Nodes").split(",")
+      for fp in layer2_ids:
+        self.layer2_prev.append(GuardNode(fp, 0, 0, 0))
+
+    if len(self.layer3_prev) == 0:
+      layer3_ids = controller.get_conf("_HSLayer3Nodes").split(",")
+      for fp in layer3_ids:
+        self.layer3_prev.append(GuardNode(fp, 0, 0, 0))
+
+    if circs and len(circs):
+      self.largest_circ_id = max(map(lambda c: c.id, circs))
+
+    plog("INFO", "Got initial circ "+str(self.largest_circ_id)+
+                 ", layer2 guards "+self.layer2_guardset()+
+                 ", layer3 guards "+self.layer3_guardset())
+
+  def save_previous_guards(self):
+    self.layer2_prev = copy.deepcopy(self.layer2)
+    self.layer3_prev = copy.deepcopy(self.layer3)
+
+    # Used to tell when these old guards were last used.
+    self.last_circ_for_old_guards = self.largest_circ_id
+
+    plog("INFO", "New vanguard set at circ id "+str(self.largest_circ_id))
 
   def _remove_expired(self, remove_from, now):
     for g in list(remove_from):
@@ -297,6 +329,8 @@ def new_consensus_event(controller, state, options, event):
                            weights, BwWeightedGenerator.POSITION_MIDDLE)
   gen = ng.generate()
   state.consensus_update(dict_r, gen)
+
+  state.save_previous_guards()
   state.replace_expired(gen)
 
   # XXX: Print out current state
@@ -354,14 +388,17 @@ class TimeoutStats:
   def timeout_rate_all(self):
     if self.all_launched:
       return float(self.all_timeout)/(self.all_launched)
-    else: return 0
+    else: return 0.0
 
   def timeout_rate_hs(self):
     if self.hs_launched:
       return float(self.hs_timeout)/(self.hs_launched)
-    else: return 0
+    else: return 0.0
 
 def circuit_event(state, timeouts, event):
+  if event.id > state.largest_circ_id:
+    state.largest_circ_id = event.id
+
   if event.hs_state or event.purpose[0:2] == "HS":
     if "status" in event.__dict__:
       if event.status == "LAUNCHED":
@@ -374,13 +411,34 @@ def circuit_event(state, timeouts, event):
 
     if len(event.path) > 1:
       layer2 = event.path[1][0]
-      if not layer2 in map(lambda x: x.idhex, state.layer2):
-        plog("ERROR", "Circuit with bad layer2 node "+layer2+": "+event.raw_content())
+
+      # If this circuit was from before the last vanguard update, it may have
+      # old guards. Check the new and the old ones in that case. Otherwise,
+      # only check the new ones.
+      if event.id <= state.last_circ_for_old_guards:
+        if not layer2 in map(lambda x: x.idhex, state.layer2):
+          if len(state.layer2_prev) > 0 and not layer2 in \
+             map(lambda x: x.idhex, state.layer2_prev):
+            plog("ERROR", "Old circuit with bad layer2 node "+layer2+": "+event.raw_content())
+          else:
+            plog("INFO", "Old circuit with old layer2 node "+layer2+": "+event.raw_content())
+      else:
+        if not layer2 in map(lambda x: x.idhex, state.layer2):
+          plog("ERROR", "Circuit with bad layer2 node "+layer2+": "+event.raw_content())
 
     if len(event.path) > 2 and NUM_LAYER3_GUARDS:
       layer3 = event.path[2][0]
-      if not layer3 in map(lambda x: x.idhex, state.layer3):
-        plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
+
+      if event.id <= state.last_circ_for_old_guards:
+        if not layer3 in map(lambda x: x.idhex, state.layer3):
+          if len(state.layer3_prev) >0 and not layer3 in \
+             map(lambda x: x.idhex, state.layer3_prev):
+            plog("ERROR", "Old circuit with bad layer3 node "+layer3+": "+event.raw_content())
+          else:
+            plog("INFO", "Old circuit with old layer3 node "+layer3+": "+event.raw_content())
+      else:
+        if not layer3 in map(lambda x: x.idhex, state.layer3):
+          plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
 
     if "status" in event.__dict__ and event.status == "BUILT":
         if event.purpose == "HS_CLIENT_HSDIR" or event.purpose == "HS_CLIENT_INTRO":
@@ -425,6 +483,7 @@ def main():
     state = VanguardState()
 
   controller = connect()
+  state.load_tor_state(controller)
   new_consensus_event(controller, state, options, None)
   timeouts = TimeoutStats()
 
