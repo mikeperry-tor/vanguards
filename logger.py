@@ -38,6 +38,6 @@ def plog(level, msg, *args):
       logger.addHandler(ch)
     logger.setLevel(loglevels[loglevel])
 
-  logger.log(loglevels[level], msg, *args)
+  logger.log(loglevels[level], msg.strip(), *args)
 
 
