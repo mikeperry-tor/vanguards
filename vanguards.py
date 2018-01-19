@@ -245,6 +245,10 @@ class VanguardState:
         remove_from.remove(g)
 
   def replace_expired(self, generator):
+    plog("INFO", "Replacing any old vanguards. Current "+
+                 " layer2 guards: "+self.layer2_guardset()+
+                 " Current layer3 guards: "+self.layer3_guardset())
+
     now = time.time()
 
     self._remove_expired(self.layer2, now)
@@ -259,6 +263,9 @@ class VanguardState:
 
     while len(self.layer3) < NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator, 0)
+
+    plog("INFO", "New layer2 guards: "+self.layer2_guardset()+
+                 " New layer3 guards: "+self.layer3_guardset())
 
   def _remove_down(self, remove_from, dict_r):
     removed = []
