@@ -4,6 +4,13 @@ TODO items that should maybe go into the bug tracker
 * Prototype #23980 by killing circuits after a time period, consensus change,
   and/or total bytes from CIRC_BW events (as options). Separate read+write
   options for total bytes.
+* Check each vanguard layer against tor's path restrictions - no one layer
+  should all be same /16, family, etc. If it does, re-pick node until
+  it doesn't. There should be a limit on this before we warn and re-pick the
+  whole layer.
+* Try to check that other hops in the path match expected consensus weight
+  distribution after we have built something like K*len(consensus) circs,
+  for K=0.5-10, screaming louder about anomalies as K increases.
 * Version the pickled state file
 * Make a conf file
 * Make setup.py, pip requirements, and virtualenv setup scripts
