@@ -447,23 +447,54 @@ def circuit_event(state, timeouts, event):
         if not layer3 in map(lambda x: x.idhex, state.layer3):
           plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
 
+    # Check lengths against route_len_for_purpose:
+    # Layer2+Layer3 guards:
+    #    C - G - L2 - L3 - R
+    #    S - G - L2 - L3 - HSDIR
+    #    S - G - L2 - L3 - I
+    #    C - G - L2 - L3 - M - I
+    #    C - G - L2 - L3 - M - HSDIR
+    #    S - G - L2 - L3 - M - R
+    # XXX: If only layer2 guards are set, some of these may still be wrong.
     if "status" in event.__dict__ and event.status == "BUILT":
-        if event.purpose == "HS_CLIENT_HSDIR" or event.purpose == "HS_CLIENT_INTRO":
-          if NUM_LAYER3_GUARDS and len(event.path) < 5:
+        if event.purpose == "HS_VANGUARDS":
+          if NUM_LAYER3_GUARDS and len(event.path) != 4:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          elif not NUM_LAYER3_GUARDS and len(event.path) < 4:
+          elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
         elif event.purpose == "HS_CLIENT_REND":
-          if NUM_LAYER3_GUARDS and len(event.path) < 4:
+          if NUM_LAYER3_GUARDS and len(event.path) != 4:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          elif not NUM_LAYER3_GUARDS and len(event.path) < 3:
+          elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
-        elif event.purpose[0:10] == "HS_SERVICE":
+        elif event.purpose == "HS_SERVICE_HSDIR":
+          # 4 is direct built, 5 is via HS_VANGUARDS
+          if len(event.path) != 4 and len(event.path) != 5:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose == "HS_SERVICE_INTRO":
           if len(event.path) != 4:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose == "HS_CLIENT_INTRO":
+          # client intros can be extended and retried.
+          if len(event.path) < 5:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose == "HS_CLIENT_HSDIR":
+          if len(event.path) != 5:
+            plog("ERROR", "Circuit with bad path: "+event.raw_content())
+          else:
+            plog("INFO", "Circuit "+event.id+" OK!")
+        elif event.purpose == "HS_SERVICE_REND":
+          if len(event.path) != 5:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
