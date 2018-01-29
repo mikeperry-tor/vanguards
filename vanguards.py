@@ -34,6 +34,10 @@ MAX_LAYER2_LIFETIME = 24*32
 MIN_LAYER3_LIFETIME = 1
 MAX_LAYER3_LIFETIME = 18
 
+CONTROL_HOST = "127.0.0.1"
+CONTROL_PORT = 9051
+CONTROL_SOCKET = None
+
 SEC_PER_HOUR = (60*60)
 
 # Experimentation:
@@ -54,13 +58,20 @@ def get_rlist_and_rdict(controller):
 
   return (sorted_r, dict_r)
 
-# XXX: Options for tor port
 def connect():
-  try:
-    controller = Controller.from_port()
-  except stem.SocketError as exc:
-    print("Unable to connect to tor on port 9051: %s" % exc)
-    sys.exit(1)
+  if CONTROL_SOCKET != None:
+    try:
+      controller = Controller.from_socket_file(CONTROL_SOCKET)
+    except stem.SocketError as exc:
+      print("Unable to connect to Tor Control Socket at "+CONTROL_SOCKET+": %s" % exc)
+      sys.exit(1)
+  else:
+    try:
+      controller = Controller.from_port(CONTROL_HOST, CONTROL_PORT)
+    except stem.SocketError as exc:
+      print("Unable to connect to Tor Control Port at "+CONTROL_HOST+":"
+             +str(CONTROL_PORT)+" %s" % exc)
+      sys.exit(1)
 
   try:
     controller.authenticate()
@@ -97,6 +108,7 @@ def setup_options():
   global NUM_LAYER1_GUARDS
   global NUM_LAYER2_GUARDS
   global NUM_LAYER3_GUARDS
+  global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET
 
   # XXX: Advanced vs simple options (--client, --service, etc)
   parser = argparse.ArgumentParser()
@@ -142,14 +154,29 @@ def setup_options():
   parser.add_argument("--state_file", dest="state_file", default="vanguards",
                     help="File to store vanguard state (default: DataDirectory/vanguards)")
 
+  parser.add_argument("--control_host", dest="control_host", default=CONTROL_HOST,
+                    help="The IP address of the Tor Control Port to connect to (default: "+
+                    CONTROL_HOST+")")
+  parser.add_argument("--control_port", type=int, dest="control_port",
+                      default=CONTROL_PORT,
+                      help="The Tor Control Port to connect to (default: "+
+                      str(CONTROL_PORT)+")")
+
+  parser.add_argument("--control_socket", dest="control_socket",
+                      default=CONTROL_SOCKET,
+                      help="The Tor Control Socket path to connect to "+
+                      "(default: "+str(CONTROL_SOCKET)+")")
+
   options = parser.parse_args()
 
   (LAYER1_LIFETIME, MIN_LAYER2_LIFETIME, MAX_LAYER2_LIFETIME,
    MIN_LAYER3_LIFETIME, MAX_LAYER3_LIFETIME, NUM_LAYER1_GUARDS,
-   NUM_LAYER2_GUARDS, NUM_LAYER3_GUARDS) = (options.guard_lifetime,
+   NUM_LAYER2_GUARDS, NUM_LAYER3_GUARDS, CONTROL_HOST, CONTROL_PORT,
+   CONTROL_SOCKET) = (options.guard_lifetime,
    options.mid_lifetime_min, options.mid_lifetime_max,
    options.end_lifetime_min, options.end_lifetime_max,
-   options.num_layer1, options.num_layer2, options.num_layer3)
+   options.num_layer1, options.num_layer2, options.num_layer3,
+   options.control_host, options.control_port, options.control_socket)
 
   return options
 
