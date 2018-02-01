@@ -181,19 +181,16 @@ def setup_options():
   return options
 
 class GuardNode:
-  def __init__(self, idhex, chosen_at, expires_at, priority):
+  def __init__(self, idhex, chosen_at, expires_at):
     self.idhex = idhex
     self.chosen_at = chosen_at
     self.expires_at = expires_at
-    self.priority_index = priority
 
 class VanguardState:
   def __init__(self):
     self.layer2 = []
-    self.layer2_down = []
     self.layer2_prev = []
     self.layer3 = []
-    self.layer3_down = []
     self.layer3_prev = []
     self.largest_circ_id = 0
     self.last_circ_for_old_guards = 0
@@ -214,7 +211,7 @@ class VanguardState:
     return ",".join(map(lambda g: g.idhex, self.layer3))
 
   # Adds a new layer2 guard
-  def add_new_layer2(self, generator, priority):
+  def add_new_layer2(self, generator):
     guard = generator.next()
     while guard.fingerprint in map(lambda g: g.idhex, self.layer2):
       guard = generator.next()
@@ -224,9 +221,9 @@ class VanguardState:
                                        MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
                         random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER2_LIFETIME*SEC_PER_HOUR))
-    self.layer2.append(GuardNode(guard.fingerprint, now, expires, priority))
+    self.layer2.append(GuardNode(guard.fingerprint, now, expires))
 
-  def add_new_layer3(self, generator, priority):
+  def add_new_layer3(self, generator):
     guard = generator.next()
     while guard.fingerprint in map(lambda g: g.idhex, self.layer3):
       guard = generator.next()
@@ -236,19 +233,19 @@ class VanguardState:
                                        MAX_LAYER3_LIFETIME*SEC_PER_HOUR),
                         random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
-    self.layer3.append(GuardNode(guard.fingerprint, now, expires, priority))
+    self.layer3.append(GuardNode(guard.fingerprint, now, expires))
 
   def load_tor_state(self, controller):
     circs = controller.get_circuits(None)
     if len(self.layer2_prev) == 0:
       layer2_ids = controller.get_conf("_HSLayer2Nodes").split(",")
       for fp in layer2_ids:
-        self.layer2_prev.append(GuardNode(fp, 0, 0, 0))
+        self.layer2_prev.append(GuardNode(fp, 0, 0))
 
     if len(self.layer3_prev) == 0:
       layer3_ids = controller.get_conf("_HSLayer3Nodes").split(",")
       for fp in layer3_ids:
-        self.layer3_prev.append(GuardNode(fp, 0, 0, 0))
+        self.layer3_prev.append(GuardNode(fp, 0, 0))
 
     if circs and len(circs):
       self.largest_circ_id = max(map(lambda c: c.id, circs))
@@ -282,14 +279,12 @@ class VanguardState:
     self.layer2 = self.layer2[:NUM_LAYER2_GUARDS]
     self._remove_expired(self.layer3, now)
     self.layer3 = self.layer3[:NUM_LAYER2_GUARDS]
-    self._remove_expired(self.layer2_down, now)
-    self._remove_expired(self.layer3_down, now)
 
     while len(self.layer2) < NUM_LAYER2_GUARDS:
-      self.add_new_layer2(generator, 0)
+      self.add_new_layer2(generator)
 
     while len(self.layer3) < NUM_LAYER3_GUARDS:
-      self.add_new_layer3(generator, 0)
+      self.add_new_layer3(generator)
 
     plog("INFO", "New layer2 guards: "+self.layer2_guardset()+
                  " New layer3 guards: "+self.layer3_guardset())
@@ -303,38 +298,15 @@ class VanguardState:
     return removed
 
   def consensus_update(self, dict_r, generator):
-    # If any guards are down, move them from current to down
-    self.layer2_down.extend(self._remove_down(self.layer2, dict_r))
-    self.layer3_down.extend(self._remove_down(self.layer3, dict_r))
+    # If any guards are down, remove them from current
+    self._remove_down(self.layer2, dict_r)
+    self._remove_down(self.layer3, dict_r)
 
-    # If we drop below our target, first check for re-upped guards,
-    # then if none, add more with lower priority
-    # (Yeah, this is suboptimal, but it is not critical)
     while len(self.layer2) < NUM_LAYER2_GUARDS:
-      min_up = None
-      for g in self.layer2_down:
-        if g.idhex in dict_r and g.idhex not in map(lambda g: g.idhex, self.layer2):
-          if not min_up or min_up.priority_index > g.priority_index:
-            min_up = g
-
-      # XXX: +1 over current highest priority?
-      if not min_up: self.add_new_layer2(generator, 1)
-      else:
-        self.layer2.append(min_up)
-        self.layer2_down.remove(min_up)
+      self.add_new_layer2(generator)
 
     while len(self.layer3) < NUM_LAYER3_GUARDS:
-      min_up = None
-      for g in self.layer3_down:
-        if g.idhex in dict_r and g.idhex not in map(lambda g: g.idhex, self.layer3):
-          if not min_up or min_up.priority_index > g.priority_index:
-            min_up = g
-
-      # XXX: +1 over current highest priority?
-      if not min_up: self.add_new_layer3(generator, 1)
-      else:
-        self.layer3.append(min_up)
-        self.layer3_down.remove(min_up)
+      self.add_new_layer3(generator)
 
 def configure_tor(controller, vanguard_state):
   if NUM_LAYER1_GUARDS:
