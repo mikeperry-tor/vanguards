@@ -1,6 +1,5 @@
 TODO items that should maybe go into the bug tracker
 
-* Make a README
 * Check each vanguard layer against tor's path restrictions - no one layer
   should all be same /16, family, etc. If it does, re-pick node until
   it doesn't. There should be a limit on this before we warn and re-pick the
@@ -13,7 +12,6 @@ TODO items that should maybe go into the bug tracker
   options for total bytes.
 * Version the pickled state file
 * Make a conf file
-* Make setup.py, pip requirements, and virtualenv setup scripts
 * Fix logging system
 * Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
 * Provide an IncludeNodes feature
