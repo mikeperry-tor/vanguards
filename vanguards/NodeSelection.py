@@ -197,5 +197,8 @@ class BwWeightedGenerator(NodeGenerator):
         choice_idx += 1
       yield self.rstr_routers[choice_idx-1]
 
+# XXX: FlagsRestriction: Uptime, capacity (NodeRestriction: always want)
+# XXX: Subnet16Restriction: Set restriction: at least one be different
+# XXX: FamilyRestriction: Set restriction: at least one must be different
 
 
