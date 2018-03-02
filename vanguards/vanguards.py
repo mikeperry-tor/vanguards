@@ -19,6 +19,8 @@ from logger import plog
 import argparse
 import pickle
 
+from bandguards import BandwidthStats
+
 NUM_LAYER1_GUARDS = 0 # Use Tor default
 NUM_LAYER2_GUARDS = 3
 NUM_LAYER3_GUARDS = 4
@@ -322,7 +324,7 @@ def configure_tor(controller, vanguard_state):
 
   controller.save_conf()
 
-# TODO: This might be inefficient, because we just 
+# TODO: This might be inefficient, because we just
 # parsed the consensus for the event, and now we're parsing it
 # again, twice.. Oh well. Prototype, and not critical path either.
 def new_consensus_event(controller, state, options, event):
@@ -505,11 +507,11 @@ def circuit_event(state, timeouts, event):
     elif event.reason == "TIMEOUT":
       timeouts.timeout_circuit(event.id)
 
-  plog("INFO", event.raw_content())
+  plog("DEBUG", event.raw_content())
 
 def cbt_event(timeouts, event):
   plog("NOTICE", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
-  plog("INFO", event.raw_content())
+  plog("DEBUG", event.raw_content())
 
 def main():
   options = setup_options()
@@ -524,22 +526,50 @@ def main():
   state.load_tor_state(controller)
   new_consensus_event(controller, state, options, None)
   timeouts = TimeoutStats()
+  bandwidths = BandwidthStats(controller)
 
-  # This would be thread-unsafe, but we're done with these objects now
-  new_consensus_handler = functools.partial(new_consensus_event,
-                                            controller, state, options)
-  controller.add_event_listener(new_consensus_handler,
-                                stem.control.EventType.NEWCONSENSUS)
-
+  # Thread-safety: state, timeouts, and bandwidths are effectively
+  # transferred to the event thread here. They must not be used in
+  # our thread anymore.
   circuit_handler = functools.partial(circuit_event, state, timeouts)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC_MINOR)
 
+
+  controller.add_event_listener(
+               functools.partial(BandwidthStats.circ_event, bandwidths,
+                                 state, timeouts),
+                                stem.control.EventType.CIRC)
+  controller.add_event_listener(
+               functools.partial(BandwidthStats.stream_event, bandwidths,
+                                 state, timeouts),
+                                stem.control.EventType.STREAM)
+  controller.add_event_listener(
+               functools.partial(BandwidthStats.streambw_event, bandwidths,
+                                 state, timeouts),
+                                stem.control.EventType.STREAM_BW)
+  controller.add_event_listener(
+               functools.partial(BandwidthStats.bw_event, bandwidths,
+                                 state, timeouts),
+                                stem.control.EventType.BW)
+  controller.add_event_listener(
+               functools.partial(BandwidthStats.circbw_event, bandwidths,
+                                 state, timeouts),
+                                stem.control.EventType.CIRC_BW)
+
   cbt_handler = functools.partial(cbt_event, timeouts)
   controller.add_event_listener(cbt_handler,
                                 stem.control.EventType.BUILDTIMEOUT_SET)
+
+  # Thread-safety: We're effectively transferring controller to the event
+  # thread here.
+  new_consensus_handler = functools.partial(new_consensus_event,
+                                            controller, state, options)
+  controller.add_event_listener(new_consensus_handler,
+                                stem.control.EventType.NEWCONSENSUS)
+
 
   # Blah...
   while controller.is_alive():
