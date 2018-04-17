@@ -240,12 +240,12 @@ class VanguardState:
   def load_tor_state(self, controller):
     circs = controller.get_circuits(None)
     if len(self.layer2_prev) == 0:
-      layer2_ids = controller.get_conf("_HSLayer2Nodes").split(",")
+      layer2_ids = controller.get_conf("HSLayer2Nodes").split(",")
       for fp in layer2_ids:
         self.layer2_prev.append(GuardNode(fp, 0, 0))
 
     if len(self.layer3_prev) == 0:
-      layer3_ids = controller.get_conf("_HSLayer3Nodes").split(",")
+      layer3_ids = controller.get_conf("HSLayer3Nodes").split(",")
       for fp in layer3_ids:
         self.layer3_prev.append(GuardNode(fp, 0, 0))
 
@@ -317,10 +317,10 @@ def configure_tor(controller, vanguard_state):
   if LAYER1_LIFETIME:
     controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
 
-  controller.set_conf("_HSLayer2Nodes", vanguard_state.layer2_guardset())
+  controller.set_conf("HSLayer2Nodes", vanguard_state.layer2_guardset())
 
   if NUM_LAYER3_GUARDS:
-    controller.set_conf("_HSLayer3Nodes", vanguard_state.layer3_guardset())
+    controller.set_conf("HSLayer3Nodes", vanguard_state.layer3_guardset())
 
   controller.save_conf()
 
