@@ -239,12 +239,14 @@ class VanguardState:
 
   def load_tor_state(self, controller):
     circs = controller.get_circuits(None)
-    if len(self.layer2_prev) == 0:
+    if len(self.layer2_prev) == 0 and \
+       controller.get_conf("HSLayer2Nodes") != None:
       layer2_ids = controller.get_conf("HSLayer2Nodes").split(",")
       for fp in layer2_ids:
         self.layer2_prev.append(GuardNode(fp, 0, 0))
 
-    if len(self.layer3_prev) == 0:
+    if len(self.layer3_prev) == 0 and \
+       controller.get_conf("HSLayer3Nodes") != None:
       layer3_ids = controller.get_conf("HSLayer3Nodes").split(",")
       for fp in layer3_ids:
         self.layer3_prev.append(GuardNode(fp, 0, 0))
