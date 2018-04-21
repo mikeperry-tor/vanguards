@@ -314,7 +314,7 @@ class VanguardState:
 
 def configure_tor(controller, vanguard_state):
   if NUM_LAYER1_GUARDS:
-    controller.set_conf("NumEntryGuards", NUM_LAYER1_GUARDS)
+    controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
 
   if LAYER1_LIFETIME:
     controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
@@ -541,24 +541,19 @@ def main():
 
 
   controller.add_event_listener(
-               functools.partial(BandwidthStats.circ_event, bandwidths,
-                                 state, timeouts),
+               functools.partial(BandwidthStats.circ_event, bandwidths),
                                 stem.control.EventType.CIRC)
   controller.add_event_listener(
-               functools.partial(BandwidthStats.stream_event, bandwidths,
-                                 state, timeouts),
+               functools.partial(BandwidthStats.stream_event, bandwidths),
                                 stem.control.EventType.STREAM)
   controller.add_event_listener(
-               functools.partial(BandwidthStats.streambw_event, bandwidths,
-                                 state, timeouts),
+               functools.partial(BandwidthStats.streambw_event, bandwidths),
                                 stem.control.EventType.STREAM_BW)
   controller.add_event_listener(
-               functools.partial(BandwidthStats.bw_event, bandwidths,
-                                 state, timeouts),
+               functools.partial(BandwidthStats.bw_event, bandwidths),
                                 stem.control.EventType.BW)
   controller.add_event_listener(
-               functools.partial(BandwidthStats.circbw_event, bandwidths,
-                                 state, timeouts),
+               functools.partial(BandwidthStats.circbw_event, bandwidths),
                                 stem.control.EventType.CIRC_BW)
 
   cbt_handler = functools.partial(cbt_event, timeouts)
