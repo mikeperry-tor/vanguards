@@ -21,20 +21,20 @@ import pickle
 
 from bandguards import BandwidthStats
 
-NUM_LAYER1_GUARDS = 0 # Use Tor default
-NUM_LAYER2_GUARDS = 3
-NUM_LAYER3_GUARDS = 4
+NUM_LAYER1_GUARDS = 2 # 0 is Tor default
+NUM_LAYER2_GUARDS = 4
+NUM_LAYER3_GUARDS = 8
 
 # In days:
 LAYER1_LIFETIME = 0 # Use tor default
 
 # In hours
 MIN_LAYER2_LIFETIME = 24*1
-MAX_LAYER2_LIFETIME = 24*32
+MAX_LAYER2_LIFETIME = 24*45
 
 # In hours
 MIN_LAYER3_LIFETIME = 1
-MAX_LAYER3_LIFETIME = 18
+MAX_LAYER3_LIFETIME = 48
 
 CONTROL_HOST = "127.0.0.1"
 CONTROL_PORT = 9051
@@ -219,7 +219,7 @@ class VanguardState:
       guard = generator.next()
 
     now = time.time()
-    expires = now + min(random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
+    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
                         random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER2_LIFETIME*SEC_PER_HOUR))
