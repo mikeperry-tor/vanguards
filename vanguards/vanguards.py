@@ -42,6 +42,22 @@ CONTROL_SOCKET = None
 
 SEC_PER_HOUR = (60*60)
 
+
+# Use count limits. These limits control when we emit warnings about circuits
+#
+# Minimum number of hops we have to see before applying use stat checks
+USE_COUNT_TOTAL_MIN = 100
+
+# Number of hops to scale counts down by two at
+USE_COUNT_SCALE_AT = 1000
+
+# Minimum number of times a relay has to be used before we check it for
+# overuse
+USE_COUNT_RELAY_MIN = 5
+
+# How many times more than its bandwidth must a relay be used?
+USE_COUNT_RATIO = 2.0
+
 # Experimentation:
 # 0. Percentile restrictions? MTBF restrictions?
 # 1. Onionperf scripts
@@ -188,6 +204,12 @@ class GuardNode:
     self.chosen_at = chosen_at
     self.expires_at = expires_at
 
+class UseCount:
+   def __init__(self, idhex, weight):
+     self.idhex = idhex
+     self.used = 0
+     self.weight = weight
+
 class VanguardState:
   def __init__(self):
     self.layer2 = []
@@ -196,13 +218,95 @@ class VanguardState:
     self.layer3_prev = []
     self.largest_circ_id = 0
     self.last_circ_for_old_guards = 0
+    self.circ_seen = {}
+    self.use_counts = {}
+    self.total_use_counts = 0
+    self.controller = None
 
   def write_to_file(self, outfile):
-    return pickle.dump(self, outfile)
+    controller = self.controller
+    self.controller = None
+    ret = pickle.dump(self, outfile)
+    self.contrller = controller
+    return ret
 
   @staticmethod
   def read_from_file(infile):
     return pickle.load(infile)
+
+  def try_close_circuit(self, circ_id):
+    try:
+      self.controller.close_circuit(circ_id)
+      plog("NOTICE", "We force-closed circuit "+str(circ_id))
+    except stem.InvalidRequest as e:
+      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
+
+  def forget_circuit(self, circ_id):
+    if circ_id in self.circ_seen:
+      del self.circ_seen[circ_id]
+
+  def check_use_counts(self, circ_id, path):
+    if circ_id in self.circ_seen and len(path) <= self.circ_seen[circ_id]:
+      return
+
+    if circ_id not in self.circ_seen:
+      self.circ_seen[circ_id] = len(path)
+
+    # first, handle extends
+    new_len = len(path)
+    while len(path) > self.circ_seen[circ_id]:
+      path.pop(0)
+
+    self.circ_seen[circ_id] = new_len
+    path = map(lambda x: x[0], path)
+
+    # Now, all remaining elements in path should be randomly chosen relays
+    for r in path:
+      if r not in self.use_counts:
+        plog("WARN", "Relay "+r+" should not be used, but someone is using it!")
+        self.use_counts[r] = UseCount(r, 0)
+
+      self.use_counts[r].used += 1
+      self.total_use_counts += 1.0
+
+      # XXX: Can we base this check on statistical confidence intervals?
+      if self.total_use_counts > USE_COUNT_TOTAL_MIN and \
+         self.use_counts[r].used > USE_COUNT_RELAY_MIN:
+        plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
+                    " times out of "+str(int(self.total_use_counts)))
+
+        if self.use_counts[r].used/self.total_use_counts > \
+           self.use_counts[r].weight*USE_COUNT_RATIO:
+          # XXX: Rate limit this log
+          plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
+                       " times out of "+str(int(self.total_use_counts))+
+                       ". This is above its weight of "+
+                       str(self.use_counts[r].weight))
+          # XXX: Are there cases where closing this is bad?
+          self.try_close_circuit(circ_id)
+
+  def xfer_use_counts(self, node_gen):
+    old_counts = self.use_counts
+    self.use_counts = {}
+    for r in node_gen.sorted_r:
+       self.use_counts[r.fingerprint] = UseCount(r.fingerprint, 0)
+
+    for i in xrange(len(node_gen.rstr_routers)):
+      self.use_counts[r.fingerprint].weight = \
+         node_gen.node_weights[i]/node_gen.weight_total
+
+    # Periodically we divide counts by two, to avoid overcounting
+    # high-uptime relays vs old ones
+    for r in old_counts.iterkeys():
+      if r not in self.use_counts: continue
+      if self.total_use_counts > USE_COUNT_SCALE_AT:
+        self.use_counts[r].used = old_counts[r].used/2
+      else:
+        self.use_counts[r].used = old_counts[r].used
+
+    self.total_use_counts = sum(map(lambda x: x.used,
+                                    self.use_counts.itervalues()))
+    self.total_use_counts = float(self.total_use_counts)
 
   # XXX: Log guards
 
@@ -254,6 +358,7 @@ class VanguardState:
     if circs and len(circs):
       self.largest_circ_id = max(map(lambda c: c.id, circs))
 
+    self.controller = controller
     plog("INFO", "Got initial circ "+str(self.largest_circ_id)+
                  ", layer2 guards "+self.layer2_guardset()+
                  ", layer3 guards "+self.layer3_guardset())
@@ -343,6 +448,7 @@ def new_consensus_event(controller, state, options, event):
   state.save_previous_guards()
   state.replace_expired(gen)
 
+  state.xfer_use_counts(ng)
   # XXX: Print out current state
 
   configure_tor(controller, state)
@@ -404,6 +510,7 @@ class TimeoutStats:
     if self.hs_launched:
       return float(self.hs_timeout)/(self.hs_launched)
     else: return 0.0
+
 
 def circuit_event(state, timeouts, event):
   if event.id > state.largest_circ_id:
@@ -467,6 +574,8 @@ def circuit_event(state, timeouts, event):
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          if NUM_LAYER3_GUARDS: state.check_use_counts(event.id, event.path[3:])
+          else: state.check_use_counts(event.id, event.path[2:])
         elif event.purpose == "HS_CLIENT_REND":
           if NUM_LAYER3_GUARDS and len(event.path) != 4:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
@@ -474,33 +583,44 @@ def circuit_event(state, timeouts, event):
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          if NUM_LAYER3_GUARDS: state.check_use_counts(event.id, event.path[3:])
+          else: state.check_use_counts(event.id, event.path[2:])
         elif event.purpose == "HS_SERVICE_HSDIR":
           # 4 is direct built, 5 is via HS_VANGUARDS
           if len(event.path) != 4 and len(event.path) != 5:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          # Only check the M hop. HSDIR won't be weighted right
+          if len(event.path) == 5:
+            state.check_use_counts(event.id, event.path[3:4])
         elif event.purpose == "HS_SERVICE_INTRO":
           if len(event.path) != 4:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          # No path probability check. Intro is not weighted right
         elif event.purpose == "HS_CLIENT_INTRO":
           # client intros can be extended and retried.
           if len(event.path) < 5:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
-        elif event.purpose == "HS_CLIENT_HSDIR":
+          # Only check the M hop. Intro is not weighted right
+          state.check_use_counts(event.id, event.path[3:4])
+        elif event.purpose == "HS_CLIENT_INTRO" or event.purpose == "HS_CLIENT_HSDIR":
           if len(event.path) != 5:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          # Only check the M hop. Intro is not weighted right
+          state.check_use_counts(event.id, event.path[3:4])
         elif event.purpose == "HS_SERVICE_REND":
           if len(event.path) != 5:
             plog("ERROR", "Circuit with bad path: "+event.raw_content())
           else:
             plog("INFO", "Circuit "+event.id+" OK!")
+          state.check_use_counts(event.id, event.path[3:])
   elif "status" in event.__dict__:
     if event.status == "LAUNCHED":
       timeouts.add_circuit(event.id, 0)
@@ -508,6 +628,9 @@ def circuit_event(state, timeouts, event):
       timeouts.built_circuit(event.id)
     elif event.reason == "TIMEOUT":
       timeouts.timeout_circuit(event.id)
+
+  if "status" in event.__dict__ and event.status == "CLOSED":
+    state.forget_circuit(event.id)
 
   plog("DEBUG", event.raw_content())
 
