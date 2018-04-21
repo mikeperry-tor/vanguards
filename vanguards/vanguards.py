@@ -227,7 +227,7 @@ class VanguardState:
     controller = self.controller
     self.controller = None
     ret = pickle.dump(self, outfile)
-    self.contrller = controller
+    self.controller = controller
     return ret
 
   @staticmethod
