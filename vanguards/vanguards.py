@@ -254,6 +254,7 @@ class VanguardState:
 
     # first, handle extends
     new_len = len(path)
+    path = list(path) # is tuple on some stem versions
     while len(path) > self.circ_seen[circ_id]:
       path.pop(0)
 
