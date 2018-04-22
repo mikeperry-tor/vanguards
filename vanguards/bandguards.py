@@ -68,15 +68,19 @@ class BwCircuitStat:
     return self.read_bytes+self.sent_bytes
 
   def read_ratio(self):
+    if not self.byte_count(): return 0.0
     return float(self.read_bytes)/self.byte_count()
 
   def sent_ratio(self):
+    if not self.byte_count(): return 0.0
     return float(self.sent_bytes)/self.byte_count()
 
   def nonstream_read_ratio(self):
+    if not self.read_bytes: return 0.0
     return float(self.read_bytes - self.stream_read_bytes)/self.read_bytes
 
   def nonstream_sent_ratio(self):
+    if not self.sent_bytes: return 0.0
     return float(self.sent_bytes - self.stream_sent_bytes)/self.sent_bytes
 
 
@@ -250,24 +254,30 @@ class BandwidthStats:
     return self.client_circ_sent+self.service_circ_sent
 
   def client_write_ratio(self):
+    if not self.client_byte_count(): return 0.0
     return float(self.client_circ_sent)/self.client_byte_count()
 
   def service_read_ratio(self):
+    if not self.service_byte_count(): return 0.0
     return float(self.service_circ_read)/self.service_byte_count()
 
   def service_nonstream_read_ratio(self):
+    if not self.service_circ_read: return 0.0
     return float(self.service_circ_read-self.service_stream_read) / \
                  self.service_circ_read
 
   def client_nonstream_read_ratio(self):
+    if not self.client_circ_read: return 0.0
     return float(self.client_circ_read-self.client_stream_read) / \
                  self.client_circ_read
 
   def service_nonstream_sent_ratio(self):
+    if not self.service_circ_sent: return 0.0
     return float(self.service_circ_sent-self.service_stream_sent) / \
            self.service_circ_sent
 
   def client_nonstream_sent_ratio(self):
+    if not self.client_circ_sent: return 0.0
     return float(self.client_circ_sent-self.client_stream_sent) / \
            self.client_circ_sent
 
