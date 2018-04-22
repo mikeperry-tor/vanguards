@@ -17,12 +17,15 @@ BW_ENFORCE_RATIOS_AFTER = 10*1024*1024 # Ten megabytes
 # Emit a warn if this ratio of read/total bytes is exceeded.
 # Clients (web-like) should not write more than 20% of their bytes
 # Servers (web-like) should not read more than 20% of their bytes
-BW_MAX_CLIENT_WRITE_RATIO = 0.20
-BW_MAX_SERVICE_READ_RATIO = 0.20
+BW_MAX_CLIENT_WRITE_RATIO = 0.30
+BW_MAX_SERVICE_READ_RATIO = 0.30
 
-# Emit a warn if this much bandwidth is not stream related
-BW_MAX_NONSTREAM_READ_RATIO = 0.30
-BW_MAX_NONSTREAM_SENT_RATIO = 0.30
+# Emit a warn if this much bandwidth is not stream related.
+# (This should be roughly 1.0 minus Tor's "packed cell rate" log messages
+BW_MAX_CLIENT_NONSTREAM_READ_RATIO = 0.30
+BW_MAX_SERVICE_NONSTREAM_SENT_RATIO = 0.30
+BW_MAX_SERVICE_NONSTREAM_READ_RATIO = 0.90
+BW_MAX_CLIENT_NONSTREAM_SENT_RATIO = 0.90
 
 ###### Per-circuit limits #########
 
@@ -30,12 +33,14 @@ BW_MAX_NONSTREAM_SENT_RATIO = 0.30
 BW_CIRC_ENFORCE_RATIOS_AFTER = 100*1024 # 100k
 
 # Kill a circuit if this ratio of read/total bytes is exceeded
-BW_CIRC_MAX_CLIENT_WRITE_RATIO = 0.20
-BW_CIRC_MAX_SERVICE_READ_RATIO = 0.20
+BW_CIRC_MAX_CLIENT_WRITE_RATIO = 0.30
+BW_CIRC_MAX_SERVICE_READ_RATIO = 0.30
 
 # Kill a circuit if this much bandwidth is not stream related
-BW_CIRC_MAX_NONSTREAM_READ_RATIO = 0.30
-BW_CIRC_MAX_NONSTREAM_SENT_RATIO = 0.30
+BW_CIRC_MAX_CLIENT_NONSTREAM_READ_RATIO = 0.30
+BW_CIRC_MAX_SERVICE_NONSTREAM_SENT_RATIO = 0.30
+BW_CIRC_MAX_SERVICE_NONSTREAM_READ_RATIO = 0.90
+BW_CIRC_MAX_CLIENT_NONSTREAM_SENT_RATIO = 0.90
 
 # Kill a circuit if this many read or write bytes have been exceeded
 BW_CIRC_MAX_CLIENT_READ_BYTES = 20*1024*1024 # 20 megabytes
@@ -163,25 +168,24 @@ class BandwidthStats:
   def try_close_circuit(self, circ_id):
     try:
       self.controller.close_circuit(circ_id)
-      plog("INFO", "We force-closed circuit "+str(circ_id))
+      plog("NOTICE", "We force-closed circuit "+str(circ_id))
     except stem.InvalidRequest as e:
       plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
     if circ.byte_count() > BW_CIRC_ENFORCE_RATIOS_AFTER:
-      if circ.nonstream_read_ratio() > BW_CIRC_MAX_NONSTREAM_READ_RATIO:
-        self.limit_exceeded("WARN", "BW_CIRC_MAX_NONSTREAM_READ_RATIO",
-                            circ.nonstream_read_ratio(),
-                            BW_CIRC_MAX_NONSTREAM_READ_RATIO)
-        self.try_close_circuit(circ.circ_id)
-      if circ.nonstream_sent_ratio() > BW_CIRC_MAX_NONSTREAM_SENT_RATIO:
-        self.limit_exceeded("WARN", "BW_CIRC_MAX_NONSTREAM_SENT_RATIO",
-                            circ.nonstream_sent_ratio(),
-                            BW_CIRC_MAX_NONSTREAM_SENT_RATIO)
-        self.try_close_circuit(circ.circ_id)
-
       if circ.is_service:
+        if circ.nonstream_read_ratio() > BW_CIRC_MAX_SERVICE_NONSTREAM_READ_RATIO:
+          self.limit_exceeded("WARN", "BW_CIRC_MAX_SERVICE_NONSTREAM_READ_RATIO",
+                              circ.nonstream_read_ratio(),
+                              BW_CIRC_MAX_SERVICE_NONSTREAM_READ_RATIO)
+          self.try_close_circuit(circ.circ_id)
+        if circ.nonstream_sent_ratio() > BW_CIRC_MAX_SERVICE_NONSTREAM_SENT_RATIO:
+          self.limit_exceeded("WARN", "BW_CIRC_MAX_SERVICE_NONSTREAM_SENT_RATIO",
+                              circ.nonstream_sent_ratio(),
+                              BW_CIRC_MAX_SERVICE_NONSTREAM_SENT_RATIO)
+          self.try_close_circuit(circ.circ_id)
         if circ.read_ratio() > BW_CIRC_MAX_SERVICE_READ_RATIO:
           self.limit_exceeded("WARN", "BW_CIRC_MAX_SERVICE_READ_RATIO",
                               circ.read_ratio(),
@@ -194,10 +198,20 @@ class BandwidthStats:
           self.try_close_circuit(circ.circ_id)
         if circ.sent_bytes > BW_CIRC_MAX_SERVICE_SENT_BYTES:
           self.limit_exceeded("NOTICE", "BW_CIRC_MAX_SERVICE_SENT_BYTES",
-                              circ.read_bytes,
+                              circ.sent_bytes,
                               BW_CIRC_MAX_SERVICE_SENT_BYTES)
           self.try_close_circuit(circ.circ_id)
       else:
+        if circ.nonstream_read_ratio() > BW_CIRC_MAX_CLIENT_NONSTREAM_READ_RATIO:
+          self.limit_exceeded("WARN", "BW_CIRC_MAX_CLIENT_NONSTREAM_READ_RATIO",
+                              circ.nonstream_read_ratio(),
+                              BW_CIRC_MAX_CLIENT_NONSTREAM_READ_RATIO)
+          self.try_close_circuit(circ.circ_id)
+        if circ.nonstream_sent_ratio() > BW_CIRC_MAX_CLIENT_NONSTREAM_SENT_RATIO:
+          self.limit_exceeded("WARN", "BW_CIRC_MAX_CLIENT_NONSTREAM_SENT_RATIO",
+                              circ.nonstream_sent_ratio(),
+                              BW_CIRC_MAX_CLIENT_NONSTREAM_SENT_RATIO)
+          self.try_close_circuit(circ.circ_id)
         if circ.sent_ratio() > BW_CIRC_MAX_CLIENT_WRITE_RATIO:
           self.limit_exceeded("WARN", "BW_CIRC_MAX_CLIENT_WRITE_RATIO",
                               circ.sent_ratio(),
@@ -210,7 +224,7 @@ class BandwidthStats:
           self.try_close_circuit(circ.circ_id)
         if circ.sent_bytes > BW_CIRC_MAX_CLIENT_SENT_BYTES:
           self.limit_exceeded("NOTICE", "BW_CIRC_MAX_CLIENT_SENT_BYTES",
-                              circ.read_bytes,
+                              circ.sent_bytes,
                               BW_CIRC_MAX_CLIENT_SENT_BYTES)
           self.try_close_circuit(circ.circ_id)
 
@@ -241,13 +255,21 @@ class BandwidthStats:
   def service_read_ratio(self):
     return float(self.service_circ_read)/self.service_byte_count()
 
-  def global_nonstream_read_ratio(self):
-    return float(self.total_circ_read()-self.total_stream_read()) / \
-                 self.total_circ_read()
+  def service_nonstream_read_ratio(self):
+    return float(self.service_circ_read-self.service_stream_read) / \
+                 self.service_circ_read
 
-  def global_nonstream_sent_ratio(self):
-    return float(self.total_circ_sent()-self.total_stream_sent()) / \
-           self.total_circ_sent()
+  def client_nonstream_read_ratio(self):
+    return float(self.client_circ_read-self.client_stream_read) / \
+                 self.client_circ_read
+
+  def service_nonstream_sent_ratio(self):
+    return float(self.service_circ_sent-self.service_stream_sent) / \
+           self.service_circ_sent
+
+  def client_nonstream_sent_ratio(self):
+    return float(self.client_circ_sent-self.client_stream_sent) / \
+           self.client_circ_sent
 
   def limit_exceeded(self, level, str_name, cur_val, max_val):
     # XXX: Rate limit this log
@@ -264,11 +286,19 @@ class BandwidthStats:
         self.limit_exceeded("WARN", "BW_MAX_SERVICE_READ_RATIO",
                                  self.service_read_ratio(),
                                  BW_MAX_SERVICE_READ_RATIO)
-      if self.global_nonstream_read_ratio() > BW_MAX_NONSTREAM_READ_RATIO:
-        self.limit_exceeded("WARN", "BW_MAX_NONSTREAM_READ_RATIO",
-                                  self.global_nonstream_read_ratio(),
-                                  BW_MAX_NONSTREAM_READ_RATIO)
-      if self.global_nonstream_sent_ratio() > BW_MAX_NONSTREAM_SENT_RATIO:
-         self.limit_exceeded("WARN", "BW_MAX_NONSTREAM_SENT_RATIO",
-                                  self.global_nonstream_sent_ratio(),
-                                  BW_MAX_NONSTREAM_SENT_RATIO)
+      if self.client_nonstream_read_ratio() > BW_MAX_CLIENT_NONSTREAM_READ_RATIO:
+        self.limit_exceeded("WARN", "BW_MAX_CLIENT_NONSTREAM_READ_RATIO",
+                                  self.client_nonstream_read_ratio(),
+                                  BW_MAX_CLIENT_NONSTREAM_READ_RATIO)
+      if self.service_nonstream_read_ratio() > BW_MAX_SERVICE_NONSTREAM_READ_RATIO:
+        self.limit_exceeded("WARN", "BW_MAX_SERVICE_NONSTREAM_READ_RATIO",
+                                  self.service_nonstream_read_ratio(),
+                                  BW_MAX_SERVICE_NONSTREAM_READ_RATIO)
+      if self.client_nonstream_sent_ratio() > BW_MAX_CLIENT_NONSTREAM_SENT_RATIO:
+        self.limit_exceeded("WARN", "BW_MAX_CLIENT_NONSTREAM_SENT_RATIO",
+                                  self.client_nonstream_sent_ratio(),
+                                  BW_MAX_CLIENT_NONSTREAM_SENT_RATIO)
+      if self.service_nonstream_sent_ratio() > BW_MAX_SERVICE_NONSTREAM_SENT_RATIO:
+        self.limit_exceeded("WARN", "BW_MAX_SERVICE_NONSTREAM_SENT_RATIO",
+                                  self.service_nonstream_sent_ratio(),
+                                  BW_MAX_SERVICE_NONSTREAM_SENT_RATIO)
