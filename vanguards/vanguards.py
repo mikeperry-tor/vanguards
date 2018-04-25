@@ -668,12 +668,6 @@ def main():
                functools.partial(BandwidthStats.circ_event, bandwidths),
                                 stem.control.EventType.CIRC)
   controller.add_event_listener(
-               functools.partial(BandwidthStats.stream_event, bandwidths),
-                                stem.control.EventType.STREAM)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.streambw_event, bandwidths),
-                                stem.control.EventType.STREAM_BW)
-  controller.add_event_listener(
                functools.partial(BandwidthStats.bw_event, bandwidths),
                                 stem.control.EventType.BW)
   controller.add_event_listener(
