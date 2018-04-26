@@ -204,6 +204,12 @@ class GuardNode:
     self.chosen_at = chosen_at
     self.expires_at = expires_at
 
+  def __str__(self):
+    return self.idhex
+
+  def __repr__(self):
+    return self.idhex
+
 class UseCount:
    def __init__(self, idhex, weight):
      self.idhex = idhex
@@ -366,8 +372,10 @@ class VanguardState:
                  ", layer3 guards "+self.layer3_guardset())
 
   def save_previous_guards(self):
-    self.layer2_prev = copy.deepcopy(self.layer2)
-    self.layer3_prev = copy.deepcopy(self.layer3)
+    if len(self.layer2):
+      self.layer2_prev = copy.deepcopy(self.layer2)
+    if len(self.layer3):
+      self.layer3_prev = copy.deepcopy(self.layer3)
 
     # Used to tell when these old guards were last used.
     self.last_circ_for_old_guards = self.largest_circ_id
@@ -445,9 +453,9 @@ def new_consensus_event(controller, state, options, event):
                                                            [])]),
                            weights, BwWeightedGenerator.POSITION_MIDDLE)
   gen = ng.generate()
+  state.save_previous_guards()
   state.consensus_update(dict_r, gen)
 
-  state.save_previous_guards()
   state.replace_expired(gen)
 
   state.xfer_use_counts(ng)
