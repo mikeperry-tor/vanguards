@@ -293,6 +293,7 @@ class VanguardState:
        self.use_counts[r.fingerprint] = UseCount(r.fingerprint, 0)
 
     for i in xrange(len(node_gen.rstr_routers)):
+      r = node_gen.rstr_routers[i]
       self.use_counts[r.fingerprint].weight = \
          node_gen.node_weights[i]/node_gen.weight_total
 
