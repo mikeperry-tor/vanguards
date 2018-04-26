@@ -636,7 +636,8 @@ def circuit_event(state, timeouts, event):
   plog("DEBUG", event.raw_content())
 
 def cbt_event(timeouts, event):
-  plog("NOTICE", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
+  # XXX: Check if this is too high...
+  plog("INFO", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
   plog("DEBUG", event.raw_content())
 
 def main():

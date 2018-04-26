@@ -3,13 +3,25 @@ import time
 import stem
 from logger import plog
 
+############ Constants ###############
+# Every circuit takes about this much non-app data to set up. Subtract it from
+# the dropped bytes total (includes construction, sendme's, introduce, etc)
+CIRC_SETUP_BYTES = 8000
+CELL_PAYLOAD_SIZE = 509
+RELAY_HEADER_SIZE = 11
+CELL_DATA_RATE = (float(CELL_PAYLOAD_SIZE-RELAY_HEADER_SIZE)/CELL_PAYLOAD_SIZE)
+
+############ Options #################
+
 ##### Per-circuit limits #########
 
 # Kill a circuit if this much bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
-BW_CIRC_MAX_DROPPED_READ_RATIO = 0.05
-BW_CIRC_ENFORCE_RATIO_AFTER = 10*1024 # 10k
+# XXX: Service-side intro circs will always exceed this because
+# we don't count intro data as app data..
+BW_CIRC_MAX_DROPPED_READ_RATIO = 0.03
+BW_CIRC_ENFORCE_RATIO_AFTER = CIRC_SETUP_BYTES
 
 # Kill a circuit if this many read+write bytes have been exceeded.
 # Very loud application circuits could be used to introduce timing
@@ -28,19 +40,6 @@ BW_CIRC_MAX_AGE = 24*60*60 # 1 day
 
 # Maximum size for an hsdesc fetch (including setup+get+dropped cells)
 BW_CIRC_MAX_HSDESC_BYTES = 30*1024 # 30k
-
-
-####### Non-user options #########
-# Every circuit takes about this much non-app data to set up. Subtract it from
-# the dropped bytes total (includes construction, sendme's, introduce, etc)
-CIRC_SETUP_BYTES = 10000
-
-# Misc constants
-CELL_PAYLOAD_SIZE = 509
-RELAY_HEADER_SIZE = 11
-CELL_DATA_RATE = (float(CELL_PAYLOAD_SIZE-RELAY_HEADER_SIZE)/CELL_PAYLOAD_SIZE)
-
-
 
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
@@ -113,6 +112,13 @@ class BandwidthStats:
       delivered_written = int(event.keyword_args["DELIVERED_WRITTEN"])
       overhead_read = int(event.keyword_args["OVERHEAD_READ"])
       overhead_written = int(event.keyword_args["OVERHEAD_WRITTEN"])
+
+      if delivered_read + overhead_read > event.read*CELL_DATA_RATE:
+        plog("ERROR",
+             "Application read data exceeds cell data:"+event.raw_content());
+      if delivered_written + overhead_written > event.written*CELL_DATA_RATE:
+        plog("ERROR",
+             "Application written data exceeds cell data:"+event.raw_content());
 
       self.circs[event.id].read_bytes += event.read*CELL_DATA_RATE
       self.circs[event.id].sent_bytes += event.written*CELL_DATA_RATE
