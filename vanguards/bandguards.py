@@ -6,7 +6,7 @@ from logger import plog
 ############ Constants ###############
 # Every circuit takes about this much non-app data to set up. Subtract it from
 # the dropped bytes total (includes construction, sendme's, introduce, etc)
-CIRC_SETUP_BYTES = 8000
+CIRC_SETUP_BYTES = 10000
 CELL_PAYLOAD_SIZE = 509
 RELAY_HEADER_SIZE = 11
 CELL_DATA_RATE = (float(CELL_PAYLOAD_SIZE-RELAY_HEADER_SIZE)/CELL_PAYLOAD_SIZE)
@@ -18,9 +18,7 @@ CELL_DATA_RATE = (float(CELL_PAYLOAD_SIZE-RELAY_HEADER_SIZE)/CELL_PAYLOAD_SIZE)
 # Kill a circuit if this much bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
-# XXX: Service-side intro circs will always exceed this because
-# we don't count intro data as app data..
-BW_CIRC_MAX_DROPPED_READ_RATIO = 0.03
+BW_CIRC_MAX_DROPPED_READ_RATIO = 0.05
 BW_CIRC_ENFORCE_RATIO_AFTER = CIRC_SETUP_BYTES
 
 # Kill a circuit if this many read+write bytes have been exceeded.
