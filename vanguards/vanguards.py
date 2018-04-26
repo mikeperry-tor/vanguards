@@ -538,12 +538,17 @@ def circuit_event(state, timeouts, event):
         if not layer2 in map(lambda x: x.idhex, state.layer2):
           if len(state.layer2_prev) > 0 and not layer2 in \
              map(lambda x: x.idhex, state.layer2_prev):
-            plog("ERROR", "Old circuit with bad layer2 node "+layer2+": "+event.raw_content())
+            plog("ERROR", "Old circuit with bad layer2 node "+layer2+\
+                          " not in current set: "+str(state.layer2)+\
+                          " or previous: "+str(state.layer2_prev)+\
+                          " Event: "+event.raw_content())
           else:
-            plog("INFO", "Old circuit with old layer2 node "+layer2+": "+event.raw_content())
+            plog("INFO", "Old circuit with old layer2 node "+layer2+\
+                         " not in "+str(state.layer2)+", event "+event.raw_content())
       else:
         if not layer2 in map(lambda x: x.idhex, state.layer2):
-          plog("ERROR", "Circuit with bad layer2 node "+layer2+": "+event.raw_content())
+          plog("ERROR", "Circuit with bad layer2 node "+layer2+\
+                        " not in "+str(state.layer2)+": "+event.raw_content())
 
     if len(event.path) > 2 and NUM_LAYER3_GUARDS:
       layer3 = event.path[2][0]
@@ -552,12 +557,17 @@ def circuit_event(state, timeouts, event):
         if not layer3 in map(lambda x: x.idhex, state.layer3):
           if len(state.layer3_prev) >0 and not layer3 in \
              map(lambda x: x.idhex, state.layer3_prev):
-            plog("ERROR", "Old circuit with bad layer3 node "+layer3+": "+event.raw_content())
+            plog("ERROR", "Old circuit with bad layer3 node "+layer3+\
+                        " not in current set: "+str(state.layer3)+\
+                        " or previous: "+str(state.layer3_prev)+\
+                        " Event: "+event.raw_content())
           else:
-            plog("INFO", "Old circuit with old layer3 node "+layer3+": "+event.raw_content())
+            plog("INFO", "Old circuit with old layer3 node "+layer3+\
+                         " not in "+str(state.layer3)+", event "+event.raw_content())
       else:
         if not layer3 in map(lambda x: x.idhex, state.layer3):
-          plog("ERROR", "Circuit with bad layer3 node "+layer3+": "+event.raw_content())
+          plog("ERROR", "Circuit with bad layer3 node "+layer3+\
+                        " not in "+str(state.layer3)+": "+event.raw_content())
 
     # Check lengths against route_len_for_purpose:
     # Layer2+Layer3 guards:
