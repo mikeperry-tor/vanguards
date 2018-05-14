@@ -3,7 +3,7 @@
 import copy
 import random
 
-from logger import plog
+from .logger import plog
 
 class RestrictionError(Exception):
   "Error raised for issues with applying restrictions"
@@ -124,7 +124,8 @@ class NodeGenerator:
     the restrictions change. """
     if sorted_r != None:
       self.sorted_r = sorted_r
-    self.rstr_routers = filter(lambda r: self.rstr_list.r_is_ok(r), self.sorted_r)
+    self.rstr_routers = list(filter(lambda r: self.rstr_list.r_is_ok(r),
+                                    self.sorted_r))
 
     if not self.rstr_routers:
       plog("NOTICE", "No routers left after restrictions applied: "+str(self.rstr_list))

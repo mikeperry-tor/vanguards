@@ -8,18 +8,24 @@ import random
 import os
 import time
 import functools
+import argparse
+import pickle
 
 import stem
 import stem.connection
 import stem.descriptor
 from stem.control import Controller
-from NodeSelection import BwWeightedGenerator, NodeRestrictionList, FlagsRestriction
-from logger import plog
 
-import argparse
-import pickle
+from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
+from .NodeSelection import FlagsRestriction
+from .logger import plog
+from .bandguards import BandwidthStats
 
-from bandguards import BandwidthStats
+try:
+  xrange
+except NameError:
+  xrange = range
+
 
 NUM_LAYER1_GUARDS = 2 # 0 is Tor default
 NUM_LAYER2_GUARDS = 4
@@ -68,7 +74,11 @@ USE_COUNT_RATIO = 2.0
 def get_rlist_and_rdict(controller):
   sorted_r = list(controller.get_network_statuses())
   dict_r = {}
-  sorted_r.sort(lambda x, y: cmp(y.measured, x.measured))
+  # Let's not use unmeasured relays
+  for r in sorted_r:
+    if r.measured == None:
+      r.measured = 0
+  sorted_r.sort(key = lambda x: x.measured, reverse = True)
 
   for i in xrange(len(sorted_r)): sorted_r[i].list_rank = i
 
@@ -305,15 +315,15 @@ class VanguardState:
 
     # Periodically we divide counts by two, to avoid overcounting
     # high-uptime relays vs old ones
-    for r in old_counts.iterkeys():
+    for r in old_counts:
       if r not in self.use_counts: continue
       if self.total_use_counts > USE_COUNT_SCALE_AT:
         self.use_counts[r].used = old_counts[r].used/2
       else:
         self.use_counts[r].used = old_counts[r].used
 
-    self.total_use_counts = sum(map(lambda x: x.used,
-                                    self.use_counts.itervalues()))
+    self.total_use_counts = sum(map(lambda x: self.use_counts[x].used,
+                                    self.use_counts))
     self.total_use_counts = float(self.total_use_counts)
 
   # XXX: Log guards
@@ -326,9 +336,9 @@ class VanguardState:
 
   # Adds a new layer2 guard
   def add_new_layer2(self, generator):
-    guard = generator.next()
+    guard = next(generator)
     while guard.fingerprint in map(lambda g: g.idhex, self.layer2):
-      guard = generator.next()
+      guard = next(generator)
 
     now = time.time()
     expires = now + max(random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
@@ -338,9 +348,9 @@ class VanguardState:
     self.layer2.append(GuardNode(guard.fingerprint, now, expires))
 
   def add_new_layer3(self, generator):
-    guard = generator.next()
+    guard = next(generator)
     while guard.fingerprint in map(lambda g: g.idhex, self.layer3):
-      guard = generator.next()
+      guard = next(generator)
 
     now = time.time()
     expires = now + max(random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
@@ -464,7 +474,7 @@ def new_consensus_event(controller, state, options, event):
 
   configure_tor(controller, state)
 
-  state.write_to_file(open(options.state_file, "w"))
+  state.write_to_file(open(options.state_file, "wb"))
 
 class CircuitStat:
   def __init__(self, circ_id, is_hs):

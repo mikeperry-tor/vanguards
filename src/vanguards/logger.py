@@ -26,16 +26,9 @@ def plog(level, msg, *args):
 
     if not logfile:
       logfile = sys.stdout
-    # HACK: if logfile is a string, assume is it the desired filename.
-    if isinstance(logfile, basestring):
-      f = logging.FileHandler(logfile)
-      f.setFormatter(formatter)
-      logger.addHandler(f)
-    # otherwise, pretend it is a stream.
-    else:
-      ch = logging.StreamHandler(logfile)
-      ch.setFormatter(formatter)
-      logger.addHandler(ch)
+    ch = logging.StreamHandler(logfile)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
     logger.setLevel(loglevels[loglevel])
 
   logger.log(loglevels[level], msg.strip(), *args)

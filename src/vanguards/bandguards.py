@@ -1,7 +1,8 @@
 """ Simple checks against bandwidth side channels """
 import time
 import stem
-from logger import plog
+
+from .logger import plog
 
 ############ Constants ###############
 CELL_PAYLOAD_SIZE = 509
