@@ -674,7 +674,7 @@ def main():
   options = setup_options()
   try:
     # XXX: Get tor's data directory
-    f = open(options.state_file)
+    f = open(options.state_file, "rb")
     state = VanguardState.read_from_file(f)
   except:
     state = VanguardState()
