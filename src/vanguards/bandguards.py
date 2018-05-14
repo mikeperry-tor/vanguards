@@ -18,7 +18,7 @@ CIRC_SETUP_BYTES = CELL_PAYLOAD_SIZE*2
 # Kill a circuit if this much bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
-BW_CIRC_MAX_DROPPED_READ_RATIO = 0.02
+BW_CIRC_MAX_DROPPED_READ_RATIO = 0.025
 BW_CIRC_ENFORCE_RATIO_AFTER = CIRC_SETUP_BYTES
 
 # Kill a circuit if this many read+write bytes have been exceeded.

@@ -53,7 +53,7 @@ USE_COUNT_SCALE_AT = 1000
 
 # Minimum number of times a relay has to be used before we check it for
 # overuse
-USE_COUNT_RELAY_MIN = 5
+USE_COUNT_RELAY_MIN = 10
 
 # How many times more than its bandwidth must a relay be used?
 USE_COUNT_RATIO = 2.0
@@ -278,7 +278,7 @@ class VanguardState:
 
       # XXX: Can we base this check on statistical confidence intervals?
       if self.total_use_counts > USE_COUNT_TOTAL_MIN and \
-         self.use_counts[r].used > USE_COUNT_RELAY_MIN:
+         self.use_counts[r].used >= USE_COUNT_RELAY_MIN:
         plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
                     " times out of "+str(int(self.total_use_counts)))
 
@@ -428,6 +428,7 @@ class VanguardState:
       self.add_new_layer3(generator)
 
 def configure_tor(controller, vanguard_state):
+  # XXX: Use NumPrimaryGuards.. or try to.
   if NUM_LAYER1_GUARDS:
     controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
 
