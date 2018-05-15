@@ -64,12 +64,6 @@ USE_COUNT_RELAY_MIN = 10
 # How many times more than its bandwidth must a relay be used?
 USE_COUNT_RATIO = 2.0
 
-# Experimentation:
-# 0. Percentile restrictions? MTBF restrictions?
-# 1. Onionperf scripts
-# 2. Log circuit paths; verify proper path restrictions
-# 3. Log CBT learning and timeout rate
-# 4. Tools to audit+verify it follows our vanguard settings
 
 def get_rlist_and_rdict(controller):
   sorted_r = list(controller.get_network_statuses())
@@ -221,86 +215,48 @@ class GuardNode:
     return self.idhex
 
 class UseCount:
-   def __init__(self, idhex, weight):
-     self.idhex = idhex
-     self.used = 0
-     self.weight = weight
+  def __init__(self, idhex, weight):
+    self.idhex = idhex
+    self.used = 0
+    self.weight = weight
 
-class VanguardState:
+class RendGuard:
   def __init__(self):
-    self.layer2 = []
-    self.layer2_prev = []
-    self.layer3 = []
-    self.layer3_prev = []
-    self.largest_circ_id = 0
-    self.last_circ_for_old_guards = 0
-    self.circ_seen = {}
     self.use_counts = {}
     self.total_use_counts = 0
-    self.controller = None
 
-  def write_to_file(self, outfile):
-    controller = self.controller
-    self.controller = None
-    ret = pickle.dump(self, outfile)
-    self.controller = controller
-    return ret
+  def get_service_rend_node(self, path):
+    if NUM_LAYER3_GUARDS:
+      return path[5]
+    else:
+      return path[4]
 
-  @staticmethod
-  def read_from_file(infile):
-    return pickle.load(infile)
-
-  def try_close_circuit(self, circ_id):
-    try:
-      self.controller.close_circuit(circ_id)
-      plog("NOTICE", "We force-closed circuit "+str(circ_id))
-    except stem.InvalidRequest as e:
-      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
-
-  def forget_circuit(self, circ_id):
-    if circ_id in self.circ_seen:
-      del self.circ_seen[circ_id]
-
-  def check_use_counts(self, circ_id, path):
-    if circ_id in self.circ_seen and len(path) <= self.circ_seen[circ_id]:
+  def check_rend_use(self, purpose, path):
+    if purpose != "HS_SERVICE_REND":
       return
 
-    if circ_id not in self.circ_seen:
-      self.circ_seen[circ_id] = len(path)
+    r = self.get_service_rend_node(path)
 
-    # first, handle extends
-    new_len = len(path)
-    path = list(path) # is tuple on some stem versions
-    while len(path) > self.circ_seen[circ_id]:
-      path.pop(0)
+    if r not in self.use_counts:
+      plog("NOTICE", "Relay "+r+" is not in our consensus, but someone is using it!")
+      self.use_counts[r] = UseCount(r, 0)
 
-    self.circ_seen[circ_id] = new_len
-    path = map(lambda x: x[0], path)
+    self.use_counts[r].used += 1
+    self.total_use_counts += 1.0
 
-    # Now, all remaining elements in path should be randomly chosen relays
-    for r in path:
-      if r not in self.use_counts:
-        plog("WARN", "Relay "+r+" should not be used, but someone is using it!")
-        self.use_counts[r] = UseCount(r, 0)
+    # TODO: Can we base this check on statistical confidence intervals?
+    if self.total_use_counts > USE_COUNT_TOTAL_MIN and \
+       self.use_counts[r].used >= USE_COUNT_RELAY_MIN:
+      plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
+                  " times out of "+str(int(self.total_use_counts)))
 
-      self.use_counts[r].used += 1
-      self.total_use_counts += 1.0
-
-      # XXX: Can we base this check on statistical confidence intervals?
-      if self.total_use_counts > USE_COUNT_TOTAL_MIN and \
-         self.use_counts[r].used >= USE_COUNT_RELAY_MIN:
-        plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
-                    " times out of "+str(int(self.total_use_counts)))
-
-        if self.use_counts[r].used/self.total_use_counts > \
-           self.use_counts[r].weight*USE_COUNT_RATIO:
-          # XXX: Rate limit this log
-          plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
-                       " times out of "+str(int(self.total_use_counts))+
-                       ". This is above its weight of "+
-                       str(self.use_counts[r].weight))
-          # XXX: Are there cases where closing this is bad?
-          self.try_close_circuit(circ_id)
+      if self.use_counts[r].used/self.total_use_counts > \
+         self.use_counts[r].weight*USE_COUNT_RATIO:
+        plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
+                     " times out of "+str(int(self.total_use_counts))+
+                     ". This is above its weight of "+
+                     str(self.use_counts[r].weight))
+        self.try_close_circuit(circ_id)
 
   def xfer_use_counts(self, node_gen):
     old_counts = self.use_counts
@@ -325,6 +281,31 @@ class VanguardState:
     self.total_use_counts = sum(map(lambda x: self.use_counts[x].used,
                                     self.use_counts))
     self.total_use_counts = float(self.total_use_counts)
+
+class VanguardState:
+  def __init__(self):
+    self.layer2 = []
+    self.layer3 = []
+    self.rendguard = RendGuard()
+    self.controller = None
+
+  def write_to_file(self, outfile):
+    controller = self.controller
+    self.controller = None
+    ret = pickle.dump(self, outfile)
+    self.controller = controller
+    return ret
+
+  @staticmethod
+  def read_from_file(infile):
+    return pickle.load(infile)
+
+  def try_close_circuit(self, circ_id):
+    try:
+      self.controller.close_circuit(circ_id)
+      plog("NOTICE", "We force-closed circuit "+str(circ_id))
+    except stem.InvalidRequest as e:
+      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
 
   # XXX: Log guards
 
@@ -358,39 +339,6 @@ class VanguardState:
                         random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
                                        MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires))
-
-  def load_tor_state(self, controller):
-    circs = controller.get_circuits(None)
-    if len(self.layer2_prev) == 0 and \
-       controller.get_conf("HSLayer2Nodes") != None:
-      layer2_ids = controller.get_conf("HSLayer2Nodes").split(",")
-      for fp in layer2_ids:
-        self.layer2_prev.append(GuardNode(fp, 0, 0))
-
-    if len(self.layer3_prev) == 0 and \
-       controller.get_conf("HSLayer3Nodes") != None:
-      layer3_ids = controller.get_conf("HSLayer3Nodes").split(",")
-      for fp in layer3_ids:
-        self.layer3_prev.append(GuardNode(fp, 0, 0))
-
-    if circs and len(circs):
-      self.largest_circ_id = max(map(lambda c: c.id, circs))
-
-    self.controller = controller
-    plog("INFO", "Got initial circ "+str(self.largest_circ_id)+
-                 ", layer2 guards "+self.layer2_guardset()+
-                 ", layer3 guards "+self.layer3_guardset())
-
-  def save_previous_guards(self):
-    if len(self.layer2):
-      self.layer2_prev = copy.deepcopy(self.layer2)
-    if len(self.layer3):
-      self.layer3_prev = copy.deepcopy(self.layer3)
-
-    # Used to tell when these old guards were last used.
-    self.last_circ_for_old_guards = self.largest_circ_id
-
-    plog("INFO", "New vanguard set at circ id "+str(self.largest_circ_id))
 
   def _remove_expired(self, remove_from, now):
     for g in list(remove_from):
@@ -464,16 +412,13 @@ def new_consensus_event(controller, state, options, event):
                                                            [])]),
                            weights, BwWeightedGenerator.POSITION_MIDDLE)
   gen = ng.generate()
-  state.save_previous_guards()
   state.consensus_update(dict_r, gen)
 
+  # XXX: Need to check this more often
   state.replace_expired(gen)
-
-  state.xfer_use_counts(ng)
-  # XXX: Print out current state
+  state.rendguard.xfer_use_counts(ng)
 
   configure_tor(controller, state)
-
   state.write_to_file(open(options.state_file, "wb"))
 
 class CircuitStat:
@@ -532,126 +477,19 @@ class TimeoutStats:
       return float(self.hs_timeout)/(self.hs_launched)
     else: return 0.0
 
-
 def circuit_event(state, timeouts, event):
-  if event.id > state.largest_circ_id:
-    state.largest_circ_id = event.id
-
   if event.hs_state or event.purpose[0:2] == "HS":
     if "status" in event.__dict__:
       if event.status == "LAUNCHED":
-        timeouts.add_circuit(event.id, 0)
+        timeouts.add_circuit(event.id, 1)
       elif event.status == "BUILT":
         timeouts.built_circuit(event.id)
       elif event.reason == "TIMEOUT":
         timeouts.timeout_circuit(event.id)
       timeouts.update_circuit(event.id, 1)
-
-    if len(event.path) > 1:
-      layer2 = event.path[1][0]
-
-      # If this circuit was from before the last vanguard update, it may have
-      # old guards. Check the new and the old ones in that case. Otherwise,
-      # only check the new ones.
-      if event.id <= state.last_circ_for_old_guards:
-        if not layer2 in map(lambda x: x.idhex, state.layer2):
-          if len(state.layer2_prev) > 0 and not layer2 in \
-             map(lambda x: x.idhex, state.layer2_prev):
-            plog("ERROR", "Old circuit with bad layer2 node "+layer2+\
-                          " not in current set: "+str(state.layer2)+\
-                          " or previous: "+str(state.layer2_prev)+\
-                          " Event: "+event.raw_content())
-          else:
-            plog("INFO", "Old circuit with old layer2 node "+layer2+\
-                         " not in "+str(state.layer2)+", event "+event.raw_content())
-      else:
-        if not layer2 in map(lambda x: x.idhex, state.layer2):
-          plog("ERROR", "Circuit with bad layer2 node "+layer2+\
-                        " not in "+str(state.layer2)+": "+event.raw_content())
-
-    if len(event.path) > 2 and NUM_LAYER3_GUARDS:
-      layer3 = event.path[2][0]
-
-      if event.id <= state.last_circ_for_old_guards:
-        if not layer3 in map(lambda x: x.idhex, state.layer3):
-          if len(state.layer3_prev) >0 and not layer3 in \
-             map(lambda x: x.idhex, state.layer3_prev):
-            plog("ERROR", "Old circuit with bad layer3 node "+layer3+\
-                        " not in current set: "+str(state.layer3)+\
-                        " or previous: "+str(state.layer3_prev)+\
-                        " Event: "+event.raw_content())
-          else:
-            plog("INFO", "Old circuit with old layer3 node "+layer3+\
-                         " not in "+str(state.layer3)+", event "+event.raw_content())
-      else:
-        if not layer3 in map(lambda x: x.idhex, state.layer3):
-          plog("ERROR", "Circuit with bad layer3 node "+layer3+\
-                        " not in "+str(state.layer3)+": "+event.raw_content())
-
-    # Check lengths against route_len_for_purpose:
-    # Layer2+Layer3 guards:
-    #    C - G - L2 - L3 - R
-    #    S - G - L2 - L3 - HSDIR
-    #    S - G - L2 - L3 - I
-    #    C - G - L2 - L3 - M - I
-    #    C - G - L2 - L3 - M - HSDIR
-    #    S - G - L2 - L3 - M - R
-    # XXX: If only layer2 guards are set, some of these may still be wrong.
-    if "status" in event.__dict__ and event.status == "BUILT":
-        if event.purpose == "HS_VANGUARDS":
-          if NUM_LAYER3_GUARDS and len(event.path) != 4:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          if NUM_LAYER3_GUARDS: state.check_use_counts(event.id, event.path[3:])
-          else: state.check_use_counts(event.id, event.path[2:])
-        elif event.purpose == "HS_CLIENT_REND":
-          if NUM_LAYER3_GUARDS and len(event.path) != 4:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          elif not NUM_LAYER3_GUARDS and len(event.path) != 3:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          if NUM_LAYER3_GUARDS: state.check_use_counts(event.id, event.path[3:])
-          else: state.check_use_counts(event.id, event.path[2:])
-        elif event.purpose == "HS_SERVICE_HSDIR":
-          # 4 is direct built, 5 is via HS_VANGUARDS
-          if len(event.path) != 4 and len(event.path) != 5:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          # Only check the M hop. HSDIR won't be weighted right
-          if len(event.path) == 5:
-            state.check_use_counts(event.id, event.path[3:4])
-        elif event.purpose == "HS_SERVICE_INTRO":
-          if len(event.path) != 4:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          # No path probability check. Intro is not weighted right
-        elif event.purpose == "HS_CLIENT_INTRO":
-          # client intros can be extended and retried.
-          if len(event.path) < 5:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          # Only check the M hop. Intro is not weighted right
-          state.check_use_counts(event.id, event.path[3:4])
-        elif event.purpose == "HS_CLIENT_INTRO" or event.purpose == "HS_CLIENT_HSDIR":
-          if len(event.path) != 5:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          # Only check the M hop. Intro is not weighted right
-          state.check_use_counts(event.id, event.path[3:4])
-        elif event.purpose == "HS_SERVICE_REND":
-          if len(event.path) != 5:
-            plog("ERROR", "Circuit with bad path: "+event.raw_content())
-          else:
-            plog("INFO", "Circuit "+event.id+" OK!")
-          state.check_use_counts(event.id, event.path[3:])
+    if "status" in event.__dict__ and event.status == "BUILT" and \
+       event.purpose == "HS_SERVICE_REND":
+      state.rendguards.check_rend_use(event.purpose, event.path)
   elif "status" in event.__dict__:
     if event.status == "LAUNCHED":
       timeouts.add_circuit(event.id, 0)
@@ -680,7 +518,6 @@ def main():
     state = VanguardState()
 
   controller = connect()
-  state.load_tor_state(controller)
   new_consensus_event(controller, state, options, None)
   timeouts = TimeoutStats()
   bandwidths = BandwidthStats(controller)
