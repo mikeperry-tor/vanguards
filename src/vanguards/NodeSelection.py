@@ -176,8 +176,7 @@ class BwWeightedGenerator(NodeGenerator):
 
     self.node_weights = []
     for r in self.rstr_routers:
-      assert(not r.is_unmeasured)
-      self.node_weights.append(r.bandwidth*self.flag_to_weight(r))
+      self.node_weights.append(r.measured*self.flag_to_weight(r))
 
     self.weight_total = sum(self.node_weights)
 

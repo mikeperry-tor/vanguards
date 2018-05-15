@@ -199,9 +199,9 @@ class RendWatcher:
 
   def get_service_rend_node(self, path):
     if NUM_LAYER3_GUARDS:
-      return path[5]
+      return path[4][0]
     else:
-      return path[4]
+      return path[3][0]
 
   def valid_rend_use(self, purpose, path):
     r = self.get_service_rend_node(path)
@@ -273,10 +273,11 @@ class VanguardState:
   def sort_and_index_routers(self, routers):
     sorted_r = list(routers)
     dict_r = {}
-    # Let's not use unmeasured relays
+
     for r in sorted_r:
       if r.measured == None:
-        r.measured = 0
+        # FIXME: Hrmm...
+        r.measured = r.bandwidth
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
     for i in xrange(len(sorted_r)): sorted_r[i].list_rank = i
     for r in sorted_r: dict_r[r.fingerprint] = r
