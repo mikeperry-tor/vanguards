@@ -108,55 +108,11 @@ def get_consensus_weights(consensus_filename):
   return parsed_consensus.bandwidth_weights
 
 def setup_options():
-  global LAYER1_LIFETIME
-  global MIN_LAYER2_LIFETIME, MAX_LAYER2_LIFETIME
-  global MIN_LAYER3_LIFETIME, MAX_LAYER3_LIFETIME
-  global NUM_LAYER1_GUARDS
-  global NUM_LAYER2_GUARDS
-  global NUM_LAYER3_GUARDS
   global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET
 
-  # TODO: Advanced vs simple options (--client, --service, etc)
+  # XXX: Enable/disable for circ handlers
+  # XXX: Config file for other options
   parser = argparse.ArgumentParser()
-  parser.add_argument("--num_guards", type=int, dest="num_layer1",
-                    help="Number of entry gurds (default "+str(NUM_LAYER1_GUARDS)+
-                    "; 0 means use tor's value)", default=NUM_LAYER1_GUARDS)
-
-  parser.add_argument("--num_mids", type=int, dest="num_layer2",
-                    help="Number of Layer2 guards (default "+str(NUM_LAYER2_GUARDS)+
-                    "; 0 disables)",
-                    default=NUM_LAYER2_GUARDS)
-
-  parser.add_argument("--num_ends", type=int, dest="num_layer3",
-                    default=NUM_LAYER3_GUARDS,
-                    help="Number of Layer3 guards (default "+str(NUM_LAYER3_GUARDS)+
-                    "; 0 disables)")
-
-  parser.add_argument("--guard_lifetime", type=int, dest="guard_lifetime",
-                    default=LAYER1_LIFETIME,
-                    help="Lifetime of Layer1 in days (default "+str(LAYER1_LIFETIME)+
-                    "; 0 means use tor's value)")
-
-  parser.add_argument("--mid_lifetime_min", type=int, dest="mid_lifetime_min",
-                    default=MIN_LAYER2_LIFETIME,
-                    help="Min lifetime of Layer2 in hours (default "+str(MIN_LAYER2_LIFETIME)+
-                    ")")
-
-  parser.add_argument("--mid_lifetime_max", type=int, dest="mid_lifetime_max",
-                    default=MAX_LAYER2_LIFETIME,
-                    help="Max lifetime of Layer2 in hours (default "+str(MAX_LAYER2_LIFETIME)+
-                    ")")
-
-  parser.add_argument("--end_lifetime_min", type=int, dest="end_lifetime_min",
-                    default=MIN_LAYER3_LIFETIME,
-                    help="Min lifetime of Layer3 in hours (default "+str(MIN_LAYER3_LIFETIME)+
-                    ")")
-
-  parser.add_argument("--end_lifetime_max", type=int, dest="end_lifetime_max",
-                    default=MAX_LAYER3_LIFETIME,
-                    help="Max lifetime of Layer3 in hours (default "+str(MAX_LAYER3_LIFETIME)+
-                    ")")
-
   parser.add_argument("--state_file", dest="state_file", default="vanguards.state",
                     help="File to store vanguard state (default: DataDirectory/vanguards)")
 
@@ -175,14 +131,8 @@ def setup_options():
 
   options = parser.parse_args()
 
-  (LAYER1_LIFETIME, MIN_LAYER2_LIFETIME, MAX_LAYER2_LIFETIME,
-   MIN_LAYER3_LIFETIME, MAX_LAYER3_LIFETIME, NUM_LAYER1_GUARDS,
-   NUM_LAYER2_GUARDS, NUM_LAYER3_GUARDS, CONTROL_HOST, CONTROL_PORT,
-   CONTROL_SOCKET) = (options.guard_lifetime,
-   options.mid_lifetime_min, options.mid_lifetime_max,
-   options.end_lifetime_min, options.end_lifetime_max,
-   options.num_layer1, options.num_layer2, options.num_layer3,
-   options.control_host, options.control_port, options.control_socket)
+  (CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET) = \
+      (options.control_host, options.control_port, options.control_socket)
 
   return options
 
@@ -394,9 +344,8 @@ def configure_tor(controller, vanguard_state):
 
   controller.save_conf()
 
-# TODO: This might be inefficient, because we just
-# parsed the consensus for the event, and now we're parsing it
-# again, twice.. Oh well. Prototype, and not critical path either.
+# TODO: This might be inefficient, because we're sort-of parsing
+# the consensus twice..
 def new_consensus_event(controller, state, options, event):
   routers = controller.get_network_statuses()
   consensus_file = os.path.join(controller.get_conf("DataDirectory"),
@@ -439,11 +388,13 @@ def main():
   # Thread-safety: state, timeouts, and bandwidths are effectively
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
+  # XXX: Make rendwatcher optional by config (on by default)
   circuit_handler = functools.partial(circuit_event, state, timeouts,
                                       controller)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
 
+  # XXX: Make bandgaurds optional by config (on by default)
   controller.add_event_listener(
                functools.partial(BandwidthStats.circ_event, bandwidths),
                                 stem.control.EventType.CIRC)
@@ -454,6 +405,7 @@ def main():
                functools.partial(BandwidthStats.circbw_event, bandwidths),
                                 stem.control.EventType.CIRC_BW)
 
+  # XXX: Make circ_timeouts by config (off by default)
   controller.add_event_listener(
                functools.partial(TimeoutStats.circ_event, timeouts),
                                 stem.control.EventType.CIRC)
