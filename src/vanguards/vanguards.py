@@ -183,6 +183,34 @@ class VanguardState:
     self.replace_expired(gen)
     self.rendwatcher.xfer_use_counts(ng)
 
+  def new_consensus_event(self, controller, event):
+    routers = controller.get_network_statuses()
+    consensus_file = os.path.join(controller.get_conf("DataDirectory"),
+                             "cached-microdesc-consensus")
+    weights = get_consensus_weights(consensus_file)
+    self.consensus_update(routers, weights)
+
+    self.configure_tor(controller)
+    self.write_to_file(open(config.STATE_FILE, "wb"))
+
+  def configure_tor(self, controller):
+    if config.NUM_LAYER1_GUARDS:
+      controller.set_conf("NumEntryGuards", str(config.NUM_LAYER1_GUARDS))
+      try:
+        controller.set_conf("NumPrimaryGuards", str(config.NUM_LAYER1_GUARDS))
+      except stem.InvalidArguments:
+        pass
+
+    if config.LAYER1_LIFETIME:
+      controller.set_conf("GuardLifetime", str(config.LAYER1_LIFETIME)+" days")
+
+    controller.set_conf("HSLayer2Nodes", self.layer2_guardset())
+
+    if config.NUM_LAYER3_GUARDS:
+      controller.set_conf("HSLayer3Nodes", self.layer3_guardset())
+
+    controller.save_conf()
+
   def write_to_file(self, outfile):
     return pickle.dump(self, outfile)
 
@@ -266,33 +294,6 @@ class VanguardState:
     while len(self.layer3) < config.NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
-def configure_tor(controller, vanguard_state):
-  # FIXME: Use NumPrimaryGuards.. or try to.
-  if config.NUM_LAYER1_GUARDS:
-    controller.set_conf("NumEntryGuards", str(config.NUM_LAYER1_GUARDS))
-
-  if config.LAYER1_LIFETIME:
-    controller.set_conf("GuardLifetime", str(config.LAYER1_LIFETIME)+" days")
-
-  controller.set_conf("HSLayer2Nodes", vanguard_state.layer2_guardset())
-
-  if config.NUM_LAYER3_GUARDS:
-    controller.set_conf("HSLayer3Nodes", vanguard_state.layer3_guardset())
-
-  controller.save_conf()
-
-# TODO: This might be inefficient, because we're sort-of parsing
-# the consensus twice..
-def new_consensus_event(controller, state, event):
-  routers = controller.get_network_statuses()
-  consensus_file = os.path.join(controller.get_conf("DataDirectory"),
-                           "cached-microdesc-consensus")
-  weights = get_consensus_weights(consensus_file)
-  state.consensus_update(routers, weights)
-
-  configure_tor(controller, state)
-  state.write_to_file(open(config.STATE_FILE, "wb"))
-
 def try_close_circuit(controller, circ_id):
   try:
     controller.close_circuit(circ_id)
@@ -318,7 +319,7 @@ def main():
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
   controller = connect()
-  new_consensus_event(controller, state, None)
+  state.new_consensus_event(controller, None)
   timeouts = TimeoutStats()
   bandwidths = BandwidthStats(controller)
 
@@ -352,11 +353,10 @@ def main():
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
-  new_consensus_handler = functools.partial(new_consensus_event,
-                                            controller, state)
-  controller.add_event_listener(new_consensus_handler,
+  controller.add_event_listener(
+               functools.partial(VanguardState.new_consensus_event,
+                                 state, controller),
                                 stem.control.EventType.NEWCONSENSUS)
-
 
   # Blah...
   while controller.is_alive():

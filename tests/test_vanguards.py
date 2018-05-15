@@ -68,6 +68,26 @@ def sanity_check(state):
     assert g.expires_at - g.chosen_at < MAX_LAYER3_LIFETIME*SEC_PER_HOUR
     assert g.expires_at - g.chosen_at >= MIN_LAYER3_LIFETIME*SEC_PER_HOUR
 
+class MockController:
+  def __init__(self):
+    pass
+
+  # FIXME: os.path.join
+  def get_network_statuses(self):
+    return list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
+                   document_handler =
+                      stem.descriptor.DocumentHandler.ENTRIES))
+
+  def get_conf(self, key):
+    if key == "DataDirectory":
+      return "tests"
+
+  def set_conf(self, key, val):
+    pass
+
+  def save_conf(self):
+    pass
+
 def test_new_vanguards():
   state = VanguardState()
 
@@ -88,18 +108,12 @@ def test_new_vanguards():
   replacement_checks(state, routers, weights)
 
 def test_update_vanguards():
+  controller = MockController()
   state = VanguardState.read_from_file(open("tests/state.mock", "rb"))
   sanity_check(state)
 
-  # - Load a routerlist using stem
-  routers = list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
-                 document_handler =
-                    stem.descriptor.DocumentHandler.ENTRIES))
-  weights = get_consensus_weights("tests/cached-microdesc-consensus")
-
-  state.consensus_update(routers, weights)
+  state.new_consensus_event(controller, None)
   sanity_check(state)
-  replacement_checks(state, routers, weights)
 
 # Test plan:
 def test_usecounts():
