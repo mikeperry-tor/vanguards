@@ -8,7 +8,6 @@ import random
 import os
 import time
 import functools
-import argparse
 import pickle
 
 import stem
@@ -22,63 +21,30 @@ from .logger import plog
 from .bandguards import BandwidthStats
 from .cbtverify import TimeoutStats
 
+from . import config
+
 try:
   xrange
 except NameError:
   xrange = range
 
-
-NUM_LAYER1_GUARDS = 2 # 0 is Tor default
-NUM_LAYER2_GUARDS = 4
-NUM_LAYER3_GUARDS = 8
-
-# In days:
-LAYER1_LIFETIME = 0 # Use tor default
-
-# In hours
-MIN_LAYER2_LIFETIME = 24*1
-MAX_LAYER2_LIFETIME = 24*45
-
-# In hours
-MIN_LAYER3_LIFETIME = 1
-MAX_LAYER3_LIFETIME = 48
-
-CONTROL_HOST = "127.0.0.1"
-CONTROL_PORT = 9051
-CONTROL_SOCKET = None
-
 SEC_PER_HOUR = (60*60)
 
-
-# Use count limits. These limits control when we emit warnings about circuits
-#
-# Minimum number of hops we have to see before applying use stat checks
-USE_COUNT_TOTAL_MIN = 100
-
-# Number of hops to scale counts down by two at
-USE_COUNT_SCALE_AT = 1000
-
-# Minimum number of times a relay has to be used before we check it for
-# overuse
-USE_COUNT_RELAY_MIN = 10
-
-# How many times more than its bandwidth must a relay be used?
-USE_COUNT_RATIO = 2.0
-
-
 def connect():
-  if CONTROL_SOCKET != None:
+  if config.CONTROL_SOCKET != None:
     try:
-      controller = Controller.from_socket_file(CONTROL_SOCKET)
+      controller = Controller.from_socket_file(config.CONTROL_SOCKET)
     except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Socket at "+CONTROL_SOCKET+": %s" % exc)
+      print("Unable to connect to Tor Control Socket at "\
+            +config.CONTROL_SOCKET+": %s" % exc)
       sys.exit(1)
   else:
     try:
-      controller = Controller.from_port(CONTROL_HOST, CONTROL_PORT)
+      controller = Controller.from_port(config.CONTROL_HOST,
+                                        config.CONTROL_PORT)
     except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Port at "+CONTROL_HOST+":"
-             +str(CONTROL_PORT)+" %s" % exc)
+      print("Unable to connect to Tor Control Port at "+config.CONTROL_HOST+":"
+             +str(config.CONTROL_PORT)+" %s" % exc)
       sys.exit(1)
 
   try:
@@ -107,35 +73,6 @@ def get_consensus_weights(consensus_filename):
   assert(parsed_consensus.is_consensus)
   return parsed_consensus.bandwidth_weights
 
-def setup_options():
-  global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET
-
-  # XXX: Enable/disable for circ handlers
-  # XXX: Config file for other options
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--state_file", dest="state_file", default="vanguards.state",
-                    help="File to store vanguard state (default: DataDirectory/vanguards)")
-
-  parser.add_argument("--control_host", dest="control_host", default=CONTROL_HOST,
-                    help="The IP address of the Tor Control Port to connect to (default: "+
-                    CONTROL_HOST+")")
-  parser.add_argument("--control_port", type=int, dest="control_port",
-                      default=CONTROL_PORT,
-                      help="The Tor Control Port to connect to (default: "+
-                      str(CONTROL_PORT)+")")
-
-  parser.add_argument("--control_socket", dest="control_socket",
-                      default=CONTROL_SOCKET,
-                      help="The Tor Control Socket path to connect to "+
-                      "(default: "+str(CONTROL_SOCKET)+")")
-
-  options = parser.parse_args()
-
-  (CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET) = \
-      (options.control_host, options.control_port, options.control_socket)
-
-  return options
-
 class RendUseCount:
   def __init__(self, idhex, weight):
     self.idhex = idhex
@@ -148,7 +85,7 @@ class RendWatcher:
     self.total_use_counts = 0
 
   def get_service_rend_node(self, path):
-    if NUM_LAYER3_GUARDS:
+    if config.NUM_LAYER3_GUARDS:
       return path[4][0]
     else:
       return path[3][0]
@@ -164,13 +101,13 @@ class RendWatcher:
     self.total_use_counts += 1.0
 
     # TODO: Can we base this check on statistical confidence intervals?
-    if self.total_use_counts > USE_COUNT_TOTAL_MIN and \
-       self.use_counts[r].used >= USE_COUNT_RELAY_MIN:
+    if self.total_use_counts > config.USE_COUNT_TOTAL_MIN and \
+       self.use_counts[r].used >= config.USE_COUNT_RELAY_MIN:
       plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
                   " times out of "+str(int(self.total_use_counts)))
 
       if self.use_counts[r].used/self.total_use_counts > \
-         self.use_counts[r].weight*USE_COUNT_RATIO:
+         self.use_counts[r].weight*config.USE_COUNT_RATIO:
         plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
                      " times out of "+str(int(self.total_use_counts))+
                      ". This is above its weight of "+
@@ -193,7 +130,7 @@ class RendWatcher:
     # high-uptime relays vs old ones
     for r in old_counts:
       if r not in self.use_counts: continue
-      if self.total_use_counts > USE_COUNT_SCALE_AT:
+      if self.total_use_counts > config.USE_COUNT_SCALE_AT:
         self.use_counts[r].used = old_counts[r].used/2
       else:
         self.use_counts[r].used = old_counts[r].used
@@ -266,10 +203,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME*SEC_PER_HOUR))
+    expires = now + max(random.uniform(config.MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
+                                       config.MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
+                        random.uniform(config.MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
+                                       config.MAX_LAYER2_LIFETIME*SEC_PER_HOUR))
     self.layer2.append(GuardNode(guard.fingerprint, now, expires))
 
   def add_new_layer3(self, generator):
@@ -278,10 +215,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME*SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
+    expires = now + max(random.uniform(config.MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
+                                       config.MAX_LAYER3_LIFETIME*SEC_PER_HOUR),
+                        random.uniform(config.MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
+                                       config.MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires))
 
   def _remove_expired(self, remove_from, now):
@@ -297,14 +234,14 @@ class VanguardState:
     now = time.time()
 
     self._remove_expired(self.layer2, now)
-    self.layer2 = self.layer2[:NUM_LAYER2_GUARDS]
+    self.layer2 = self.layer2[:config.NUM_LAYER2_GUARDS]
     self._remove_expired(self.layer3, now)
-    self.layer3 = self.layer3[:NUM_LAYER2_GUARDS]
+    self.layer3 = self.layer3[:config.NUM_LAYER2_GUARDS]
 
-    while len(self.layer2) < NUM_LAYER2_GUARDS:
+    while len(self.layer2) < config.NUM_LAYER2_GUARDS:
       self.add_new_layer2(generator)
 
-    while len(self.layer3) < NUM_LAYER3_GUARDS:
+    while len(self.layer3) < config.NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
     plog("INFO", "New layer2 guards: "+self.layer2_guardset()+
@@ -323,23 +260,23 @@ class VanguardState:
     self._remove_down(self.layer2, dict_r)
     self._remove_down(self.layer3, dict_r)
 
-    while len(self.layer2) < NUM_LAYER2_GUARDS:
+    while len(self.layer2) < config.NUM_LAYER2_GUARDS:
       self.add_new_layer2(generator)
 
-    while len(self.layer3) < NUM_LAYER3_GUARDS:
+    while len(self.layer3) < config.NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
 def configure_tor(controller, vanguard_state):
   # FIXME: Use NumPrimaryGuards.. or try to.
-  if NUM_LAYER1_GUARDS:
-    controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
+  if config.NUM_LAYER1_GUARDS:
+    controller.set_conf("NumEntryGuards", str(config.NUM_LAYER1_GUARDS))
 
-  if LAYER1_LIFETIME:
-    controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
+  if config.LAYER1_LIFETIME:
+    controller.set_conf("GuardLifetime", str(config.LAYER1_LIFETIME)+" days")
 
   controller.set_conf("HSLayer2Nodes", vanguard_state.layer2_guardset())
 
-  if NUM_LAYER3_GUARDS:
+  if config.NUM_LAYER3_GUARDS:
     controller.set_conf("HSLayer3Nodes", vanguard_state.layer3_guardset())
 
   controller.save_conf()
@@ -371,7 +308,7 @@ def circuit_event(state, timeouts, event, controller):
   plog("DEBUG", event.raw_content())
 
 def main():
-  options = setup_options()
+  options = config.setup_options()
   try:
     # TODO: Use tor's data directory.. or our own
     f = open(options.state_file, "rb")

@@ -4,12 +4,13 @@ from math import floor, ceil
 
 from vanguards.bandguards import BandwidthStats
 
-from vanguards.bandguards import BW_CIRC_MAX_HSDESC_BYTES
-from vanguards.bandguards import BW_CIRC_MAX_BYTES
+from vanguards.config import BW_CIRC_MAX_HSDESC_BYTES
+from vanguards.config import BW_CIRC_MAX_BYTES
+from vanguards.config import BW_CIRC_MAX_AGE
+from vanguards.config import BW_CIRC_MAX_DROPPED_READ_RATIO
+
 from vanguards.bandguards import CELL_PAYLOAD_SIZE
 from vanguards.bandguards import CELL_DATA_RATE
-from vanguards.bandguards import BW_CIRC_MAX_AGE
-from vanguards.bandguards import BW_CIRC_MAX_DROPPED_READ_RATIO
 from vanguards.bandguards import CIRC_SETUP_BYTES
 
 import vanguards.logger

@@ -2,14 +2,15 @@ import stem
 import time
 
 from vanguards.vanguards import VanguardState, get_consensus_weights
-from vanguards.vanguards import NUM_LAYER3_GUARDS
-from vanguards.vanguards import NUM_LAYER2_GUARDS
-from vanguards.vanguards import MIN_LAYER3_LIFETIME
-from vanguards.vanguards import MAX_LAYER3_LIFETIME
-from vanguards.vanguards import MIN_LAYER2_LIFETIME
-from vanguards.vanguards import MAX_LAYER2_LIFETIME
 from vanguards.vanguards import SEC_PER_HOUR
-from vanguards.vanguards import USE_COUNT_TOTAL_MIN
+
+from vanguards.config import NUM_LAYER3_GUARDS
+from vanguards.config import NUM_LAYER2_GUARDS
+from vanguards.config import MIN_LAYER3_LIFETIME
+from vanguards.config import MAX_LAYER3_LIFETIME
+from vanguards.config import MIN_LAYER2_LIFETIME
+from vanguards.config import MAX_LAYER2_LIFETIME
+from vanguards.config import USE_COUNT_TOTAL_MIN
 
 from stem.response import ControlMessage
 
