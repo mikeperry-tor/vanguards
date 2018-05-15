@@ -57,12 +57,6 @@ class BwCircuitStat:
   def total_bytes(self):
     return self.read_bytes + self.sent_bytes
 
-  def app_bytes(self):
-    return self.delivered_read_bytes + self.delivered_sent_bytes
-
-  def overhead_bytes(self):
-    return self.overhead_read_bytes + self.overhead_sent_bytes
-
   def dropped_read_bytes(self):
     return self.read_bytes - \
            (self.delivered_read_bytes+self.overhead_read_bytes)
@@ -134,13 +128,15 @@ class BandwidthStats:
   def bw_event(self, event):
     now = time.time()
     # Unused except to expire circuits -- 1x/sec
-    for circ in self.circs.values():
-      if now - circ.created_at > BW_CIRC_MAX_AGE:
-        self.limit_exceeded("NOTICE", "BW_CIRC_MAX_AGE",
-                            circ.circ_id,
-                            now - circ.created_at,
-                            BW_CIRC_MAX_AGE)
-        self.try_close_circuit(circ.circ_id)
+    # FIXME: This is has needless copying on python 2..
+    kill_circs = list(filter(lambda c: now - c.created_at > BW_CIRC_MAX_AGE,
+                        self.circs.values()))
+    for circ in kill_circs:
+      self.limit_exceeded("NOTICE", "BW_CIRC_MAX_AGE",
+                          circ.circ_id,
+                          now - circ.created_at,
+                          BW_CIRC_MAX_AGE)
+      self.try_close_circuit(circ.circ_id)
 
   def try_close_circuit(self, circ_id):
     try:
