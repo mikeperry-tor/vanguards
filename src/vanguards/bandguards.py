@@ -16,7 +16,7 @@ CIRC_SETUP_BYTES = CELL_PAYLOAD_SIZE*2
 
 ##### Per-circuit limits #########
 
-# Kill a circuit if this much bandwidth is not application related.
+# Kill a circuit if this much received bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
 BW_CIRC_MAX_DROPPED_READ_RATIO = 0.025
@@ -63,14 +63,15 @@ class BwCircuitStat:
   def overhead_bytes(self):
     return self.overhead_read_bytes + self.overhead_sent_bytes
 
-  def dropped_bytes(self):
-    return self.total_bytes() - (self.app_bytes()+self.overhead_bytes())
+  def dropped_read_bytes(self):
+    return self.read_bytes - \
+           (self.delivered_read_bytes+self.overhead_read_bytes)
 
-  def dropped_bytes_extra(self):
-    return max(CIRC_SETUP_BYTES,self.dropped_bytes())-CIRC_SETUP_BYTES
+  def dropped_read_bytes_extra(self):
+    return max(CIRC_SETUP_BYTES,self.dropped_read_bytes())-CIRC_SETUP_BYTES
 
-  def dropped_ratio(self):
-    return self.dropped_bytes_extra()/self.total_bytes()
+  def dropped_read_ratio(self):
+    return self.dropped_read_bytes_extra()/self.read_bytes
 
 class BandwidthStats:
   def __init__(self, controller):
@@ -150,14 +151,14 @@ class BandwidthStats:
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
-    if circ.total_bytes() > BW_CIRC_ENFORCE_RATIO_AFTER \
-       and circ.dropped_ratio() > BW_CIRC_MAX_DROPPED_READ_RATIO:
+    if circ.read_bytes > BW_CIRC_ENFORCE_RATIO_AFTER \
+       and circ.dropped_read_ratio() > BW_CIRC_MAX_DROPPED_READ_RATIO:
       self.limit_exceeded("WARN", "BW_CIRC_MAX_DROPPED_READ_RATIO",
                           circ.circ_id,
-                          circ.dropped_ratio(),
+                          circ.dropped_read_ratio(),
                           BW_CIRC_MAX_DROPPED_READ_RATIO,
-                          "Total: "+str(circ.total_bytes())+\
-                          ", dropped: "+str(circ.dropped_bytes()))
+                          "Total: "+str(circ.read_bytes)+\
+                          ", dropped: "+str(circ.dropped_read_bytes()))
       self.try_close_circuit(circ.circ_id)
     if circ.total_bytes() > BW_CIRC_MAX_BYTES:
       self.limit_exceeded("NOTICE", "BW_CIRC_MAX_BYTES",
