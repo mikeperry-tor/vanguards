@@ -283,7 +283,7 @@ def configure_tor(controller, vanguard_state):
 
 # TODO: This might be inefficient, because we're sort-of parsing
 # the consensus twice..
-def new_consensus_event(controller, state, options, event):
+def new_consensus_event(controller, state, event):
   routers = controller.get_network_statuses()
   consensus_file = os.path.join(controller.get_conf("DataDirectory"),
                            "cached-microdesc-consensus")
@@ -291,7 +291,7 @@ def new_consensus_event(controller, state, options, event):
   state.consensus_update(routers, weights)
 
   configure_tor(controller, state)
-  state.write_to_file(open(options.state_file, "wb"))
+  state.write_to_file(open(config.STATE_FILE, "wb"))
 
 def try_close_circuit(controller, circ_id):
   try:
@@ -308,17 +308,17 @@ def circuit_event(state, timeouts, event, controller):
   plog("DEBUG", event.raw_content())
 
 def main():
-  options = config.setup_options()
+  config.setup_options()
   try:
     # TODO: Use tor's data directory.. or our own
-    f = open(options.state_file, "rb")
+    f = open(config.STATE_FILE, "rb")
     state = VanguardState.read_from_file(f)
   except:
     state = VanguardState()
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
   controller = connect()
-  new_consensus_event(controller, state, options, None)
+  new_consensus_event(controller, state, None)
   timeouts = TimeoutStats()
   bandwidths = BandwidthStats(controller)
 
@@ -353,7 +353,7 @@ def main():
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
   new_consensus_handler = functools.partial(new_consensus_event,
-                                            controller, state, options)
+                                            controller, state)
   controller.add_event_listener(new_consensus_handler,
                                 stem.control.EventType.NEWCONSENSUS)
 

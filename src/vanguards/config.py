@@ -20,6 +20,9 @@ MAX_LAYER2_LIFETIME = 24*45
 MIN_LAYER3_LIFETIME = 1
 MAX_LAYER3_LIFETIME = 48
 
+# State file location
+STATE_FILE = "vanguards.state"
+
 ################### RendWatcher Options ###############
 # Use count limits. These limits control when we emit warnings about circuits
 #
@@ -67,12 +70,12 @@ CONTROL_PORT = 9051
 CONTROL_SOCKET = None
 
 def setup_options():
-  global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET
+  global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
 
   # XXX: Enable/disable for circ handlers
   # XXX: Config file for other options
   parser = argparse.ArgumentParser()
-  parser.add_argument("--state_file", dest="state_file", default="vanguards.state",
+  parser.add_argument("--state_file", dest="state_file", default=STATE_FILE,
                     help="File to store vanguard state (default: DataDirectory/vanguards)")
 
   parser.add_argument("--control_host", dest="control_host", default=CONTROL_HOST,
@@ -90,8 +93,9 @@ def setup_options():
 
   options = parser.parse_args()
 
-  (CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET) = \
-      (options.control_host, options.control_port, options.control_socket)
+  (STATE_FILE, CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET) = \
+      (options.state_file, options.control_host, options.control_port,
+       options.control_socket)
 
   return options
 
