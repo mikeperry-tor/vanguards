@@ -74,9 +74,9 @@ document](https://riseup.net/en/security/network-security/tor/onionservices-best
 **CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
 2. [Install Stem](https://stem.torproject.org/download.html)
 3. Start Tor (and bring up your hidden service).
-4. Run **./vanguards.py**
+4. Run **./src/vanguards.py**
     * If your control port is on an alternate IP and Port, specify that with
 **--control_host _IP_ --control_port _portnum_**. If you are using a control
 socket, specify its full path with **--control_socket /path/to/socket**.
-    * Note that **./vanguards.py** has several other options under **--help**. These are for performance experiments only and are not recommended for normal use.
+    * Note that **./src/vanguards.py** has several other options under **--help**. These are for performance experiments only and are not recommended for normal use.
 
