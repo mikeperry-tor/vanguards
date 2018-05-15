@@ -4,8 +4,7 @@ dist: trusty
 env:
   - TOXENV=py27 TEST=functional
   - TOXENV=py35 TEST=functional
-  - TOXENV=style
-  - TOXENV=docs
+  - TOXENV=pypy TEST=functional
 #before_install:
   # Install tor and chutney if doing functional tests
   #- if [[ $TEST == 'functional' ]]; then ./test/scripts/install-tor.sh; fi
