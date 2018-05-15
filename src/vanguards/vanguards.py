@@ -65,20 +65,6 @@ USE_COUNT_RELAY_MIN = 10
 USE_COUNT_RATIO = 2.0
 
 
-def get_rlist_and_rdict(controller):
-  sorted_r = list(controller.get_network_statuses())
-  dict_r = {}
-  # Let's not use unmeasured relays
-  for r in sorted_r:
-    if r.measured == None:
-      r.measured = 0
-  sorted_r.sort(key = lambda x: x.measured, reverse = True)
-
-  for i in xrange(len(sorted_r)): sorted_r[i].list_rank = i
-
-  for r in sorted_r: dict_r[r.fingerprint] = r
-
-  return (sorted_r, dict_r)
 
 def connect():
   if CONTROL_SOCKET != None:
@@ -113,10 +99,8 @@ def connect():
 
   return controller
 
-def get_consensus_weights(controller):
-  consensus = os.path.join(controller.get_conf("DataDirectory"),
-                           "cached-microdesc-consensus")
-  parsed_consensus = next(stem.descriptor.parse_file(consensus,
+def get_consensus_weights(consensus_filename):
+  parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,
                           document_handler =
                             stem.descriptor.DocumentHandler.BARE_DOCUMENT))
 
@@ -132,7 +116,7 @@ def setup_options():
   global NUM_LAYER3_GUARDS
   global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET
 
-  # XXX: Advanced vs simple options (--client, --service, etc)
+  # TODO: Advanced vs simple options (--client, --service, etc)
   parser = argparse.ArgumentParser()
   parser.add_argument("--num_guards", type=int, dest="num_layer1",
                     help="Number of entry gurds (default "+str(NUM_LAYER1_GUARDS)+
@@ -202,25 +186,13 @@ def setup_options():
 
   return options
 
-class GuardNode:
-  def __init__(self, idhex, chosen_at, expires_at):
-    self.idhex = idhex
-    self.chosen_at = chosen_at
-    self.expires_at = expires_at
-
-  def __str__(self):
-    return self.idhex
-
-  def __repr__(self):
-    return self.idhex
-
 class UseCount:
   def __init__(self, idhex, weight):
     self.idhex = idhex
     self.used = 0
     self.weight = weight
 
-class RendGuard:
+class RendWatcher:
   def __init__(self):
     self.use_counts = {}
     self.total_use_counts = 0
@@ -231,10 +203,7 @@ class RendGuard:
     else:
       return path[4]
 
-  def check_rend_use(self, purpose, path):
-    if purpose != "HS_SERVICE_REND":
-      return
-
+  def valid_rend_use(self, purpose, path):
     r = self.get_service_rend_node(path)
 
     if r not in self.use_counts:
@@ -256,7 +225,8 @@ class RendGuard:
                      " times out of "+str(int(self.total_use_counts))+
                      ". This is above its weight of "+
                      str(self.use_counts[r].weight))
-        self.try_close_circuit(circ_id)
+        return 0
+    return 1
 
   def xfer_use_counts(self, node_gen):
     old_counts = self.use_counts
@@ -282,32 +252,55 @@ class RendGuard:
                                     self.use_counts))
     self.total_use_counts = float(self.total_use_counts)
 
+class GuardNode:
+  def __init__(self, idhex, chosen_at, expires_at):
+    self.idhex = idhex
+    self.chosen_at = chosen_at
+    self.expires_at = expires_at
+
+  def __str__(self):
+    return self.idhex
+
+  def __repr__(self):
+    return self.idhex
+
 class VanguardState:
   def __init__(self):
     self.layer2 = []
     self.layer3 = []
-    self.rendguard = RendGuard()
-    self.controller = None
+    self.rendwatcher = RendWatcher()
+
+  def sort_and_index_routers(self, routers):
+    sorted_r = list(routers)
+    dict_r = {}
+    # Let's not use unmeasured relays
+    for r in sorted_r:
+      if r.measured == None:
+        r.measured = 0
+    sorted_r.sort(key = lambda x: x.measured, reverse = True)
+    for i in xrange(len(sorted_r)): sorted_r[i].list_rank = i
+    for r in sorted_r: dict_r[r.fingerprint] = r
+    return (sorted_r, dict_r)
+
+  def consensus_update(self, routers, weights):
+    (sorted_r, dict_r) = self.sort_and_index_routers(routers)
+    ng = BwWeightedGenerator(sorted_r,
+                       NodeRestrictionList([FlagsRestriction(["Fast", "Stable"],
+                                                             [])]),
+                             weights, BwWeightedGenerator.POSITION_MIDDLE)
+    gen = ng.generate()
+    self.replace_down_guards(dict_r, gen)
+
+    # FIXME: Need to check this more often
+    self.replace_expired(gen)
+    self.rendwatcher.xfer_use_counts(ng)
 
   def write_to_file(self, outfile):
-    controller = self.controller
-    self.controller = None
-    ret = pickle.dump(self, outfile)
-    self.controller = controller
-    return ret
+    return pickle.dump(self, outfile)
 
   @staticmethod
   def read_from_file(infile):
     return pickle.load(infile)
-
-  def try_close_circuit(self, circ_id):
-    try:
-      self.controller.close_circuit(circ_id)
-      plog("NOTICE", "We force-closed circuit "+str(circ_id))
-    except stem.InvalidRequest as e:
-      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
-
-  # XXX: Log guards
 
   def layer2_guardset(self):
     return ",".join(map(lambda g: g.idhex, self.layer2))
@@ -374,7 +367,7 @@ class VanguardState:
         removed.append(g)
     return removed
 
-  def consensus_update(self, dict_r, generator):
+  def replace_down_guards(self, dict_r, generator):
     # If any guards are down, remove them from current
     self._remove_down(self.layer2, dict_r)
     self._remove_down(self.layer3, dict_r)
@@ -386,7 +379,7 @@ class VanguardState:
       self.add_new_layer3(generator)
 
 def configure_tor(controller, vanguard_state):
-  # XXX: Use NumPrimaryGuards.. or try to.
+  # FIXME: Use NumPrimaryGuards.. or try to.
   if NUM_LAYER1_GUARDS:
     controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
 
@@ -404,19 +397,11 @@ def configure_tor(controller, vanguard_state):
 # parsed the consensus for the event, and now we're parsing it
 # again, twice.. Oh well. Prototype, and not critical path either.
 def new_consensus_event(controller, state, options, event):
-  (sorted_r, dict_r) = get_rlist_and_rdict(controller)
-  weights = get_consensus_weights(controller)
-
-  ng = BwWeightedGenerator(sorted_r,
-                     NodeRestrictionList([FlagsRestriction(["Fast", "Stable"],
-                                                           [])]),
-                           weights, BwWeightedGenerator.POSITION_MIDDLE)
-  gen = ng.generate()
-  state.consensus_update(dict_r, gen)
-
-  # XXX: Need to check this more often
-  state.replace_expired(gen)
-  state.rendguard.xfer_use_counts(ng)
+  routers = controller.get_network_statuses()
+  consensus_file = os.path.join(controller.get_conf("DataDirectory"),
+                           "cached-microdesc-consensus")
+  weights = get_consensus_weights(consensus_file)
+  state.consensus_update(routers, weights)
 
   configure_tor(controller, state)
   state.write_to_file(open(options.state_file, "wb"))
@@ -465,8 +450,6 @@ class TimeoutStats:
         self.hs_timeout += 1
       del self.circuits[circ_id]
 
-  # TODO: Sum launched == built+timeout+circuits
-
   def timeout_rate_all(self):
     if self.all_launched:
       return float(self.all_timeout)/(self.all_launched)
@@ -477,7 +460,14 @@ class TimeoutStats:
       return float(self.hs_timeout)/(self.hs_launched)
     else: return 0.0
 
-def circuit_event(state, timeouts, event):
+def try_close_circuit(controller, circ_id):
+  try:
+    controller.close_circuit(circ_id)
+    plog("NOTICE", "We force-closed circuit "+str(circ_id))
+  except stem.InvalidRequest as e:
+    plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
+
+def circuit_event(state, timeouts, event, controller):
   if event.hs_state or event.purpose[0:2] == "HS":
     if "status" in event.__dict__:
       if event.status == "LAUNCHED":
@@ -489,7 +479,9 @@ def circuit_event(state, timeouts, event):
       timeouts.update_circuit(event.id, 1)
     if "status" in event.__dict__ and event.status == "BUILT" and \
        event.purpose == "HS_SERVICE_REND":
-      state.rendguards.check_rend_use(event.purpose, event.path)
+      if not state.rendwatcher.valid_rend_use(event.purpose, event.path)
+        # XXX: Booo
+        controller.try_close_circuit(event.id)
   elif "status" in event.__dict__:
     if event.status == "LAUNCHED":
       timeouts.add_circuit(event.id, 0)
@@ -498,25 +490,23 @@ def circuit_event(state, timeouts, event):
     elif event.reason == "TIMEOUT":
       timeouts.timeout_circuit(event.id)
 
-  if "status" in event.__dict__ and event.status == "CLOSED":
-    state.forget_circuit(event.id)
-
   plog("DEBUG", event.raw_content())
 
 def cbt_event(timeouts, event):
-  # XXX: Check if this is too high...
+  # TODO: Check if this is too high...
   plog("INFO", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
   plog("DEBUG", event.raw_content())
 
 def main():
   options = setup_options()
   try:
-    # XXX: Get tor's data directory
+    # TODO: Use tor's data directory.. or our own
     f = open(options.state_file, "rb")
     state = VanguardState.read_from_file(f)
   except:
     state = VanguardState()
 
+  stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
   controller = connect()
   new_consensus_event(controller, state, options, None)
   timeouts = TimeoutStats()
@@ -525,7 +515,8 @@ def main():
   # Thread-safety: state, timeouts, and bandwidths are effectively
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
-  circuit_handler = functools.partial(circuit_event, state, timeouts)
+  circuit_handler = functools.partial(circuit_event, state, timeouts,
+                                      controller)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
   controller.add_event_listener(circuit_handler,
