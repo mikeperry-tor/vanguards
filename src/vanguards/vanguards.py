@@ -20,6 +20,7 @@ from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
 from .NodeSelection import FlagsRestriction
 from .logger import plog
 from .bandguards import BandwidthStats
+from .cbtverify import TimeoutStats
 
 try:
   xrange
@@ -63,7 +64,6 @@ USE_COUNT_RELAY_MIN = 10
 
 # How many times more than its bandwidth must a relay be used?
 USE_COUNT_RATIO = 2.0
-
 
 
 def connect():
@@ -186,7 +186,7 @@ def setup_options():
 
   return options
 
-class UseCount:
+class RendUseCount:
   def __init__(self, idhex, weight):
     self.idhex = idhex
     self.used = 0
@@ -208,7 +208,7 @@ class RendWatcher:
 
     if r not in self.use_counts:
       plog("NOTICE", "Relay "+r+" is not in our consensus, but someone is using it!")
-      self.use_counts[r] = UseCount(r, 0)
+      self.use_counts[r] = RendUseCount(r, 0)
 
     self.use_counts[r].used += 1
     self.total_use_counts += 1.0
@@ -232,7 +232,7 @@ class RendWatcher:
     old_counts = self.use_counts
     self.use_counts = {}
     for r in node_gen.sorted_r:
-       self.use_counts[r.fingerprint] = UseCount(r.fingerprint, 0)
+       self.use_counts[r.fingerprint] = RendUseCount(r.fingerprint, 0)
 
     for i in xrange(len(node_gen.rstr_routers)):
       r = node_gen.rstr_routers[i]
@@ -406,60 +406,6 @@ def new_consensus_event(controller, state, options, event):
   configure_tor(controller, state)
   state.write_to_file(open(options.state_file, "wb"))
 
-class CircuitStat:
-  def __init__(self, circ_id, is_hs):
-    self.circ_id = circ_id
-    self.is_hs = is_hs
-
-class TimeoutStats:
-  def __init__(self):
-    self.circuits = {}
-    self.all_launched = 0
-    self.all_built = 0
-    self.all_timeout = 0
-    self.hs_launched = 0
-    self.hs_built = 0
-    self.hs_timeout = 0
-    self.hs_changed = 0
-
-  def add_circuit(self, circ_id, is_hs):
-    if circ_id in self.circuits:
-      plog("WARN", "Circuit "+circ_id+" already exists in map!")
-    self.circuits[circ_id] = CircuitStat(circ_id, is_hs)
-    self.all_launched += 1
-    if is_hs: self.hs_launched += 1
-
-  def update_circuit(self, circ_id, is_hs):
-    if circ_id not in self.circuits: return
-    if self.circuits[circ_id].is_hs != is_hs:
-      self.hs_changed += 1
-      self.hs_launched += 1
-      self.circuits[circ_id].is_hs = is_hs
-
-  def built_circuit(self, circ_id):
-    if circ_id in self.circuits:
-      self.all_built += 1
-      if self.circuits[circ_id].is_hs:
-        self.hs_built += 1
-      del self.circuits[circ_id]
-
-  def timeout_circuit(self, circ_id):
-    if circ_id in self.circuits:
-      self.all_timeout += 1
-      if self.circuits[circ_id].is_hs:
-        self.hs_timeout += 1
-      del self.circuits[circ_id]
-
-  def timeout_rate_all(self):
-    if self.all_launched:
-      return float(self.all_timeout)/(self.all_launched)
-    else: return 0.0
-
-  def timeout_rate_hs(self):
-    if self.hs_launched:
-      return float(self.hs_timeout)/(self.hs_launched)
-    else: return 0.0
-
 def try_close_circuit(controller, circ_id):
   try:
     controller.close_circuit(circ_id)
@@ -468,33 +414,10 @@ def try_close_circuit(controller, circ_id):
     plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
 
 def circuit_event(state, timeouts, event, controller):
-  if event.hs_state or event.purpose[0:2] == "HS":
-    if "status" in event.__dict__:
-      if event.status == "LAUNCHED":
-        timeouts.add_circuit(event.id, 1)
-      elif event.status == "BUILT":
-        timeouts.built_circuit(event.id)
-      elif event.reason == "TIMEOUT":
-        timeouts.timeout_circuit(event.id)
-      timeouts.update_circuit(event.id, 1)
-    if "status" in event.__dict__ and event.status == "BUILT" and \
-       event.purpose == "HS_SERVICE_REND":
-      if not state.rendwatcher.valid_rend_use(event.purpose, event.path)
-        # XXX: Booo
-        controller.try_close_circuit(event.id)
-  elif "status" in event.__dict__:
-    if event.status == "LAUNCHED":
-      timeouts.add_circuit(event.id, 0)
-    elif event.status == "BUILT":
-      timeouts.built_circuit(event.id)
-    elif event.reason == "TIMEOUT":
-      timeouts.timeout_circuit(event.id)
+  if event.status == "BUILT" and event.purpose == "HS_SERVICE_REND":
+    if not state.rendwatcher.valid_rend_use(event.purpose, event.path):
+      try_close_circuit(controller, event.id)
 
-  plog("DEBUG", event.raw_content())
-
-def cbt_event(timeouts, event):
-  # TODO: Check if this is too high...
-  plog("INFO", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(timeouts.timeout_rate_all())+"; Hidden service timeout rate: "+str(timeouts.timeout_rate_hs()))
   plog("DEBUG", event.raw_content())
 
 def main():
@@ -519,9 +442,6 @@ def main():
                                       controller)
   controller.add_event_listener(circuit_handler,
                                 stem.control.EventType.CIRC)
-  controller.add_event_listener(circuit_handler,
-                                stem.control.EventType.CIRC_MINOR)
-
 
   controller.add_event_listener(
                functools.partial(BandwidthStats.circ_event, bandwidths),
@@ -533,8 +453,11 @@ def main():
                functools.partial(BandwidthStats.circbw_event, bandwidths),
                                 stem.control.EventType.CIRC_BW)
 
-  cbt_handler = functools.partial(cbt_event, timeouts)
-  controller.add_event_listener(cbt_handler,
+  controller.add_event_listener(
+               functools.partial(TimeoutStats.circ_event, timeouts),
+                                stem.control.EventType.CIRC)
+  controller.add_event_listener(
+               functools.partial(TimeoutStats.cbt_event, timeouts),
                                 stem.control.EventType.BUILDTIMEOUT_SET)
 
   # Thread-safety: We're effectively transferring controller to the event
