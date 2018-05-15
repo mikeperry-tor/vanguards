@@ -1,10 +1,16 @@
 language: python
-sudo: required
+sudo: false
 dist: trusty
-env:
-  - TOXENV=py27 TEST=functional
-  - TOXENV=py35 TEST=functional
-  - TOXENV=pypy TEST=functional
+matrix:
+ include:
+  - python: 2.7
+    env: TOXENV=py27
+  - python: 3.5
+    env: TOXENV=py35
+  - python: pypy
+    env: TOXENV=pypy
+  - python: pypy3
+    env: TOXENV=pypy3
 #before_install:
   # Install tor and chutney if doing functional tests
   #- if [[ $TEST == 'functional' ]]; then ./test/scripts/install-tor.sh; fi
