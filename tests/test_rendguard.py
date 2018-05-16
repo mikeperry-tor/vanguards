@@ -3,8 +3,8 @@ import time
 
 from stem.response import ControlMessage
 
-from vanguards.config import USE_COUNT_TOTAL_MIN
-from vanguards.rendwatcher import RendWatcher
+from vanguards.config import REND_USE_COUNT_START
+from vanguards.rendguard import RendGuard
 
 try:
   xrange
@@ -24,16 +24,16 @@ def rend_circ(circ_id):
 
 # Test plan:
 def test_usecounts():
-  rw = RendWatcher()
+  rg = RendGuard()
   c = MockController()
 
   i = 0
-  while i < USE_COUNT_TOTAL_MIN:
-    rw.circ_event(c, rend_circ(i))
+  while i < REND_USE_COUNT_START:
+    rg.circ_event(c, rend_circ(i))
     assert c.closed_circ == None
     i += 1
 
-  rw.circ_event(c, rend_circ(i))
+  rg.circ_event(c, rend_circ(i))
   assert c.closed_circ == str(i)
 
   # TODO: test scaling..

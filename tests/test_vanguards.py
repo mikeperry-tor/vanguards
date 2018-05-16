@@ -13,7 +13,6 @@ from vanguards.config import MIN_LAYER3_LIFETIME
 from vanguards.config import MAX_LAYER3_LIFETIME
 from vanguards.config import MIN_LAYER2_LIFETIME
 from vanguards.config import MAX_LAYER2_LIFETIME
-from vanguards.config import USE_COUNT_TOTAL_MIN
 
 
 try:

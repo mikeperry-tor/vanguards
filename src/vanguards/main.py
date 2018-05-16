@@ -7,7 +7,7 @@ from . import control
 from .vanguards import VanguardState
 from .bandguards import BandwidthStats
 from .cbtverify import TimeoutStats
-from .rendwatcher import RendWatcher
+from .rendguard import RendGuard
 
 def main():
   config.setup_options()
@@ -28,9 +28,9 @@ def main():
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
 
-  if config.RENDWATCHER_ENABLED:
+  if config.RENDGUARD_ENABLED:
     controller.add_event_listener(
-                 functools.partial(RendWatcher.circ_event, state.rendwatcher,
+                 functools.partial(RendGuard.circ_event, state.rendguard,
                                    controller),
                                   stem.control.EventType.CIRC)
   if config.BANDGUARDS_ENABLED:

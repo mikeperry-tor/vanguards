@@ -23,24 +23,24 @@ MAX_LAYER3_LIFETIME = 48
 # State file location
 STATE_FILE = "vanguards.state"
 
-################### RendWatcher Options ###############
+################### RendGuard Options ###############
 # Use count prefs. These limits control when we emit warnings about circuits
 
 # Are use counts enabled?
-RENDWATCHER_ENABLED=True
+RENDGUARD_ENABLED=True
 
 # Minimum number of hops we have to see before applying use stat checks
-USE_COUNT_TOTAL_MIN = 100
+REND_USE_COUNT_START = 100
 
 # Number of hops to scale counts down by two at
-USE_COUNT_SCALE_AT = 1000
+REND_USE_COUNT_SCALE_AT = 1000
 
 # Minimum number of times a relay has to be used before we check it for
 # overuse
-USE_COUNT_RELAY_MIN = 10
+REND_USE_COUNT_RELAY_START = 10
 
 # How many times more than its bandwidth must a relay be used?
-USE_COUNT_RATIO = 2.0
+REND_USE_COUNT_RATIO = 2.0
 
 ############ BandGuard Options #################
 
@@ -80,7 +80,7 @@ CONTROL_SOCKET = None
 
 def setup_options():
   global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
-  global BANDGUARDS_ENABLED, RENDWATCHER_ENABLED, CBTVERIFY_ENABLED
+  global BANDGUARDS_ENABLED, RENDGUARD_ENABLED, CBTVERIFY_ENABLED
 
   # XXX: Config file for other options
   parser = argparse.ArgumentParser()
@@ -105,10 +105,10 @@ def setup_options():
                       help="Disable circuit side channel checks (may help performance)")
   parser.set_defaults(bandguards_eabled=BANDGUARDS_ENABLED)
 
-  parser.add_argument("--disable-rendwatcher", dest="rendwatcher_enabled",
+  parser.add_argument("--disable-rendguard", dest="rendguard_enabled",
                       action="store_false",
                       help="Disable rendezvous misuse checks (may help performance)")
-  parser.set_defaults(rendwatcher_enabled=RENDWATCHER_ENABLED)
+  parser.set_defaults(rendguard_enabled=RENDGUARD_ENABLED)
 
   parser.add_argument("--enable-cbtverify", dest="cbtverify_enabled",
                       action="store_true",
@@ -118,10 +118,10 @@ def setup_options():
   options = parser.parse_args()
 
   (STATE_FILE, CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET, BANDGUARDS_ENABLED,
-   RENDWATCHER_ENABLED, CBTVERIFY_ENABLED) = \
+   RENDGUARD_ENABLED, CBTVERIFY_ENABLED) = \
       (options.state_file, options.control_host, options.control_port,
        options.control_socket, options.bandguards_enabled,
-       options.rendwatcher_enabled,options.cbtverify_enabled)
+       options.rendguard_enabled,options.cbtverify_enabled)
 
   return options
 

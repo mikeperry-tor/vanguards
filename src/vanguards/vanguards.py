@@ -9,7 +9,7 @@ import stem
 
 from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
 from .NodeSelection import FlagsRestriction
-from .rendwatcher import RendWatcher
+from .rendguard import RendGuard
 from .logger import plog
 
 from . import config
@@ -38,7 +38,7 @@ class VanguardState:
   def __init__(self):
     self.layer2 = []
     self.layer3 = []
-    self.rendwatcher = RendWatcher()
+    self.rendguard = RendGuard()
 
   def sort_and_index_routers(self, routers):
     sorted_r = list(routers)
@@ -64,7 +64,7 @@ class VanguardState:
 
     # FIXME: Need to check this more often
     self.replace_expired(gen)
-    self.rendwatcher.xfer_use_counts(ng)
+    self.rendguard.xfer_use_counts(ng)
 
   def new_consensus_event(self, controller, event):
     routers = controller.get_network_statuses()

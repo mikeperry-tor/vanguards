@@ -3,6 +3,19 @@ from . import control
 
 from .logger import plog
 
+# Minimum number of hops we have to see before applying use stat checks
+REND_USE_COUNT_START = 100
+
+# Number of hops to scale counts down by two at
+REND_USE_COUNT_SCALE_AT = 1000
+
+# Minimum number of times a relay has to be used before we check it for
+# overuse
+REND_USE_COUNT_RELAY_MIN = 10
+
+# How many times more than its bandwidth must a relay be used?
+REND_USE_COUNT_RATIO = 2.0
+
 try:
   xrange
 except NameError:
@@ -14,7 +27,7 @@ class RendUseCount:
     self.used = 0
     self.weight = weight
 
-class RendWatcher:
+class RendGuard:
   def __init__(self):
     self.use_counts = {}
     self.total_use_counts = 0
@@ -36,13 +49,13 @@ class RendWatcher:
     self.total_use_counts += 1.0
 
     # TODO: Can we base this check on statistical confidence intervals?
-    if self.total_use_counts > config.USE_COUNT_TOTAL_MIN and \
-       self.use_counts[r].used >= config.USE_COUNT_RELAY_MIN:
+    if self.total_use_counts > config.REND_USE_COUNT_START and \
+       self.use_counts[r].used >= config.REND_USE_COUNT_RELAY_START:
       plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
                   " times out of "+str(int(self.total_use_counts)))
 
       if self.use_counts[r].used/self.total_use_counts > \
-         self.use_counts[r].weight*config.USE_COUNT_RATIO:
+         self.use_counts[r].weight*config.REND_USE_COUNT_RATIO:
         plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
                      " times out of "+str(int(self.total_use_counts))+
                      ". This is above its weight of "+
@@ -65,7 +78,7 @@ class RendWatcher:
     # high-uptime relays vs old ones
     for r in old_counts:
       if r not in self.use_counts: continue
-      if self.total_use_counts > config.USE_COUNT_SCALE_AT:
+      if self.total_use_counts > config.REND_USE_COUNT_SCALE_AT:
         self.use_counts[r].used = old_counts[r].used/2
       else:
         self.use_counts[r].used = old_counts[r].used
