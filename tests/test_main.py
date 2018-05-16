@@ -7,7 +7,7 @@ import vanguards.main
 
 class MockController:
   def __init__(self):
-    pass
+    self.alive = True
 
   # FIXME: os.path.join
   def get_network_statuses(self):
@@ -29,11 +29,15 @@ class MockController:
     pass
 
   def is_alive(self):
+    if self.alive:
+      self.alive = False
+      return True
     return False
-
 def mock_connect():
   return MockController()
 vanguards.control.connect = mock_connect
+
+vanguards.config.CBTVERIFY_ENABLED = True
 
 # TODO: Write config+argparsing tests
 def test_main():
