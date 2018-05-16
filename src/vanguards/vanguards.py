@@ -1,27 +1,18 @@
 #!/usr/bin/env python
 
-import getpass
-import sys
-import logging
-import copy
 import random
 import os
 import time
-import functools
 import pickle
 
 import stem
-import stem.connection
-import stem.descriptor
-from stem.control import Controller
 
 from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
 from .NodeSelection import FlagsRestriction
 from .logger import plog
-from .bandguards import BandwidthStats
-from .cbtverify import TimeoutStats
 
 from . import config
+from . import control
 
 try:
   xrange
@@ -29,49 +20,6 @@ except NameError:
   xrange = range
 
 SEC_PER_HOUR = (60*60)
-
-def connect():
-  if config.CONTROL_SOCKET != None:
-    try:
-      controller = Controller.from_socket_file(config.CONTROL_SOCKET)
-    except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Socket at "\
-            +config.CONTROL_SOCKET+": %s" % exc)
-      sys.exit(1)
-  else:
-    try:
-      controller = Controller.from_port(config.CONTROL_HOST,
-                                        config.CONTROL_PORT)
-    except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Port at "+config.CONTROL_HOST+":"
-             +str(config.CONTROL_PORT)+" %s" % exc)
-      sys.exit(1)
-
-  try:
-    controller.authenticate()
-  except stem.connection.MissingPassword:
-    pw = getpass.getpass("Controller password: ")
-
-    try:
-      controller.authenticate(password = pw)
-    except stem.connection.PasswordAuthFailed:
-      print("Unable to authenticate, password is incorrect")
-      sys.exit(1)
-  except stem.connection.AuthenticationFailure as exc:
-    print("Unable to authenticate: %s" % exc)
-    sys.exit(1)
-
-  print("Tor is running version %s" % controller.get_version())
-
-  return controller
-
-def get_consensus_weights(consensus_filename):
-  parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,
-                          document_handler =
-                            stem.descriptor.DocumentHandler.BARE_DOCUMENT))
-
-  assert(parsed_consensus.is_consensus)
-  return parsed_consensus.bandwidth_weights
 
 class RendUseCount:
   def __init__(self, idhex, weight):
@@ -187,7 +135,7 @@ class VanguardState:
     routers = controller.get_network_statuses()
     consensus_file = os.path.join(controller.get_conf("DataDirectory"),
                              "cached-microdesc-consensus")
-    weights = get_consensus_weights(consensus_file)
+    weights = control.get_consensus_weights(consensus_file)
     self.consensus_update(routers, weights)
 
     self.configure_tor(controller)
@@ -198,7 +146,7 @@ class VanguardState:
       controller.set_conf("NumEntryGuards", str(config.NUM_LAYER1_GUARDS))
       try:
         controller.set_conf("NumPrimaryGuards", str(config.NUM_LAYER1_GUARDS))
-      except stem.InvalidArguments:
+      except stem.InvalidArguments: # pre-0.3.4 tor
         pass
 
     if config.LAYER1_LIFETIME:
@@ -294,73 +242,9 @@ class VanguardState:
     while len(self.layer3) < config.NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
-def try_close_circuit(controller, circ_id):
-  try:
-    controller.close_circuit(circ_id)
-    plog("NOTICE", "We force-closed circuit "+str(circ_id))
-  except stem.InvalidRequest as e:
-    plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
-
 def circuit_event(state, timeouts, event, controller):
   if event.status == "BUILT" and event.purpose == "HS_SERVICE_REND":
     if not state.rendwatcher.valid_rend_use(event.purpose, event.path):
       try_close_circuit(controller, event.id)
 
   plog("DEBUG", event.raw_content())
-
-def main():
-  config.setup_options()
-  try:
-    # TODO: Use tor's data directory.. or our own
-    f = open(config.STATE_FILE, "rb")
-    state = VanguardState.read_from_file(f)
-  except:
-    state = VanguardState()
-
-  stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
-  controller = connect()
-  state.new_consensus_event(controller, None)
-  timeouts = TimeoutStats()
-  bandwidths = BandwidthStats(controller)
-
-  # Thread-safety: state, timeouts, and bandwidths are effectively
-  # transferred to the event thread here. They must not be used in
-  # our thread anymore.
-  # XXX: Make rendwatcher optional by config (on by default)
-  circuit_handler = functools.partial(circuit_event, state, timeouts,
-                                      controller)
-  controller.add_event_listener(circuit_handler,
-                                stem.control.EventType.CIRC)
-
-  # XXX: Make bandgaurds optional by config (on by default)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.circ_event, bandwidths),
-                                stem.control.EventType.CIRC)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.bw_event, bandwidths),
-                                stem.control.EventType.BW)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.circbw_event, bandwidths),
-                                stem.control.EventType.CIRC_BW)
-
-  # XXX: Make circ_timeouts by config (off by default)
-  controller.add_event_listener(
-               functools.partial(TimeoutStats.circ_event, timeouts),
-                                stem.control.EventType.CIRC)
-  controller.add_event_listener(
-               functools.partial(TimeoutStats.cbt_event, timeouts),
-                                stem.control.EventType.BUILDTIMEOUT_SET)
-
-  # Thread-safety: We're effectively transferring controller to the event
-  # thread here.
-  controller.add_event_listener(
-               functools.partial(VanguardState.new_consensus_event,
-                                 state, controller),
-                                stem.control.EventType.NEWCONSENSUS)
-
-  # Blah...
-  while controller.is_alive():
-    time.sleep(1)
-
-if __name__ == '__main__':
-  main()

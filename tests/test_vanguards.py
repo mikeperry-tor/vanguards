@@ -1,7 +1,10 @@
 import stem
 import time
 
-from vanguards.vanguards import VanguardState, get_consensus_weights
+from stem.response import ControlMessage
+from vanguards.control import get_consensus_weights
+
+from vanguards.vanguards import VanguardState
 from vanguards.vanguards import SEC_PER_HOUR
 
 from vanguards.config import NUM_LAYER3_GUARDS
@@ -12,7 +15,6 @@ from vanguards.config import MIN_LAYER2_LIFETIME
 from vanguards.config import MAX_LAYER2_LIFETIME
 from vanguards.config import USE_COUNT_TOTAL_MIN
 
-from stem.response import ControlMessage
 
 try:
   xrange

@@ -2,7 +2,7 @@
 
 """Convenience wrapper for running vanguards directly from source tree."""
 
-from vanguards.vanguards import main
+from vanguards.main import main
 
 if __name__ == '__main__':
     main()
