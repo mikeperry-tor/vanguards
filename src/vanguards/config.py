@@ -24,8 +24,11 @@ MAX_LAYER3_LIFETIME = 48
 STATE_FILE = "vanguards.state"
 
 ################### RendWatcher Options ###############
-# Use count limits. These limits control when we emit warnings about circuits
-#
+# Use count prefs. These limits control when we emit warnings about circuits
+
+# Are use counts enabled?
+RENDWATCHER_ENABLED=True
+
 # Minimum number of hops we have to see before applying use stat checks
 USE_COUNT_TOTAL_MIN = 100
 
@@ -40,6 +43,8 @@ USE_COUNT_RELAY_MIN = 10
 USE_COUNT_RATIO = 2.0
 
 ############ BandGuard Options #################
+
+BANDGUARDS_ENABLED=True
 
 # Kill a circuit if this much received bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
@@ -64,6 +69,10 @@ BW_CIRC_MAX_AGE = 24*60*60 # 1 day
 # Maximum size for an hsdesc fetch (including setup+get+dropped cells)
 BW_CIRC_MAX_HSDESC_BYTES = 30*1024 # 30k
 
+################# CBT Options ####################
+
+CBTVERIFY_ENABLED=False
+
 ################# Control options ##################
 CONTROL_HOST = "127.0.0.1"
 CONTROL_PORT = 9051
@@ -71,8 +80,8 @@ CONTROL_SOCKET = None
 
 def setup_options():
   global CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
+  global BANDGUARDS_ENABLED, RENDWATCHER_ENABLED, CBTVERIFY_ENABLED
 
-  # XXX: Enable/disable for circ handlers
   # XXX: Config file for other options
   parser = argparse.ArgumentParser()
   parser.add_argument("--state_file", dest="state_file", default=STATE_FILE,
@@ -91,11 +100,28 @@ def setup_options():
                       help="The Tor Control Socket path to connect to "+
                       "(default: "+str(CONTROL_SOCKET)+")")
 
+  parser.add_argument("--disable-bandguards", dest="bandguards_enabled",
+                      action="store_false",
+                      help="Disable circuit side channel checks (may help performance)")
+  parser.set_defaults(bandguards_eabled=BANDGUARDS_ENABLED)
+
+  parser.add_argument("--disable-rendwatcher", dest="rendwatcher_enabled",
+                      action="store_false",
+                      help="Disable rendezvous misuse checks (may help performance)")
+  parser.set_defaults(rendwatcher_enabled=RENDWATCHER_ENABLED)
+
+  parser.add_argument("--enable-cbtverify", dest="cbtverify_enabled",
+                      action="store_true",
+                      help="Enable Circuit Build Time monitoring")
+  parser.set_defaults(cbtverify_enabled=CBTVERIFY_ENABLED)
+
   options = parser.parse_args()
 
-  (STATE_FILE, CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET) = \
+  (STATE_FILE, CONTROL_HOST, CONTROL_PORT, CONTROL_SOCKET, BANDGUARDS_ENABLED,
+   RENDWATCHER_ENABLED, CBTVERIFY_ENABLED) = \
       (options.state_file, options.control_host, options.control_port,
-       options.control_socket)
+       options.control_socket, options.bandguards_enabled,
+       options.rendwatcher_enabled,options.cbtverify_enabled)
 
   return options
 

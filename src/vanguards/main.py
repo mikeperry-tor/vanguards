@@ -27,31 +27,30 @@ def main():
   # Thread-safety: state, timeouts, and bandwidths are effectively
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
-  # XXX: Make rendwatcher optional by config (on by default)
 
-  controller.add_event_listener(
-               functools.partial(RendWatcher.circ_event, state.rendwatcher,
-                                 controller),
-                                stem.control.EventType.CIRC)
+  if config.RENDWATCHER_ENABLED:
+    controller.add_event_listener(
+                 functools.partial(RendWatcher.circ_event, state.rendwatcher,
+                                   controller),
+                                  stem.control.EventType.CIRC)
+  if config.BANDGUARDS_ENABLED:
+    controller.add_event_listener(
+                 functools.partial(BandwidthStats.circ_event, bandwidths),
+                                  stem.control.EventType.CIRC)
+    controller.add_event_listener(
+                 functools.partial(BandwidthStats.bw_event, bandwidths),
+                                  stem.control.EventType.BW)
+    controller.add_event_listener(
+                 functools.partial(BandwidthStats.circbw_event, bandwidths),
+                                  stem.control.EventType.CIRC_BW)
 
-  # XXX: Make bandgaurds optional by config (on by default)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.circ_event, bandwidths),
-                                stem.control.EventType.CIRC)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.bw_event, bandwidths),
-                                stem.control.EventType.BW)
-  controller.add_event_listener(
-               functools.partial(BandwidthStats.circbw_event, bandwidths),
-                                stem.control.EventType.CIRC_BW)
-
-  # XXX: Make circ_timeouts by config (off by default)
-  controller.add_event_listener(
-               functools.partial(TimeoutStats.circ_event, timeouts),
-                                stem.control.EventType.CIRC)
-  controller.add_event_listener(
-               functools.partial(TimeoutStats.cbt_event, timeouts),
-                                stem.control.EventType.BUILDTIMEOUT_SET)
+  if config.CBTVERIFY_ENABLED:
+    controller.add_event_listener(
+                 functools.partial(TimeoutStats.circ_event, timeouts),
+                                  stem.control.EventType.CIRC)
+    controller.add_event_listener(
+                 functools.partial(TimeoutStats.cbt_event, timeouts),
+                                  stem.control.EventType.BUILDTIMEOUT_SET)
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
