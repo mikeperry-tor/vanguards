@@ -19,25 +19,6 @@ class NodeRestriction:
     "Returns true if Router 'r' is acceptable for this restriction"
     return True
 
-class PercentileRestriction(NodeRestriction):
-  """Restriction to cut out a percentile slice of the network."""
-  def __init__(self, pct_skip, pct_fast, r_list):
-    """Constructor. Sets up the restriction such that routers in the 
-     'pct_skip' to 'pct_fast' percentile of bandwidth rankings are 
-     returned from the sorted list 'r_list'"""
-    self.pct_fast = pct_fast
-    self.pct_skip = pct_skip
-    self.sorted_r = r_list
-
-  def r_is_ok(self, r):
-    "Returns true if r is in the percentile boundaries (by rank)"
-    if r.list_rank < len(self.sorted_r)*self.pct_skip/100: return False
-    elif r.list_rank > len(self.sorted_r)*self.pct_fast/100: return False
-    return True
-
-  def __str__(self):
-    return self.__class__.__name__+"("+str(self.pct_skip)+","+str(self.pct_fast)+")"
-
 class FlagsRestriction(NodeRestriction):
   "Restriction for mandatory and forbidden router flags"
   def __init__(self, mandatory, forbidden=[]):
@@ -143,13 +124,6 @@ class NodeGenerator:
   def generate(self):
     "Return a python generator that yields routers according to the policy"
     raise NotImplemented()
-
-class UniformGenerator(NodeGenerator):
-  """NodeGenerator that produces nodes in the uniform distribution"""
-  def generate(self):
-    # XXX: hrmm.. this is not really the right thing to check
-    while not self.all_chosen():
-      yield random.choice(self.routers)
 
 class BwWeightedGenerator(NodeGenerator):
   POSITION_GUARD = 'g'
