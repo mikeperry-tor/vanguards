@@ -58,9 +58,6 @@ In particular, the following things still need to be done:
  * Optimal values for the number of Layer2 and Layer3 nodes, as well as
    their rotation time ranges, still need to be determined. These values
    will be chosen based on the results of security and performance simulations.
- * Defenses for long-lived and/or high-volume circuit attacks still need to be 
-   implemented (see 
-   [ticket #23980](https://trac.torproject.org/projects/tor/ticket/23980)).
  * Improved usability, better install options, test coverage, release
    versioning, etc.
 
