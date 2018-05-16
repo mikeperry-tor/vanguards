@@ -1,14 +1,14 @@
 TODO items that should maybe go into the bug tracker
 
-* Better names for rendwatcher and cbtverify
-* Unit tests for all the things
-* Option for bandguards to apply to all circuits
-* Make a conf file
+* Better names for rendwatcher and cbtverify (renduse.py and cbtcheck.py?)
+* Better option names for the same..
+* Make a conf file and test conf file vs params
 * Fix logging system (esp rate limits)
 * Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
 * Provide an IncludeNodes feature
 * Version the pickled state file
 * Make debian packages
 * Write blog post
+* Option for bandguards to apply to all circuits..or just service circs?
 * Investigate sharing vanguard state between multiple instances, for
   better use with onionshare.
