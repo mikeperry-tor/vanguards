@@ -2,6 +2,7 @@ import stem
 
 from stem.control import Controller
 from . import config
+from .logger import plog
 
 def connect():
   if config.CONTROL_SOCKET != None:

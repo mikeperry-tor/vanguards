@@ -7,9 +7,7 @@ from . import control
 from .vanguards import VanguardState
 from .bandguards import BandwidthStats
 from .cbtverify import TimeoutStats
-
-# XXX: Kill
-from .vanguards import circuit_event
+from .rendwatcher import RendWatcher
 
 def main():
   config.setup_options()
@@ -30,9 +28,10 @@ def main():
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
   # XXX: Make rendwatcher optional by config (on by default)
-  circuit_handler = functools.partial(circuit_event, state, timeouts,
-                                      controller)
-  controller.add_event_listener(circuit_handler,
+
+  controller.add_event_listener(
+               functools.partial(RendWatcher.circ_event, state.rendwatcher,
+                                 controller),
                                 stem.control.EventType.CIRC)
 
   # XXX: Make bandgaurds optional by config (on by default)
