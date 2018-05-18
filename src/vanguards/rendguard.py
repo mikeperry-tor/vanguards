@@ -1,7 +1,8 @@
-from . import config
 from . import control
 
 from .logger import plog
+
+############## Rendguard options #####################
 
 # Minimum number of hops we have to see before applying use stat checks
 REND_USE_COUNT_START = 100
@@ -11,7 +12,7 @@ REND_USE_COUNT_SCALE_AT = 1000
 
 # Minimum number of times a relay has to be used before we check it for
 # overuse
-REND_USE_COUNT_RELAY_MIN = 10
+REND_USE_COUNT_RELAY_START = 10
 
 # How many times more than its bandwidth must a relay be used?
 REND_USE_COUNT_RATIO = 2.0
@@ -32,15 +33,7 @@ class RendGuard:
     self.use_counts = {}
     self.total_use_counts = 0
 
-  def get_service_rend_node(self, path):
-    if config.NUM_LAYER3_GUARDS:
-      return path[4][0]
-    else:
-      return path[3][0]
-
-  def valid_rend_use(self, purpose, path):
-    r = self.get_service_rend_node(path)
-
+  def valid_rend_use(self, r):
     if r not in self.use_counts:
       plog("NOTICE", "Relay "+r+" is not in our consensus, but someone is using it!")
       self.use_counts[r] = RendUseCount(r, 0)
@@ -49,13 +42,13 @@ class RendGuard:
     self.total_use_counts += 1.0
 
     # TODO: Can we base this check on statistical confidence intervals?
-    if self.total_use_counts > config.REND_USE_COUNT_START and \
-       self.use_counts[r].used >= config.REND_USE_COUNT_RELAY_START:
+    if self.total_use_counts > REND_USE_COUNT_START and \
+       self.use_counts[r].used >= REND_USE_COUNT_RELAY_START:
       plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
                   " times out of "+str(int(self.total_use_counts)))
 
       if self.use_counts[r].used/self.total_use_counts > \
-         self.use_counts[r].weight*config.REND_USE_COUNT_RATIO:
+         self.use_counts[r].weight*REND_USE_COUNT_RATIO:
         plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
                      " times out of "+str(int(self.total_use_counts))+
                      ". This is above its weight of "+
@@ -78,7 +71,7 @@ class RendGuard:
     # high-uptime relays vs old ones
     for r in old_counts:
       if r not in self.use_counts: continue
-      if self.total_use_counts > config.REND_USE_COUNT_SCALE_AT:
+      if self.total_use_counts > REND_USE_COUNT_SCALE_AT:
         self.use_counts[r].used = old_counts[r].used/2
       else:
         self.use_counts[r].used = old_counts[r].used
@@ -89,7 +82,7 @@ class RendGuard:
 
   def circ_event(self, controller, event):
     if event.status == "BUILT" and event.purpose == "HS_SERVICE_REND":
-      if not self.valid_rend_use(event.purpose, event.path):
+      if not self.valid_rend_use(event.path[-1][0]):
         control.try_close_circuit(controller, event.id)
 
     plog("DEBUG", event.raw_content())

@@ -2,27 +2,35 @@ import functools
 import stem
 import time
 
-from . import config
 from . import control
-from .vanguards import VanguardState
-from .bandguards import BandwidthStats
-from .cbtverify import TimeoutStats
-from .rendguard import RendGuard
+from . import rendguard
+from . import vanguards
+from . import bandguards
+from . import cbtverify
+
+from . import config
 
 def main():
+  config.apply_config(config.CONFIG_FILE)
   config.setup_options()
   try:
     # TODO: Use tor's data directory.. or our own
-    f = open(config.STATE_FILE, "rb")
-    state = VanguardState.read_from_file(f)
+    state = vanguards.VanguardState.read_from_file(config.STATE_FILE)
   except:
-    state = VanguardState()
+    state = vanguards.VanguardState(config.STATE_FILE)
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
-  controller = control.connect()
+
+  if config.CONTROL_SOCKET != None:
+    controller = control.connect_to_socket(config.CONTROL_SOCKET)
+  else:
+    controller = control.connect_to_ip(config.CONTROL_IP, config.CONTROL_PORT)
+
+  control.authenticate_any(controller)
+
   state.new_consensus_event(controller, None)
-  timeouts = TimeoutStats()
-  bandwidths = BandwidthStats(controller)
+  timeouts = cbtverify.TimeoutStats()
+  bandwidths = bandguards.BandwidthStats(controller)
 
   # Thread-safety: state, timeouts, and bandwidths are effectively
   # transferred to the event thread here. They must not be used in
@@ -30,32 +38,32 @@ def main():
 
   if config.RENDGUARD_ENABLED:
     controller.add_event_listener(
-                 functools.partial(RendGuard.circ_event, state.rendguard,
-                                   controller),
+                 functools.partial(rendguard.RendGuard.circ_event,
+                                   state.rendguard, controller),
                                   stem.control.EventType.CIRC)
   if config.BANDGUARDS_ENABLED:
     controller.add_event_listener(
-                 functools.partial(BandwidthStats.circ_event, bandwidths),
+                 functools.partial(bandguards.BandwidthStats.circ_event, bandwidths),
                                   stem.control.EventType.CIRC)
     controller.add_event_listener(
-                 functools.partial(BandwidthStats.bw_event, bandwidths),
+                 functools.partial(bandguards.BandwidthStats.bw_event, bandwidths),
                                   stem.control.EventType.BW)
     controller.add_event_listener(
-                 functools.partial(BandwidthStats.circbw_event, bandwidths),
+                 functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
                                   stem.control.EventType.CIRC_BW)
 
   if config.CBTVERIFY_ENABLED:
     controller.add_event_listener(
-                 functools.partial(TimeoutStats.circ_event, timeouts),
+                 functools.partial(cbtverify.TimeoutStats.circ_event, timeouts),
                                   stem.control.EventType.CIRC)
     controller.add_event_listener(
-                 functools.partial(TimeoutStats.cbt_event, timeouts),
+                 functools.partial(cbtverify.TimeoutStats.cbt_event, timeouts),
                                   stem.control.EventType.BUILDTIMEOUT_SET)
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
   controller.add_event_listener(
-               functools.partial(VanguardState.new_consensus_event,
+               functools.partial(vanguards.VanguardState.new_consensus_event,
                                  state, controller),
                                 stem.control.EventType.NEWCONSENSUS)
 

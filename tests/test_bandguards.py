@@ -4,14 +4,13 @@ from math import floor, ceil
 
 from vanguards.bandguards import BandwidthStats
 
-from vanguards.config import BW_CIRC_MAX_HSDESC_BYTES
-from vanguards.config import BW_CIRC_MAX_BYTES
-from vanguards.config import BW_CIRC_MAX_AGE
-from vanguards.config import BW_CIRC_MAX_DROPPED_READ_RATIO
+from vanguards.bandguards import BW_CIRC_MAX_HSDESC_BYTES
+from vanguards.bandguards import BW_CIRC_MAX_BYTES
+from vanguards.bandguards import BW_CIRC_MAX_AGE
+from vanguards.bandguards import BW_CIRC_MAX_DROPPED_READ_RATIO
 
-from vanguards.bandguards import CELL_PAYLOAD_SIZE
-from vanguards.bandguards import CELL_DATA_RATE
-from vanguards.bandguards import CIRC_SETUP_BYTES
+from vanguards.bandguards import _CELL_PAYLOAD_SIZE
+from vanguards.bandguards import _CELL_DATA_RATE
 
 import vanguards.logger
 
@@ -90,13 +89,13 @@ def test_bwstats():
 
   read = 0
   while read < BW_CIRC_MAX_HSDESC_BYTES:
-    state.circbw_event(circ_bw(circ_id, CELL_PAYLOAD_SIZE, 0,
-                               CELL_DATA_RATE*CELL_PAYLOAD_SIZE, 0, 0, 0))
-    read += CELL_PAYLOAD_SIZE
+    state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
+                               _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
+    read += _CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
-  state.circbw_event(circ_bw(circ_id, CELL_PAYLOAD_SIZE, 0,
-                             CELL_DATA_RATE*CELL_PAYLOAD_SIZE, 0, 0, 0))
+  state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
+                             _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
   assert controller.closed_circ == str(circ_id)
 
   # - Max bytes exceed (read, write)
@@ -105,15 +104,15 @@ def test_bwstats():
   state.circ_event(built_circ(circ_id))
 
   read = 0
-  while read+2000*CELL_DATA_RATE*CELL_PAYLOAD_SIZE < BW_CIRC_MAX_BYTES:
-    state.circbw_event(circ_bw(circ_id, 1000*CELL_PAYLOAD_SIZE,
-                               1000*CELL_PAYLOAD_SIZE,
-                               1000*CELL_DATA_RATE*CELL_PAYLOAD_SIZE, 0, 0, 0))
-    read += 2000*CELL_DATA_RATE*CELL_PAYLOAD_SIZE
+  while read+2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE < BW_CIRC_MAX_BYTES:
+    state.circbw_event(circ_bw(circ_id, 1000*_CELL_PAYLOAD_SIZE,
+                               1000*_CELL_PAYLOAD_SIZE,
+                               1000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
+    read += 2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
-  state.circbw_event(circ_bw(circ_id, 2000*CELL_PAYLOAD_SIZE, 0,
-                             2000*CELL_DATA_RATE*CELL_PAYLOAD_SIZE, 0, 0, 0))
+  state.circbw_event(circ_bw(circ_id, 2000*_CELL_PAYLOAD_SIZE, 0,
+                             2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
   assert controller.closed_circ == str(circ_id)
 
   # - Frob circ.created_at to close circ (bw event)
@@ -132,25 +131,25 @@ def test_bwstats():
   state.circ_event(built_circ(circ_id))
 
   read = 0
-  valid_bytes = 500*CELL_DATA_RATE*(CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*0.5))/2
+  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*0.5))/2
   while read < BW_CIRC_MAX_BYTES/1000:
     state.circbw_event(circ_bw(circ_id,
-                               500*CELL_PAYLOAD_SIZE, 500*CELL_PAYLOAD_SIZE,
+                               500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
                                floor(valid_bytes), 0,
                                ceil(valid_bytes), 0))
-    read += 500*CELL_PAYLOAD_SIZE
+    read += 500*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
   read = 0
-  valid_bytes = 500*CELL_DATA_RATE*(CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*1.5))/2
+  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*1.5))/2
   while read < BW_CIRC_MAX_BYTES/1000:
-    state.circbw_event(circ_bw(circ_id, 500*CELL_PAYLOAD_SIZE, 500*CELL_PAYLOAD_SIZE,
+    state.circbw_event(circ_bw(circ_id, 500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
                                floor(valid_bytes), 0,
                                ceil(valid_bytes), 0))
-    read += 500*CELL_PAYLOAD_SIZE
+    read += 500*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
-  state.circbw_event(circ_bw(circ_id, 500*CELL_PAYLOAD_SIZE, 0,
+  state.circbw_event(circ_bw(circ_id, 500*_CELL_PAYLOAD_SIZE, 0,
                              floor(valid_bytes), 0,
                              ceil(valid_bytes), 0))
 

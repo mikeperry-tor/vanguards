@@ -9,18 +9,34 @@ import stem
 
 from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
 from .NodeSelection import FlagsRestriction
-from .rendguard import RendGuard
 from .logger import plog
 
-from . import config
 from . import control
+from . import rendguard
+
+################### Vanguard options ##################
+#
+NUM_LAYER1_GUARDS = 2 # 0 is Tor default
+NUM_LAYER2_GUARDS = 4
+NUM_LAYER3_GUARDS = 8
+
+# In days:
+LAYER1_LIFETIME = 0 # Use tor default
+
+# In hours
+MIN_LAYER2_LIFETIME = 24*1
+MAX_LAYER2_LIFETIME = 24*45
+
+# In hours
+MIN_LAYER3_LIFETIME = 1
+MAX_LAYER3_LIFETIME = 48
 
 try:
   xrange
 except NameError:
   xrange = range
 
-SEC_PER_HOUR = (60*60)
+_SEC_PER_HOUR = (60*60)
 
 class GuardNode:
   def __init__(self, idhex, chosen_at, expires_at):
@@ -35,10 +51,14 @@ class GuardNode:
     return self.idhex
 
 class VanguardState:
-  def __init__(self):
+  def __init__(self, state_file):
     self.layer2 = []
     self.layer3 = []
-    self.rendguard = RendGuard()
+    self.state_file = state_file
+    self.rendguard = rendguard.RendGuard()
+
+  def set_state_file(self, state_file):
+    self.state_file = state_file
 
   def sort_and_index_routers(self, routers):
     sorted_r = list(routers)
@@ -74,22 +94,22 @@ class VanguardState:
     self.consensus_update(routers, weights)
 
     self.configure_tor(controller)
-    self.write_to_file(open(config.STATE_FILE, "wb"))
+    self.write_to_file(open(self.state_file, "wb"))
 
   def configure_tor(self, controller):
-    if config.NUM_LAYER1_GUARDS:
-      controller.set_conf("NumEntryGuards", str(config.NUM_LAYER1_GUARDS))
+    if NUM_LAYER1_GUARDS:
+      controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
       try:
-        controller.set_conf("NumPrimaryGuards", str(config.NUM_LAYER1_GUARDS))
+        controller.set_conf("NumPrimaryGuards", str(NUM_LAYER1_GUARDS))
       except stem.InvalidArguments: # pre-0.3.4 tor
         pass
 
-    if config.LAYER1_LIFETIME:
-      controller.set_conf("GuardLifetime", str(config.LAYER1_LIFETIME)+" days")
+    if LAYER1_LIFETIME:
+      controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
 
     controller.set_conf("HSLayer2Nodes", self.layer2_guardset())
 
-    if config.NUM_LAYER3_GUARDS:
+    if NUM_LAYER3_GUARDS:
       controller.set_conf("HSLayer3Nodes", self.layer3_guardset())
 
     controller.save_conf()
@@ -99,7 +119,9 @@ class VanguardState:
 
   @staticmethod
   def read_from_file(infile):
-    return pickle.load(infile)
+    ret = pickle.load(open(infile, "rb"))
+    ret.set_state_file(infile)
+    return ret
 
   def layer2_guardset(self):
     return ",".join(map(lambda g: g.idhex, self.layer2))
@@ -114,10 +136,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(config.MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
-                                       config.MAX_LAYER2_LIFETIME*SEC_PER_HOUR),
-                        random.uniform(config.MIN_LAYER2_LIFETIME*SEC_PER_HOUR,
-                                       config.MAX_LAYER2_LIFETIME*SEC_PER_HOUR))
+    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME*_SEC_PER_HOUR,
+                                       MAX_LAYER2_LIFETIME*_SEC_PER_HOUR),
+                        random.uniform(MIN_LAYER2_LIFETIME*_SEC_PER_HOUR,
+                                       MAX_LAYER2_LIFETIME*_SEC_PER_HOUR))
     self.layer2.append(GuardNode(guard.fingerprint, now, expires))
 
   def add_new_layer3(self, generator):
@@ -126,10 +148,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(config.MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
-                                       config.MAX_LAYER3_LIFETIME*SEC_PER_HOUR),
-                        random.uniform(config.MIN_LAYER3_LIFETIME*SEC_PER_HOUR,
-                                       config.MAX_LAYER3_LIFETIME*SEC_PER_HOUR))
+    expires = now + max(random.uniform(MIN_LAYER3_LIFETIME*_SEC_PER_HOUR,
+                                       MAX_LAYER3_LIFETIME*_SEC_PER_HOUR),
+                        random.uniform(MIN_LAYER3_LIFETIME*_SEC_PER_HOUR,
+                                       MAX_LAYER3_LIFETIME*_SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires))
 
   def _remove_expired(self, remove_from, now):
@@ -145,14 +167,14 @@ class VanguardState:
     now = time.time()
 
     self._remove_expired(self.layer2, now)
-    self.layer2 = self.layer2[:config.NUM_LAYER2_GUARDS]
+    self.layer2 = self.layer2[:NUM_LAYER2_GUARDS]
     self._remove_expired(self.layer3, now)
-    self.layer3 = self.layer3[:config.NUM_LAYER2_GUARDS]
+    self.layer3 = self.layer3[:NUM_LAYER2_GUARDS]
 
-    while len(self.layer2) < config.NUM_LAYER2_GUARDS:
+    while len(self.layer2) < NUM_LAYER2_GUARDS:
       self.add_new_layer2(generator)
 
-    while len(self.layer3) < config.NUM_LAYER3_GUARDS:
+    while len(self.layer3) < NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
     plog("INFO", "New layer2 guards: "+self.layer2_guardset()+
@@ -171,8 +193,8 @@ class VanguardState:
     self._remove_down(self.layer2, dict_r)
     self._remove_down(self.layer3, dict_r)
 
-    while len(self.layer2) < config.NUM_LAYER2_GUARDS:
+    while len(self.layer2) < NUM_LAYER2_GUARDS:
       self.add_new_layer2(generator)
 
-    while len(self.layer3) < config.NUM_LAYER3_GUARDS:
+    while len(self.layer3) < NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)

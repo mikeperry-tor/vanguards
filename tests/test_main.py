@@ -1,6 +1,7 @@
 import sys
 import stem
 
+import stem.control
 import vanguards.control
 import vanguards.config
 import vanguards.main
@@ -9,6 +10,14 @@ class MockController:
   def __init__(self):
     self.alive = True
 
+  @staticmethod
+  def from_port(ip, port):
+    return MockController()
+
+  @staticmethod
+  def from_socket(infile):
+    return MockController()
+
   # FIXME: os.path.join
   def get_network_statuses(self):
     return list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
@@ -16,6 +25,12 @@ class MockController:
                       stem.descriptor.DocumentHandler.ENTRIES))
 
   def add_event_listener(self, func, ev):
+    pass
+
+  def authenticate(self):
+    pass
+
+  def get_version(self):
     pass
 
   def get_conf(self, key):
@@ -33,11 +48,11 @@ class MockController:
       self.alive = False
       return True
     return False
-def mock_connect():
-  return MockController()
-vanguards.control.connect = mock_connect
 
+
+stem.control.Controller = MockController
 vanguards.config.CBTVERIFY_ENABLED = True
+vanguards.config.STATE_FILE = "tests/state.mock"
 
 # TODO: Write config+argparsing tests
 def test_main():

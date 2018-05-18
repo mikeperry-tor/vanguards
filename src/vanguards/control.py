@@ -1,26 +1,27 @@
 import stem
+import sys
 
-from stem.control import Controller
-from . import config
 from .logger import plog
 
-def connect():
-  if config.CONTROL_SOCKET != None:
-    try:
-      controller = Controller.from_socket_file(config.CONTROL_SOCKET)
-    except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Socket at "\
-            +config.CONTROL_SOCKET+": %s" % exc)
-      sys.exit(1)
-  else:
-    try:
-      controller = Controller.from_port(config.CONTROL_HOST,
-                                        config.CONTROL_PORT)
-    except stem.SocketError as exc:
-      print("Unable to connect to Tor Control Port at "+config.CONTROL_HOST+":"
-             +str(config.CONTROL_PORT)+" %s" % exc)
-      sys.exit(1)
+def connect_to_socket(control_socket):
+  try:
+    controller = stem.control.Controller.from_socket_file(control_socket)
+  except stem.SocketError as exc:
+    print("Unable to connect to Tor Control Socket at "\
+          +control_socket+": %s" % exc)
+    sys.exit(1)
+  return controller
 
+def connect_to_ip(ip, port):
+  try:
+    controller = stem.control.Controller.from_port(ip, port)
+  except stem.SocketError as exc:
+    print("Unable to connect to Tor Control Port at "+ip+":"
+           +str(port)+" %s" % exc)
+    sys.exit(1)
+  return controller
+
+def authenticate_any(controller):
   try:
     controller.authenticate()
   except stem.connection.MissingPassword:
@@ -36,8 +37,6 @@ def connect():
     sys.exit(1)
 
   print("Tor is running version %s" % controller.get_version())
-
-  return controller
 
 def get_consensus_weights(consensus_filename):
   parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,

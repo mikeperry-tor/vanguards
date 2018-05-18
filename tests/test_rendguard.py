@@ -3,7 +3,7 @@ import time
 
 from stem.response import ControlMessage
 
-from vanguards.config import REND_USE_COUNT_START
+from vanguards.rendguard import REND_USE_COUNT_START
 from vanguards.rendguard import RendGuard
 
 try:
@@ -35,6 +35,8 @@ def test_usecounts():
 
   rg.circ_event(c, rend_circ(i))
   assert c.closed_circ == str(i)
+
+  # XXX: Verify we're getting the right rend node
 
   # TODO: test scaling..
   assert True

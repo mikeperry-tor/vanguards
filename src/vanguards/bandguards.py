@@ -4,15 +4,38 @@ import stem
 
 from .logger import plog
 
-from . import config
+############ BandGuard Options #################
+
+# Kill a circuit if this much received bandwidth is not application related.
+# This prevents an adversary from inserting cells that are silently dropped
+# into a circuit, to use as a timing side channel.
+BW_CIRC_MAX_DROPPED_READ_RATIO = 0.025
+
+# Kill a circuit if this many read+write bytes have been exceeded.
+# Very loud application circuits could be used to introduce timing
+# side channels.
+# Warning: if your application has large resources that cannot be
+# split up over multipe requests (such as large HTTP posts for eg:
+# securedrop), you must set this higher.
+BW_CIRC_MAX_BYTES = 100*1024*1024 # 100M
+
+# Kill circuits older than this many seconds.
+# Really old circuits will continue to use old guards after the TLS connection
+# has rotated, which means they will be alone on old TLS links. This lack
+# of multiplexing may allow an adversary to use netflow records to determine
+# the path through the Tor network to a hidden service.
+BW_CIRC_MAX_AGE = 24*60*60 # 1 day
+
+# Maximum size for an hsdesc fetch (including setup+get+dropped cells)
+BW_CIRC_MAX_HSDESC_BYTES = 30*1024 # 30k
 
 ############ Constants ###############
-CELL_PAYLOAD_SIZE = 509
-RELAY_HEADER_SIZE = 11
-CELL_DATA_RATE = (float(CELL_PAYLOAD_SIZE-RELAY_HEADER_SIZE)/CELL_PAYLOAD_SIZE)
+_CELL_PAYLOAD_SIZE = 509
+_RELAY_HEADER_SIZE = 11
+_CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
 # Every circuit takes about this much non-app data to set up. Subtract it from
 # the dropped bytes total (this should just be stream SENDMEs at this point).
-CIRC_SETUP_BYTES = CELL_PAYLOAD_SIZE*2
+_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*2
 
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
@@ -36,7 +59,7 @@ class BwCircuitStat:
            (self.delivered_read_bytes+self.overhead_read_bytes)
 
   def dropped_read_bytes_extra(self):
-    return max(CIRC_SETUP_BYTES,self.dropped_read_bytes())-CIRC_SETUP_BYTES
+    return max(_CIRC_SETUP_BYTES,self.dropped_read_bytes())-_CIRC_SETUP_BYTES
 
   def dropped_read_ratio(self):
     return self.dropped_read_bytes_extra()/self.read_bytes
@@ -81,15 +104,15 @@ class BandwidthStats:
       overhead_read = int(event.keyword_args["OVERHEAD_READ"])
       overhead_written = int(event.keyword_args["OVERHEAD_WRITTEN"])
 
-      if delivered_read + overhead_read > event.read*CELL_DATA_RATE:
+      if delivered_read + overhead_read > event.read*_CELL_DATA_RATE:
         plog("ERROR",
              "Application read data exceeds cell data:"+event.raw_content());
-      if delivered_written + overhead_written > event.written*CELL_DATA_RATE:
+      if delivered_written + overhead_written > event.written*_CELL_DATA_RATE:
         plog("ERROR",
              "Application written data exceeds cell data:"+event.raw_content());
 
-      self.circs[event.id].read_bytes += event.read*CELL_DATA_RATE
-      self.circs[event.id].sent_bytes += event.written*CELL_DATA_RATE
+      self.circs[event.id].read_bytes += event.read*_CELL_DATA_RATE
+      self.circs[event.id].sent_bytes += event.written*_CELL_DATA_RATE
 
       self.circs[event.id].delivered_read_bytes += delivered_read
       self.circs[event.id].delivered_sent_bytes += delivered_written
@@ -104,13 +127,13 @@ class BandwidthStats:
     # Unused except to expire circuits -- 1x/sec
     # FIXME: This is has needless copying on python 2..
     kill_circs = list(filter(
-                        lambda c: now - c.created_at > config.BW_CIRC_MAX_AGE,
+                        lambda c: now - c.created_at > BW_CIRC_MAX_AGE,
                         self.circs.values()))
     for circ in kill_circs:
       self.limit_exceeded("NOTICE", "BW_CIRC_MAX_AGE",
                           circ.circ_id,
                           now - circ.created_at,
-                          config.BW_CIRC_MAX_AGE)
+                          BW_CIRC_MAX_AGE)
       self.try_close_circuit(circ.circ_id)
 
   def try_close_circuit(self, circ_id):
@@ -122,26 +145,26 @@ class BandwidthStats:
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
-    if circ.read_bytes > CIRC_SETUP_BYTES \
-       and circ.dropped_read_ratio() > config.BW_CIRC_MAX_DROPPED_READ_RATIO:
+    if circ.read_bytes > _CIRC_SETUP_BYTES \
+       and circ.dropped_read_ratio() > BW_CIRC_MAX_DROPPED_READ_RATIO:
       self.limit_exceeded("WARN", "BW_CIRC_MAX_DROPPED_READ_RATIO",
                           circ.circ_id,
                           circ.dropped_read_ratio(),
-                          config.BW_CIRC_MAX_DROPPED_READ_RATIO,
+                          BW_CIRC_MAX_DROPPED_READ_RATIO,
                           "Total: "+str(circ.read_bytes)+\
                           ", dropped: "+str(circ.dropped_read_bytes()))
       self.try_close_circuit(circ.circ_id)
-    if circ.total_bytes() > config.BW_CIRC_MAX_BYTES:
+    if circ.total_bytes() > BW_CIRC_MAX_BYTES:
       self.limit_exceeded("NOTICE", "BW_CIRC_MAX_BYTES",
                           circ.circ_id,
                           circ.total_bytes(),
-                          config.BW_CIRC_MAX_BYTES)
+                          BW_CIRC_MAX_BYTES)
       self.try_close_circuit(circ.circ_id)
-    if circ.is_hsdir and circ.total_bytes() > config.BW_CIRC_MAX_HSDESC_BYTES:
+    if circ.is_hsdir and circ.total_bytes() > BW_CIRC_MAX_HSDESC_BYTES:
       self.limit_exceeded("WARN", "BW_CIRC_MAX_HSDESC_BYTES",
                           circ.circ_id,
                           circ.total_bytes(),
-                          config.BW_CIRC_MAX_HSDESC_BYTES)
+                          BW_CIRC_MAX_HSDESC_BYTES)
       self.try_close_circuit(circ.circ_id)
 
   def limit_exceeded(self, level, str_name, circ_id, cur_val, max_val, extra=""):

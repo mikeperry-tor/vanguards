@@ -5,14 +5,14 @@ from stem.response import ControlMessage
 from vanguards.control import get_consensus_weights
 
 from vanguards.vanguards import VanguardState
-from vanguards.vanguards import SEC_PER_HOUR
+from vanguards.vanguards import _SEC_PER_HOUR
 
-from vanguards.config import NUM_LAYER3_GUARDS
-from vanguards.config import NUM_LAYER2_GUARDS
-from vanguards.config import MIN_LAYER3_LIFETIME
-from vanguards.config import MAX_LAYER3_LIFETIME
-from vanguards.config import MIN_LAYER2_LIFETIME
-from vanguards.config import MAX_LAYER2_LIFETIME
+from vanguards.vanguards import NUM_LAYER3_GUARDS
+from vanguards.vanguards import NUM_LAYER2_GUARDS
+from vanguards.vanguards import MIN_LAYER3_LIFETIME
+from vanguards.vanguards import MAX_LAYER3_LIFETIME
+from vanguards.vanguards import MIN_LAYER2_LIFETIME
+from vanguards.vanguards import MAX_LAYER2_LIFETIME
 
 
 try:
@@ -62,12 +62,12 @@ def sanity_check(state):
   assert len(state.layer3) == NUM_LAYER3_GUARDS
 
   for g in state.layer2:
-    assert g.expires_at - g.chosen_at < MAX_LAYER2_LIFETIME*SEC_PER_HOUR
-    assert g.expires_at - g.chosen_at >= MIN_LAYER2_LIFETIME*SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at < MAX_LAYER2_LIFETIME*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at >= MIN_LAYER2_LIFETIME*_SEC_PER_HOUR
 
   for g in state.layer3:
-    assert g.expires_at - g.chosen_at < MAX_LAYER3_LIFETIME*SEC_PER_HOUR
-    assert g.expires_at - g.chosen_at >= MIN_LAYER3_LIFETIME*SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at < MAX_LAYER3_LIFETIME*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at >= MIN_LAYER3_LIFETIME*_SEC_PER_HOUR
 
 class MockController:
   def __init__(self):
@@ -90,7 +90,7 @@ class MockController:
     pass
 
 def test_new_vanguards():
-  state = VanguardState()
+  state = VanguardState("tests/state.mock2")
 
   # - Load a routerlist using stem
   routers = list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
@@ -110,7 +110,7 @@ def test_new_vanguards():
 
 def test_update_vanguards():
   controller = MockController()
-  state = VanguardState.read_from_file(open("tests/state.mock", "rb"))
+  state = VanguardState.read_from_file("tests/state.mock")
   sanity_check(state)
 
   state.new_consensus_event(controller, None)
