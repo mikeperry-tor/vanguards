@@ -10,6 +10,8 @@ from . import rendguard
 from . import vanguards
 from . import control
 
+from .logger import plog
+
 try:
   from configparser import SafeConfigParser, Error
 except ImportError:
@@ -47,6 +49,9 @@ def setup_options():
   parser.add_argument("--state", dest="state_file",
                       default=os.environ.get("VANGUARDS_STATE", STATE_FILE),
                       help="File to store vanguard state")
+
+  parser.add_argument("--generate_config", dest="write_file", type=str,
+                      help="Write config to a file after applying command args")
 
   parser.add_argument("--config", dest="config_file",
                       default=os.environ.get("VANGUARDS_CONFIG", CONFIG_FILE),
@@ -95,6 +100,13 @@ def setup_options():
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.bandguards_enabled,
        options.rendguard_enabled,options.cbtverify_enabled)
+
+  if options.write_file != None:
+    config = generate_config()
+    config.write(file(options.write_file, "w"))
+    plog("NOTICE", "Wrote config to "+options.write_file)
+    sys.exit(0)
+
   return options
 
 # Avoid a big messy dict of defaults. We already have them.
@@ -111,6 +123,22 @@ def get_options_for_module(config, module, section):
       val = getattr(module, param)
       setattr(module, param,
               get_option(config, section, param.lower(), val))
+
+def set_options_from_module(config, module, section):
+  config.add_section(section)
+  for param in dir(module):
+    if param.isupper() and param[0] != '_':
+      val = getattr(module, param)
+      config.set(section, param, str(val))
+
+def generate_config():
+  config = SafeConfigParser(allow_no_value=True)
+  set_options_from_module(config, sys.modules[__name__], "Global")
+  set_options_from_module(config, vanguards, "Vanguards")
+  set_options_from_module(config, bandguards, "Bandguards")
+  set_options_from_module(config, rendguard, "Rendguard")
+
+  return config
 
 def apply_config(config_file):
   config = SafeConfigParser(allow_no_value=True)

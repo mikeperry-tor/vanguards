@@ -2,6 +2,8 @@ import functools
 import stem
 import time
 
+import stem.response.events
+
 from . import control
 from . import rendguard
 from . import vanguards
