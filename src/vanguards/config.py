@@ -37,7 +37,7 @@ LOGLEVEL = "NOTICE"
 
 CONTROL_IP = "127.0.0.1"
 CONTROL_PORT = 9051
-CONTROL_SOCKET = None
+CONTROL_SOCKET = ""
 
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
@@ -90,7 +90,7 @@ def setup_options():
   # If the user specifies a config file, any values there should override
   # any previous config file options, but not options on the command line.
   if options.config_file != CONFIG_FILE:
-    if not vanguards.config.apply_config(options.config_file):
+    if not apply_config(options.config_file):
       plog("ERROR",
            "Specified config file "+options.config_file+ " can't be read!")
       sys.exit(1)
@@ -112,7 +112,7 @@ def setup_options():
 # Avoid a big messy dict of defaults. We already have them.
 def get_option(config, section, option, default):
   try:
-    ret = config.get(section, option)
+    ret = type(default)(config.get(section, option))
   except Error:
     return default
   return ret

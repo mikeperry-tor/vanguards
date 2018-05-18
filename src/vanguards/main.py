@@ -23,7 +23,7 @@ def main():
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
 
-  if config.CONTROL_SOCKET != None:
+  if config.CONTROL_SOCKET != "":
     controller = control.connect_to_socket(config.CONTROL_SOCKET)
   else:
     controller = control.connect_to_ip(config.CONTROL_IP, config.CONTROL_PORT)
