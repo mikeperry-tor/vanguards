@@ -6,6 +6,8 @@ import vanguards.control
 import vanguards.config
 import vanguards.main
 
+GOT_SOCKET = ""
+
 class MockController:
   def __init__(self):
     self.alive = True
@@ -15,7 +17,9 @@ class MockController:
     return MockController()
 
   @staticmethod
-  def from_socket(infile):
+  def from_socket_file(infile):
+    global GOT_SOCKET
+    GOT_SOCKET = infile
     return MockController()
 
   # FIXME: os.path.join
@@ -54,12 +58,28 @@ stem.control.Controller = MockController
 vanguards.config.CBTVERIFY_ENABLED = True
 vanguards.config.STATE_FILE = "tests/state.mock"
 
-# TODO: Write config+argparsing tests
 def test_main():
   sys.argv = ["test_main"]
   vanguards.main.main()
 
 # Test plan:
-# Test ability to override CONTROL_SOCKET 
+# - Test ability to override CONTROL_SOCKET
+#   - Via conf file
+#   - Via param
+#   - Verify override
+# TODO: - Test other params too?
 def test_configs():
-  pass
+  global GOT_SOCKET
+  sys.argv = ["test_main", "--control_socket", "arg.sock" ]
+  vanguards.main.main()
+  assert GOT_SOCKET == "arg.sock"
+
+  sys.argv = ["test_main", "--config", "tests/conf.mock"]
+  vanguards.main.main()
+  assert GOT_SOCKET == "conf.sock"
+
+  sys.argv = ["test_main", "--control_socket", "arg.sock", "--config", "tests/conf.mock" ]
+  EXPECTED_SOCKET = "arg.sock"
+  vanguards.main.main()
+  assert GOT_SOCKET == "arg.sock"
+

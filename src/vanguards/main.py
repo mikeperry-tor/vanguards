@@ -1,6 +1,7 @@
 import functools
 import stem
 import time
+import sys
 
 import stem.response.events
 
@@ -12,9 +13,21 @@ from . import cbtverify
 
 from . import config
 
+from .logger import plog
+
 def main():
   config.apply_config(config._CONFIG_FILE)
-  config.setup_options()
+  options = config.setup_options()
+
+  # If the user specifies a config file, any values there should override
+  # any previous config file options, but not options on the command line.
+  if options.config_file != config._CONFIG_FILE:
+    if not config.apply_config(options.config_file):
+      plog("ERROR",
+           "Specified config file "+options.config_file+ " can't be read!")
+      sys.exit(1)
+    options = config.setup_options()
+
   try:
     # TODO: Use tor's data directory.. or our own
     state = vanguards.VanguardState.read_from_file(config.STATE_FILE)

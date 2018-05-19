@@ -45,7 +45,7 @@ def setup_options():
 
   parser = argparse.ArgumentParser()
 
-  # XXX: add --loglevel and --generate-config
+  # XXX: add --loglevel
   parser.add_argument("--state", dest="state_file",
                       default=os.environ.get("VANGUARDS_STATE", STATE_FILE),
                       help="File to store vanguard state")
@@ -86,14 +86,6 @@ def setup_options():
   parser.set_defaults(cbtverify_enabled=ENABLE_CBTVERIFY)
 
   options = parser.parse_args()
-
-  # If the user specifies a config file, any values there should override
-  # any previous config file options, but not options on the command line.
-  if options.config_file != _CONFIG_FILE:
-    if not apply_config(options.config_file):
-      plog("ERROR",
-           "Specified config file "+options.config_file+ " can't be read!")
-      sys.exit(1)
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, ENABLE_BANDGUARDS,
    ENABLE_RENDGUARD, ENABLE_CBTVERIFY) = \
@@ -143,9 +135,8 @@ def generate_config():
 def apply_config(config_file):
   config = SafeConfigParser(allow_no_value=True)
 
-  # XXX: Bail if any issues here..
   try:
-    config.read(config_file)
+    config.readfp(open(config_file, "r"))
   except:
     return 0
 
