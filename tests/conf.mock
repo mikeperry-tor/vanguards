@@ -1,0 +1,2 @@
+[Global]
+control_socket = conf.sock
