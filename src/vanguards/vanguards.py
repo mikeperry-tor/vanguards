@@ -44,12 +44,6 @@ class GuardNode:
     self.chosen_at = chosen_at
     self.expires_at = expires_at
 
-  def __str__(self):
-    return self.idhex
-
-  def __repr__(self):
-    return self.idhex
-
 class VanguardState:
   def __init__(self, state_file):
     self.layer2 = []

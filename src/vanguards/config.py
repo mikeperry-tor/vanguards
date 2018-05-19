@@ -95,7 +95,7 @@ def setup_options():
 
   if options.write_file != None:
     config = generate_config()
-    config.write(file(options.write_file, "w"))
+    config.write(open(options.write_file, "w"))
     plog("NOTICE", "Wrote config to "+options.write_file)
     sys.exit(0)
 

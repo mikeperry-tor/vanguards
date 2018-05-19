@@ -55,7 +55,7 @@ class MockController:
 
 
 stem.control.Controller = MockController
-vanguards.config.CBTVERIFY_ENABLED = True
+vanguards.config.ENABLE_CBTVERIFY = True
 vanguards.config.STATE_FILE = "tests/state.mock"
 
 def test_main():
@@ -83,3 +83,10 @@ def test_configs():
   vanguards.main.main()
   assert GOT_SOCKET == "arg.sock"
 
+  # TODO: Check that this is sane
+  sys.argv = ["test_main", "--generate_config", "wrote.conf" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
