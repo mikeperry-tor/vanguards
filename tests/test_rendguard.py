@@ -3,7 +3,7 @@ import time
 
 from stem.response import ControlMessage
 
-from vanguards.rendguard import REND_USE_COUNT_START
+from vanguards.rendguard import REND_USE_GLOBAL_START_COUNT
 from vanguards.rendguard import RendGuard
 
 try:
@@ -28,7 +28,7 @@ def test_usecounts():
   c = MockController()
 
   i = 0
-  while i < REND_USE_COUNT_START:
+  while i < REND_USE_GLOBAL_START_COUNT:
     rg.circ_event(c, rend_circ(i))
     assert c.closed_circ == None
     i += 1

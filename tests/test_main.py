@@ -58,3 +58,8 @@ vanguards.config.STATE_FILE = "tests/state.mock"
 def test_main():
   sys.argv = ["test_main"]
   vanguards.main.main()
+
+# Test plan:
+# Test ability to override CONTROL_SOCKET 
+def test_configs():
+  pass

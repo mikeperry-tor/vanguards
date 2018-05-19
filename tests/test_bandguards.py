@@ -4,13 +4,16 @@ from math import floor, ceil
 
 from vanguards.bandguards import BandwidthStats
 
-from vanguards.bandguards import BW_CIRC_MAX_HSDESC_BYTES
-from vanguards.bandguards import BW_CIRC_MAX_BYTES
-from vanguards.bandguards import BW_CIRC_MAX_AGE
-from vanguards.bandguards import BW_CIRC_MAX_DROPPED_READ_RATIO
+from vanguards.bandguards import CIRC_MAX_HSDESC_KILOBYTES
+from vanguards.bandguards import CIRC_MAX_MEGABYTES
+from vanguards.bandguards import CIRC_MAX_AGE_HOURS
+from vanguards.bandguards import CIRC_MAX_DROPPED_BYTES_PERCENT
 
 from vanguards.bandguards import _CELL_PAYLOAD_SIZE
 from vanguards.bandguards import _CELL_DATA_RATE
+from vanguards.bandguards import _SECS_PER_HOUR
+from vanguards.bandguards import _BYTES_PER_KB
+from vanguards.bandguards import _BYTES_PER_MB
 
 import vanguards.logger
 
@@ -62,6 +65,7 @@ def circ_bw(circ_id, read, sent, delivered_read, delivered_sent,
 
 # Test plan:
 def test_bwstats():
+  global CIRC_MAX_DROPPED_BYTES_PERCENT
   controller = MockController()
   state = BandwidthStats(controller)
   controller.bwstats = state
@@ -88,7 +92,7 @@ def test_bwstats():
   state.circ_event(built_hsdir_circ(circ_id))
 
   read = 0
-  while read < BW_CIRC_MAX_HSDESC_BYTES:
+  while read < CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
     state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
                                _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
     read += _CELL_PAYLOAD_SIZE
@@ -104,7 +108,8 @@ def test_bwstats():
   state.circ_event(built_circ(circ_id))
 
   read = 0
-  while read+2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE < BW_CIRC_MAX_BYTES:
+  while read+2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE < \
+        CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
     state.circbw_event(circ_bw(circ_id, 1000*_CELL_PAYLOAD_SIZE,
                                1000*_CELL_PAYLOAD_SIZE,
                                1000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
@@ -121,18 +126,22 @@ def test_bwstats():
   state.circ_event(built_circ(circ_id))
   state.bw_event(None)
   assert controller.closed_circ == None
-  state.circs[str(circ_id)].created_at = time.time() - (1+BW_CIRC_MAX_AGE)
+  state.circs[str(circ_id)].created_at = time.time() - \
+    (1+CIRC_MAX_AGE_HOURS*_SECS_PER_HOUR)
   state.bw_event(None)
   assert controller.closed_circ == str(circ_id)
 
   # - Read ratio exceeded (but writes are ignored)
+  CIRC_MAX_DROPPED_BYTES_PERCENT /= 100.0
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_circ(circ_id))
 
+  # First read for a while (using the max as a token value) at a drop rate 50%
+  # below our limit
   read = 0
-  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*0.5))/2
-  while read < BW_CIRC_MAX_BYTES/1000:
+  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-CIRC_MAX_DROPPED_BYTES_PERCENT*0.5))/2
+  while read < CIRC_MAX_MEGABYTES*1000:
     state.circbw_event(circ_bw(circ_id,
                                500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
                                floor(valid_bytes), 0,
@@ -140,9 +149,11 @@ def test_bwstats():
     read += 500*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
+  # Now read for a while (using the max as a token value) at a drop rate 50%
+  # above our limit. This should bring us right up to our limit.
   read = 0
-  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-BW_CIRC_MAX_DROPPED_READ_RATIO*1.5))/2
-  while read < BW_CIRC_MAX_BYTES/1000:
+  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-CIRC_MAX_DROPPED_BYTES_PERCENT*1.5))/2
+  while read < CIRC_MAX_MEGABYTES*1000:
     state.circbw_event(circ_bw(circ_id, 500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
                                floor(valid_bytes), 0,
                                ceil(valid_bytes), 0))

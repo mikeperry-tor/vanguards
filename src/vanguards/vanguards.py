@@ -21,15 +21,15 @@ NUM_LAYER2_GUARDS = 4
 NUM_LAYER3_GUARDS = 8
 
 # In days:
-LAYER1_LIFETIME = 0 # Use tor default
+LAYER1_LIFETIME_DAYS = 0 # Use tor default
 
 # In hours
-MIN_LAYER2_LIFETIME = 24*1
-MAX_LAYER2_LIFETIME = 24*45
+MIN_LAYER2_LIFETIME_HOURS = 24*1
+MAX_LAYER2_LIFETIME_HOURS = 24*45
 
 # In hours
-MIN_LAYER3_LIFETIME = 1
-MAX_LAYER3_LIFETIME = 48
+MIN_LAYER3_LIFETIME_HOURS = 1
+MAX_LAYER3_LIFETIME_HOURS = 48
 
 try:
   xrange
@@ -104,8 +104,8 @@ class VanguardState:
       except stem.InvalidArguments: # pre-0.3.4 tor
         pass
 
-    if LAYER1_LIFETIME:
-      controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME)+" days")
+    if LAYER1_LIFETIME_DAYS > 0:
+      controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME_DAYS)+" days")
 
     controller.set_conf("HSLayer2Nodes", self.layer2_guardset())
 
@@ -136,10 +136,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME*_SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME*_SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER2_LIFETIME*_SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME*_SEC_PER_HOUR))
+    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR,
+                                       MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR),
+                        random.uniform(MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR,
+                                       MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR))
     self.layer2.append(GuardNode(guard.fingerprint, now, expires))
 
   def add_new_layer3(self, generator):
@@ -148,10 +148,10 @@ class VanguardState:
       guard = next(generator)
 
     now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER3_LIFETIME*_SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME*_SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER3_LIFETIME*_SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME*_SEC_PER_HOUR))
+    expires = now + max(random.uniform(MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR,
+                                       MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR),
+                        random.uniform(MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR,
+                                       MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires))
 
   def _remove_expired(self, remove_from, now):

@@ -9,10 +9,10 @@ from vanguards.vanguards import _SEC_PER_HOUR
 
 from vanguards.vanguards import NUM_LAYER3_GUARDS
 from vanguards.vanguards import NUM_LAYER2_GUARDS
-from vanguards.vanguards import MIN_LAYER3_LIFETIME
-from vanguards.vanguards import MAX_LAYER3_LIFETIME
-from vanguards.vanguards import MIN_LAYER2_LIFETIME
-from vanguards.vanguards import MAX_LAYER2_LIFETIME
+from vanguards.vanguards import MIN_LAYER3_LIFETIME_HOURS
+from vanguards.vanguards import MAX_LAYER3_LIFETIME_HOURS
+from vanguards.vanguards import MIN_LAYER2_LIFETIME_HOURS
+from vanguards.vanguards import MAX_LAYER2_LIFETIME_HOURS
 
 
 try:
@@ -62,12 +62,12 @@ def sanity_check(state):
   assert len(state.layer3) == NUM_LAYER3_GUARDS
 
   for g in state.layer2:
-    assert g.expires_at - g.chosen_at < MAX_LAYER2_LIFETIME*_SEC_PER_HOUR
-    assert g.expires_at - g.chosen_at >= MIN_LAYER2_LIFETIME*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at < MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at >= MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR
 
   for g in state.layer3:
-    assert g.expires_at - g.chosen_at < MAX_LAYER3_LIFETIME*_SEC_PER_HOUR
-    assert g.expires_at - g.chosen_at >= MIN_LAYER3_LIFETIME*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at < MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR
+    assert g.expires_at - g.chosen_at >= MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR
 
 class MockController:
   def __init__(self):

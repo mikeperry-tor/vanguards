@@ -9,7 +9,7 @@ from .logger import plog
 # Kill a circuit if this much received bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
-BW_CIRC_MAX_DROPPED_READ_RATIO = 0.025
+CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
 
 # Kill a circuit if this many read+write bytes have been exceeded.
 # Very loud application circuits could be used to introduce timing
@@ -17,17 +17,17 @@ BW_CIRC_MAX_DROPPED_READ_RATIO = 0.025
 # Warning: if your application has large resources that cannot be
 # split up over multipe requests (such as large HTTP posts for eg:
 # securedrop), you must set this higher.
-BW_CIRC_MAX_BYTES = 100*1024*1024 # 100M
+CIRC_MAX_MEGABYTES = 100
 
 # Kill circuits older than this many seconds.
 # Really old circuits will continue to use old guards after the TLS connection
 # has rotated, which means they will be alone on old TLS links. This lack
 # of multiplexing may allow an adversary to use netflow records to determine
 # the path through the Tor network to a hidden service.
-BW_CIRC_MAX_AGE = 24*60*60 # 1 day
+CIRC_MAX_AGE_HOURS = 24 # 1 day
 
 # Maximum size for an hsdesc fetch (including setup+get+dropped cells)
-BW_CIRC_MAX_HSDESC_BYTES = 30*1024 # 30k
+CIRC_MAX_HSDESC_KILOBYTES = 30
 
 ############ Constants ###############
 _CELL_PAYLOAD_SIZE = 509
@@ -36,6 +36,10 @@ _CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SI
 # Every circuit takes about this much non-app data to set up. Subtract it from
 # the dropped bytes total (this should just be stream SENDMEs at this point).
 _CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*2
+
+_SECS_PER_HOUR = 60*60
+_BYTES_PER_KB = 1024
+_BYTES_PER_MB = 1024*_BYTES_PER_KB
 
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
@@ -61,7 +65,7 @@ class BwCircuitStat:
   def dropped_read_bytes_extra(self):
     return max(_CIRC_SETUP_BYTES,self.dropped_read_bytes())-_CIRC_SETUP_BYTES
 
-  def dropped_read_ratio(self):
+  def dropped_read_rate(self):
     return self.dropped_read_bytes_extra()/self.read_bytes
 
 class BandwidthStats:
@@ -123,17 +127,21 @@ class BandwidthStats:
       self.check_circuit_limits(self.circs[event.id])
 
   def bw_event(self, event):
+    if CIRC_MAX_AGE_HOURS <= 0:
+      return
+
     now = time.time()
     # Unused except to expire circuits -- 1x/sec
     # FIXME: This is has needless copying on python 2..
     kill_circs = list(filter(
-                        lambda c: now - c.created_at > BW_CIRC_MAX_AGE,
+                        lambda c: now - c.created_at > \
+                                  CIRC_MAX_AGE_HOURS*_SECS_PER_HOUR,
                         self.circs.values()))
     for circ in kill_circs:
-      self.limit_exceeded("NOTICE", "BW_CIRC_MAX_AGE",
+      self.limit_exceeded("NOTICE", "CIRC_MAX_AGE_HOURS",
                           circ.circ_id,
                           now - circ.created_at,
-                          BW_CIRC_MAX_AGE)
+                          CIRC_MAX_AGE_HOURS)
       self.try_close_circuit(circ.circ_id)
 
   def try_close_circuit(self, circ_id):
@@ -146,25 +154,28 @@ class BandwidthStats:
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
     if circ.read_bytes > _CIRC_SETUP_BYTES \
-       and circ.dropped_read_ratio() > BW_CIRC_MAX_DROPPED_READ_RATIO:
-      self.limit_exceeded("WARN", "BW_CIRC_MAX_DROPPED_READ_RATIO",
+       and circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
+      self.limit_exceeded("WARN", "CIRC_MAX_DROPPED_PERCENT",
                           circ.circ_id,
-                          circ.dropped_read_ratio(),
-                          BW_CIRC_MAX_DROPPED_READ_RATIO,
+                          circ.dropped_read_rate(),
+                          CIRC_MAX_DROPPED_BYTES_PERCENT,
                           "Total: "+str(circ.read_bytes)+\
                           ", dropped: "+str(circ.dropped_read_bytes()))
       self.try_close_circuit(circ.circ_id)
-    if circ.total_bytes() > BW_CIRC_MAX_BYTES:
-      self.limit_exceeded("NOTICE", "BW_CIRC_MAX_BYTES",
+    if CIRC_MAX_MEGABYTES > 0 and \
+       circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
+      self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",
                           circ.circ_id,
                           circ.total_bytes(),
-                          BW_CIRC_MAX_BYTES)
+                          CIRC_MAX_MEGABYTES*_BYTES_PER_MB)
       self.try_close_circuit(circ.circ_id)
-    if circ.is_hsdir and circ.total_bytes() > BW_CIRC_MAX_HSDESC_BYTES:
-      self.limit_exceeded("WARN", "BW_CIRC_MAX_HSDESC_BYTES",
+    if CIRC_MAX_HSDESC_KILOBYTES > 0 and \
+       circ.is_hsdir and circ.total_bytes() > \
+       CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
+      self.limit_exceeded("WARN", "CIRC_MAX_HSDESC_KILOBYTES",
                           circ.circ_id,
                           circ.total_bytes(),
-                          BW_CIRC_MAX_HSDESC_BYTES)
+                          CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB)
       self.try_close_circuit(circ.circ_id)
 
   def limit_exceeded(self, level, str_name, circ_id, cur_val, max_val, extra=""):

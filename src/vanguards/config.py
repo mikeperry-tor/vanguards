@@ -20,17 +20,17 @@ except ImportError:
 ################# Global options ##################
 
 # Are use counts enabled?
-RENDGUARD_ENABLED=True
+ENABLE_RENDGUARD=True
 
-BANDGUARDS_ENABLED=True
+ENABLE_BANDGUARDS=True
 
-CBTVERIFY_ENABLED=False
+ENABLE_CBTVERIFY=False
 
 # State file location
 STATE_FILE = "vanguards.state"
 
 # Config file location
-CONFIG_FILE = "vanguards.conf"
+_CONFIG_FILE = "vanguards.conf"
 
 # Loglevel (XXX: use)
 LOGLEVEL = "NOTICE"
@@ -41,7 +41,7 @@ CONTROL_SOCKET = ""
 
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
-  global BANDGUARDS_ENABLED, RENDGUARD_ENABLED, CBTVERIFY_ENABLED
+  global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
 
   parser = argparse.ArgumentParser()
 
@@ -54,7 +54,7 @@ def setup_options():
                       help="Write config to a file after applying command args")
 
   parser.add_argument("--config", dest="config_file",
-                      default=os.environ.get("VANGUARDS_CONFIG", CONFIG_FILE),
+                      default=os.environ.get("VANGUARDS_CONFIG", _CONFIG_FILE),
                       help="Location of config file with more advanced settings")
 
   parser.add_argument("--control_ip", dest="control_ip", default=CONTROL_IP,
@@ -73,30 +73,30 @@ def setup_options():
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",
                       help="Disable circuit side channel checks (may help performance)")
-  parser.set_defaults(bandguards_eabled=BANDGUARDS_ENABLED)
+  parser.set_defaults(bandguards_eabled=ENABLE_BANDGUARDS)
 
   parser.add_argument("--disable_rendguard", dest="rendguard_enabled",
                       action="store_false",
                       help="Disable rendezvous misuse checks (may help performance)")
-  parser.set_defaults(rendguard_enabled=RENDGUARD_ENABLED)
+  parser.set_defaults(rendguard_enabled=ENABLE_RENDGUARD)
 
   parser.add_argument("--enable_cbtverify", dest="cbtverify_enabled",
                       action="store_true",
                       help="Enable Circuit Build Time monitoring")
-  parser.set_defaults(cbtverify_enabled=CBTVERIFY_ENABLED)
+  parser.set_defaults(cbtverify_enabled=ENABLE_CBTVERIFY)
 
   options = parser.parse_args()
 
   # If the user specifies a config file, any values there should override
   # any previous config file options, but not options on the command line.
-  if options.config_file != CONFIG_FILE:
+  if options.config_file != _CONFIG_FILE:
     if not apply_config(options.config_file):
       plog("ERROR",
            "Specified config file "+options.config_file+ " can't be read!")
       sys.exit(1)
 
-  (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, BANDGUARDS_ENABLED,
-   RENDGUARD_ENABLED, CBTVERIFY_ENABLED) = \
+  (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, ENABLE_BANDGUARDS,
+   ENABLE_RENDGUARD, ENABLE_CBTVERIFY) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.bandguards_enabled,
        options.rendguard_enabled,options.cbtverify_enabled)

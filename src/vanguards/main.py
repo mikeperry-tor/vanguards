@@ -13,7 +13,7 @@ from . import cbtverify
 from . import config
 
 def main():
-  config.apply_config(config.CONFIG_FILE)
+  config.apply_config(config._CONFIG_FILE)
   config.setup_options()
   try:
     # TODO: Use tor's data directory.. or our own
@@ -38,12 +38,12 @@ def main():
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
 
-  if config.RENDGUARD_ENABLED:
+  if config.ENABLE_RENDGUARD:
     controller.add_event_listener(
                  functools.partial(rendguard.RendGuard.circ_event,
                                    state.rendguard, controller),
                                   stem.control.EventType.CIRC)
-  if config.BANDGUARDS_ENABLED:
+  if config.ENABLE_BANDGUARDS:
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.circ_event, bandwidths),
                                   stem.control.EventType.CIRC)
@@ -54,7 +54,7 @@ def main():
                  functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
                                   stem.control.EventType.CIRC_BW)
 
-  if config.CBTVERIFY_ENABLED:
+  if config.ENABLE_CBTVERIFY:
     controller.add_event_listener(
                  functools.partial(cbtverify.TimeoutStats.circ_event, timeouts),
                                   stem.control.EventType.CIRC)
