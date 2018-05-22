@@ -17,7 +17,7 @@ from . import rendguard
 ################### Vanguard options ##################
 #
 NUM_LAYER1_GUARDS = 2 # 0 is Tor default
-NUM_LAYER2_GUARDS = 4
+NUM_LAYER2_GUARDS = 3
 NUM_LAYER3_GUARDS = 8
 
 # In days:
