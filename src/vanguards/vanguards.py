@@ -162,7 +162,7 @@ class VanguardState:
     self._remove_expired(self.layer2, now)
     self.layer2 = self.layer2[:NUM_LAYER2_GUARDS]
     self._remove_expired(self.layer3, now)
-    self.layer3 = self.layer3[:NUM_LAYER2_GUARDS]
+    self.layer3 = self.layer3[:NUM_LAYER3_GUARDS]
 
     while len(self.layer2) < NUM_LAYER2_GUARDS:
       self.add_new_layer2(generator)
