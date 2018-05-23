@@ -135,6 +135,7 @@ class VanguardState:
                         random.uniform(MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR,
                                        MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR))
     self.layer2.append(GuardNode(guard.fingerprint, now, expires))
+    plog("INFO", "New layer2 guard: "+guard.fingerprint)
 
   def add_new_layer3(self, generator):
     guard = next(generator)
@@ -147,17 +148,15 @@ class VanguardState:
                         random.uniform(MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR,
                                        MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR))
     self.layer3.append(GuardNode(guard.fingerprint, now, expires))
+    plog("INFO", "New layer3 guard: "+guard.fingerprint)
 
   def _remove_expired(self, remove_from, now):
     for g in list(remove_from):
       if g.expires_at < now:
         remove_from.remove(g)
+        plog("INFO", "Removing expired guard "+g.idhex)
 
   def replace_expired(self, generator):
-    plog("INFO", "Replacing any old vanguards. Current "+
-                 " layer2 guards: "+self.layer2_guardset()+
-                 " Current layer3 guards: "+self.layer3_guardset())
-
     now = time.time()
 
     self._remove_expired(self.layer2, now)
@@ -171,15 +170,13 @@ class VanguardState:
     while len(self.layer3) < NUM_LAYER3_GUARDS:
       self.add_new_layer3(generator)
 
-    plog("INFO", "New layer2 guards: "+self.layer2_guardset()+
-                 " New layer3 guards: "+self.layer3_guardset())
-
   def _remove_down(self, remove_from, dict_r):
     removed = []
     for g in list(remove_from):
       if not g.idhex in dict_r:
         remove_from.remove(g)
         removed.append(g)
+        plog("INFO", "Removing down guard "+g.idhex)
     return removed
 
   def replace_down_guards(self, dict_r, generator):

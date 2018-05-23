@@ -31,7 +31,10 @@ def main():
   try:
     # TODO: Use tor's data directory.. or our own
     state = vanguards.VanguardState.read_from_file(config.STATE_FILE)
-  except:
+    plog("INFO", "Current layer2 guards: "+state.layer2_guardset())
+    plog("INFO", "Current layer3 guards: "+state.layer3_guardset())
+  except Exception as e:
+    plog("NOTICE", "Creating new vanguard state file at: "+config.STATE_FILE)
     state = vanguards.VanguardState(config.STATE_FILE)
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
