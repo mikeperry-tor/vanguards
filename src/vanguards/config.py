@@ -10,6 +10,7 @@ from . import rendguard
 from . import vanguards
 from . import control
 
+from . import logger
 from .logger import plog
 
 try:
@@ -32,8 +33,11 @@ STATE_FILE = "vanguards.state"
 # Config file location
 _CONFIG_FILE = "vanguards.conf"
 
-# Loglevel (XXX: use)
+# Loglevel
 LOGLEVEL = "NOTICE"
+
+# Log to file instead of stdout
+LOGFILE = ""
 
 CONTROL_IP = "127.0.0.1"
 CONTROL_PORT = 9051
@@ -42,6 +46,7 @@ CONTROL_SOCKET = ""
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
+  global LOGLEVEL, LOGFILE
 
   parser = argparse.ArgumentParser()
 
@@ -52,6 +57,12 @@ def setup_options():
 
   parser.add_argument("--generate_config", dest="write_file", type=str,
                       help="Write config to a file after applying command args")
+
+  parser.add_argument("--loglevel", dest="loglevel", type=str,
+                      help="Log verbosity (DEBUG, INFO, NOTICE, WARN, or ERROR)")
+
+  parser.add_argument("--logfile", dest="logfile", type=str,
+                      help="Log to LOGFILE instead of stdout")
 
   parser.add_argument("--config", dest="config_file",
                       default=os.environ.get("VANGUARDS_CONFIG", _CONFIG_FILE),
@@ -92,6 +103,16 @@ def setup_options():
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.bandguards_enabled,
        options.rendguard_enabled,options.cbtverify_enabled)
+
+  if options.logfile != None:
+    LOGFILE = options.logfile
+
+  if LOGFILE != "":
+    logger.set_logfile(LOGFILE)
+
+  if options.loglevel != None:
+    LOGLEVEL = options.loglevel
+  logger.set_loglevel(LOGLEVEL)
 
   if options.write_file != None:
     config = generate_config()

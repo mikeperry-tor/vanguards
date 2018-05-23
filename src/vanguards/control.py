@@ -36,7 +36,7 @@ def authenticate_any(controller):
     print("Unable to authenticate: %s" % exc)
     sys.exit(1)
 
-  print("Tor is running version %s" % controller.get_version())
+  plog("NOTICE", "Connected to Tor version %s" % controller.get_version())
 
 def get_consensus_weights(consensus_filename):
   parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,
