@@ -123,7 +123,35 @@ def test_failures():
   # Cover unsupported Tor version
   THROW_SOCKET=False
   TOR_VERSION=stem.version.Version("0.3.3.5-rc-dev")
-  vanguards.main.main()
+  try:
+    vanguards.main.main()
+    assert True
+  except SystemExit:
+    assert False
+
+  # Test loglevel and log failure
+  sys.argv = ["test_main", "--loglevel", "INFOg" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  # Test loglevel and log failure
+  sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "/.invalid/diaf" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  # Test loglevel and log success
+  sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "valid" ]
+  try:
+    vanguards.main.main()
+    assert True
+  except SystemExit:
+    assert False
 
   # XXX: Test password auth (and password auth should warn to use cookie auth)
   # XXX: Test no auth (and no auth should warn to use cookie auth)
