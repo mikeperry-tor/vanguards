@@ -52,7 +52,7 @@ def main():
   else:
     controller = control.connect_to_ip(config.CONTROL_IP, config.CONTROL_PORT)
 
-  control.authenticate_any(controller)
+  control.authenticate_any(controller, config.CONTROL_PASS)
 
   state.new_consensus_event(controller, None)
   timeouts = cbtverify.TimeoutStats()

@@ -42,15 +42,15 @@ LOGFILE = ""
 CONTROL_IP = "127.0.0.1"
 CONTROL_PORT = 9051
 CONTROL_SOCKET = ""
+CONTROL_PASS = ""
 
 def setup_options():
-  global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, STATE_FILE
+  global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
   global LOGLEVEL, LOGFILE
 
   parser = argparse.ArgumentParser()
 
-  # XXX: add --loglevel
   parser.add_argument("--state", dest="state_file",
                       default=os.environ.get("VANGUARDS_STATE", STATE_FILE),
                       help="File to store vanguard state")
@@ -80,6 +80,9 @@ def setup_options():
                       default=CONTROL_SOCKET,
                       help="The Tor Control Socket path to connect to "+
                       "(default: "+str(CONTROL_SOCKET)+")")
+  parser.add_argument("--control_pass", dest="control_pass",
+                      default=CONTROL_PASS,
+                      help="The Tor Control Port password (optional) ")
 
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",
@@ -98,11 +101,12 @@ def setup_options():
 
   options = parser.parse_args()
 
-  (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, ENABLE_BANDGUARDS,
-   ENABLE_RENDGUARD, ENABLE_CBTVERIFY) = \
+  (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
+   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY) = \
       (options.state_file, options.control_ip, options.control_port,
-       options.control_socket, options.bandguards_enabled,
-       options.rendguard_enabled,options.cbtverify_enabled)
+       options.control_socket, options.control_pass,
+       options.bandguards_enabled, options.rendguard_enabled,
+       options.cbtverify_enabled)
 
   if options.logfile != None:
     LOGFILE = options.logfile

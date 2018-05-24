@@ -70,8 +70,8 @@ class VanguardState:
   def consensus_update(self, routers, weights):
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
     ng = BwWeightedGenerator(sorted_r,
-                       NodeRestrictionList([FlagsRestriction(["Fast", "Stable"],
-                                                             [])]),
+                       NodeRestrictionList([FlagsRestriction(["Fast", "Stable", "Valid"],
+                                                             ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
     gen = ng.generate()
     self.replace_down_guards(dict_r, gen)

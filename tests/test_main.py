@@ -1,5 +1,6 @@
 import sys
 import stem
+import getpass
 
 import stem.control
 import vanguards.control
@@ -7,7 +8,8 @@ import vanguards.config
 import vanguards.main
 
 GOT_SOCKET = ""
-THROW_SOCKET = None
+THROW_SOCKET = False
+THROW_AUTH = False
 TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
 
 class MockController:
@@ -16,7 +18,10 @@ class MockController:
 
   @staticmethod
   def from_port(ip, port):
-    return MockController()
+    if THROW_SOCKET:
+      raise stem.SocketError("Ded")
+    else:
+      return MockController()
 
   @staticmethod
   def from_socket_file(infile):
@@ -36,8 +41,13 @@ class MockController:
   def add_event_listener(self, func, ev):
     pass
 
-  def authenticate(self):
-    pass
+  def authenticate(self, password=None):
+    if THROW_AUTH:
+      raise stem.connection.AuthenticationFailure("Bad")
+    if password == None:
+      raise stem.connection.MissingPassword("Bad")
+    elif password != "foo":
+      raise stem.connection.PasswordAuthFailed("Bad")
 
   def get_version(self):
     return TOR_VERSION
@@ -58,10 +68,13 @@ class MockController:
       return True
     return False
 
-
 stem.control.Controller = MockController
 vanguards.config.ENABLE_CBTVERIFY = True
 vanguards.config.STATE_FILE = "tests/state.mock"
+
+def mock_getpass(msg):
+  return "foo"
+getpass.getpass = mock_getpass
 
 def test_main():
   sys.argv = ["test_main"]
@@ -97,8 +110,29 @@ def test_configs():
     assert True
 
 def test_failures():
-  global THROW_SOCKET
+  global THROW_SOCKET,THROW_AUTH
   global TOR_VERSION
+  # Test connection failures for socket
+  vanguards.config.CONTROL_SOCKET=""
+  sys.argv = ["test_main" ]
+  THROW_SOCKET=True
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+  THROW_SOCKET=False
+
+  # Test connection failures for socket+ file
+  sys.argv = ["test_main", "--control_socket", "None.conf" ]
+  THROW_SOCKET=True
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+  THROW_SOCKET=False
+
   # Test fail to read config file
   sys.argv = ["test_main", "--config", "None.conf" ]
   try:
@@ -111,17 +145,7 @@ def test_failures():
   sys.argv = ["test_main", "--state", "None.state" ]
   vanguards.main.main()
 
-  # Test connection failures for socket+ file
-  sys.argv = ["test_main", "--control_socket", "None.conf" ]
-  THROW_SOCKET=True
-  try:
-    vanguards.main.main()
-    assert False
-  except SystemExit:
-    assert True
-
   # Cover unsupported Tor version
-  THROW_SOCKET=False
   TOR_VERSION=stem.version.Version("0.3.3.5-rc-dev")
   try:
     vanguards.main.main()
@@ -129,7 +153,7 @@ def test_failures():
   except SystemExit:
     assert False
 
-  # Test loglevel and log failure
+  # Test loglevel failure
   sys.argv = ["test_main", "--loglevel", "INFOg" ]
   try:
     vanguards.main.main()
@@ -137,7 +161,7 @@ def test_failures():
   except SystemExit:
     assert True
 
-  # Test loglevel and log failure
+  # Test log failure
   sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "/.invalid/diaf" ]
   try:
     vanguards.main.main()
@@ -153,5 +177,19 @@ def test_failures():
   except SystemExit:
     assert False
 
-  # XXX: Test password auth (and password auth should warn to use cookie auth)
-  # XXX: Test no auth (and no auth should warn to use cookie auth)
+  # Test bad password auth:
+  THROW_AUTH=True
+  sys.argv = ["test_main"]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  THROW_AUTH=False
+  sys.argv = ["test_main", "--control_pass", "invalid" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True

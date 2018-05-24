@@ -103,7 +103,7 @@ class BwWeightedGenerator(NodeGenerator):
   def rebuild(self, sorted_r=None):
     NodeGenerator.rebuild(self, sorted_r)
     NodeGenerator.rewind(self)
-    # XXX: Use consensus param
+    # TODO: Use consensus param
     self.WEIGHT_SCALE = 10000.0
 
     self.node_weights = []
@@ -119,7 +119,6 @@ class BwWeightedGenerator(NodeGenerator):
     NodeGenerator.__init__(self, sorted_r, rstr_list)
 
   def generate(self):
-    # XXX: hrmm.. different termination condition?
     while True:
       choice_val = random.uniform(0, self.weight_total)
       choose_total = 0
@@ -129,8 +128,8 @@ class BwWeightedGenerator(NodeGenerator):
         choice_idx += 1
       yield self.rstr_routers[choice_idx-1]
 
-# XXX: FlagsRestriction: Uptime, capacity (NodeRestriction: always want)
-# XXX: Subnet16Restriction: Set restriction: at least one be different
-# XXX: FamilyRestriction: Set restriction: at least one must be different
+# FIXME: FlagsRestriction: Uptime, capacity (NodeRestriction: always want)
+# FIXME: Subnet16Restriction: Set restriction: at least one be different
+# FIXME: FamilyRestriction: Set restriction: at least one must be different
 
 

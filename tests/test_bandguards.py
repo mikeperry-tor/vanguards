@@ -37,6 +37,7 @@ class MockController:
   def close_circuit(self, circ_id):
     self.closed_circ = circ_id
     self.bwstats.circ_event(closed_circ(circ_id))
+    raise stem.InvalidRequest("Coverage")
 
 def built_circ(circ_id, purpose):
   s = "650 CIRC "+str(circ_id)+" BUILT $5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed,$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
@@ -126,11 +127,6 @@ def test_bwstats():
   state = BandwidthStats(controller)
   controller.bwstats = state
   circ_id = 1
-
-  # XXX: Test CIRC_MINOR HS_VANGUARDS transitions..
-  # XXX: Test unsupported Tor event
-  # XXX: Test <= 0 disables checks
-  # XXX: Test fail-to-close circuit (stem exception) and unify with control.py
 
   # - BUILT -> FAILED,CLOSED removed from map
   # - BUILT -> CLOSED removed from map

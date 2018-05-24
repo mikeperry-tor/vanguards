@@ -2,8 +2,10 @@ import stem
 import time
 
 from stem.response import ControlMessage
+
 from vanguards.control import get_consensus_weights
 
+import vanguards.vanguards
 from vanguards.vanguards import VanguardState
 from vanguards.vanguards import _SEC_PER_HOUR
 
@@ -13,7 +15,6 @@ from vanguards.vanguards import MIN_LAYER3_LIFETIME_HOURS
 from vanguards.vanguards import MAX_LAYER3_LIFETIME_HOURS
 from vanguards.vanguards import MIN_LAYER2_LIFETIME_HOURS
 from vanguards.vanguards import MAX_LAYER2_LIFETIME_HOURS
-
 
 try:
   xrange
@@ -84,7 +85,8 @@ class MockController:
       return "tests"
 
   def set_conf(self, key, val):
-    pass
+    if key == "NumPrimaryGuards":
+      raise stem.InvalidArguments()
 
   def save_conf(self):
     pass
@@ -110,6 +112,7 @@ def test_new_vanguards():
 
 def test_update_vanguards():
   controller = MockController()
+  vanguards.vanguards.LAYER1_LIFETIME_DAYS = 30
   state = VanguardState.read_from_file("tests/state.mock")
   sanity_check(state)
 

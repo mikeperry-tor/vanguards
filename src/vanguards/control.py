@@ -1,5 +1,6 @@
 import stem
 import sys
+import getpass
 
 from .logger import plog
 
@@ -21,14 +22,15 @@ def connect_to_ip(ip, port):
     sys.exit(1)
   return controller
 
-def authenticate_any(controller):
+def authenticate_any(controller, passwd=""):
   try:
     controller.authenticate()
   except stem.connection.MissingPassword:
-    pw = getpass.getpass("Controller password: ")
+    if passwd == "":
+      passwd = getpass.getpass("Controller password: ")
 
     try:
-      controller.authenticate(password = pw)
+      controller.authenticate(password=passwd)
     except stem.connection.PasswordAuthFailed:
       print("Unable to authenticate, password is incorrect")
       sys.exit(1)
