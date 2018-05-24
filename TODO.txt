@@ -1,17 +1,12 @@
 TODO items that should maybe go into the bug tracker
 
-* Test conf file vs params
 * Update README with conf information + new features
-* Do a DRY pass on the tests (factor control port stuff into module)
-* Fix logging system (esp rate limits)
-* Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
-* Provide an IncludeNodes feature
 * Version the pickled state file
-* Option for bandguards to apply to all circuits..or just service circs
-  * Or change the warning level emitted in each case
 * Make deb and pip packages
 * Write blog post
-* Have cbtverify warn if timeout is high? (50%)
-* Have cbtverify warn if failure due to guard destroy is high? (50%?)
+* Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
+* Provide an IncludeNodes feature
 * Investigate sharing vanguard state between multiple instances, for
   better use with onionshare.
+* Have cbtverify warn if timeout is high? (50%)
+* Have cbtverify warn if failure due to guard destroy is high? (50%?)
