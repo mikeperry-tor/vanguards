@@ -2,6 +2,8 @@
 import time
 import stem
 
+from . import control
+
 from .logger import plog
 
 ############ BandGuard Options #################
@@ -72,20 +74,20 @@ class BandwidthStats:
   def __init__(self, controller):
     self.controller = controller
     self.circs = {}
-    self.has_control_support = True
 
   def circ_event(self, event):
-    if not self.has_control_support: return
-    if event.status == stem.CircStatus.FAILED or \
-       event.status == stem.CircStatus.CLOSED:
+    # Sometimes circuits get multiple FAILED+CLOSED events,
+    # so we must check that first...
+    if (event.status == stem.CircStatus.FAILED or \
+       event.status == stem.CircStatus.CLOSED):
       if event.id in self.circs:
         plog("DEBUG", "Closed hs circ for "+event.raw_content())
         del self.circs[event.id]
-    else:
+    elif event.id not in self.circs:
       if event.hs_state or event.purpose[0:2] == "HS":
-        if event.id not in self.circs:
-          self.circs[event.id] = BwCircuitStat(event.id, 1)
-          plog("DEBUG", "Added hs circ for "+event.raw_content())
+        self.circs[event.id] = BwCircuitStat(event.id, 1)
+
+        # Handle direct build purpose settings
         if event.purpose[0:9] == "HS_CLIENT":
           self.circs[event.id].is_service = 0
         elif event.purpose[0:10] == "HS_SERVICE":
@@ -93,14 +95,24 @@ class BandwidthStats:
         if event.purpose == "HS_CLIENT_HSDIR" or \
            event.purpose == "HS_SERVICE_HSDIR":
           self.circs[event.id].is_hsdir = 1
+        plog("DEBUG", "Added hs circ for "+event.raw_content())
+
+
+  # We need CIRC_MINOR to determine client from service as well
+  # as recognize cannibalized HSDIR circs
+  def circ_minor_event(self, event):
+    if event.id not in self.circs:
+      return
+
+    if event.purpose[0:9] == "HS_CLIENT":
+      self.circs[event.id].is_service = 0
+    elif event.purpose[0:10] == "HS_SERVICE":
+      self.circs[event.id].is_service = 1
+    if event.purpose == "HS_CLIENT_HSDIR" or \
+       event.purpose == "HS_SERVICE_HSDIR":
+      self.circs[event.id].is_hsdir = 1
 
   def circbw_event(self, event):
-    if not self.has_control_support: return
-    if not "DELIVERED_READ" in event.keyword_args:
-      plog("NOTICE", "In order for bandwidth-based protections to be "+
-                     "enabled, you must use Tor 0.3.4.0-alpha or newer.")
-      self.has_control_support = False
-
     if event.id in self.circs:
       plog("DEBUG", event.raw_content())
       delivered_read = int(event.keyword_args["DELIVERED_READ"])
@@ -142,33 +154,31 @@ class BandwidthStats:
                           circ.circ_id,
                           now - circ.created_at,
                           CIRC_MAX_AGE_HOURS)
-      self.try_close_circuit(circ.circ_id)
-
-  def try_close_circuit(self, circ_id):
-    try:
-      self.controller.close_circuit(circ_id)
-      plog("NOTICE", "We force-closed circuit "+str(circ_id))
-    except stem.InvalidRequest as e:
-      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
+      control.try_close_circuit(self.controller, circ.circ_id)
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
     if circ.read_bytes > _CIRC_SETUP_BYTES \
        and circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
-      self.limit_exceeded("WARN", "CIRC_MAX_DROPPED_PERCENT",
+      # When clients hang up on streams before they close, this can result in
+      # dropped data from those now-invalid/unknown stream IDs. Servers should
+      # not do this. Hence warn for service case, notice for clients.
+      if circ.is_service: loglevel = "WARN"
+      else: loglevel = "NOTICE"
+      self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_BYTES_PERCENT",
                           circ.circ_id,
                           circ.dropped_read_rate(),
                           CIRC_MAX_DROPPED_BYTES_PERCENT,
                           "Total: "+str(circ.read_bytes)+\
                           ", dropped: "+str(circ.dropped_read_bytes()))
-      self.try_close_circuit(circ.circ_id)
+      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
       self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_MEGABYTES*_BYTES_PER_MB)
-      self.try_close_circuit(circ.circ_id)
+      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_HSDESC_KILOBYTES > 0 and \
        circ.is_hsdir and circ.total_bytes() > \
        CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
@@ -176,9 +186,8 @@ class BandwidthStats:
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB)
-      self.try_close_circuit(circ.circ_id)
+      control.try_close_circuit(self.controller, circ.circ_id)
 
   def limit_exceeded(self, level, str_name, circ_id, cur_val, max_val, extra=""):
-    # XXX: Rate limit this log
     plog(level, "Circ "+str(circ_id)+" exceeded "+str_name+": "+str(cur_val)+
                   " > "+str(max_val)+". "+extra)

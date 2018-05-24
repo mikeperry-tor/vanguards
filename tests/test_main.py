@@ -35,7 +35,7 @@ class MockController:
     pass
 
   def get_version(self):
-    pass
+    return stem.version.Version("0.3.3.5-rc-dev")
 
   def get_conf(self, key):
     if key == "DataDirectory":
@@ -90,3 +90,14 @@ def test_configs():
     assert False
   except SystemExit:
     assert True
+
+  # XXX: Test fail to read config file (and add better error reporting)
+
+  # XXX: Test fail to read state file
+
+
+# XXX: Test connection failures for socket+ file
+# XXX: Test password auth (and password auth should warn to use cookie auth)
+# XXX: Test no auth (and no auth should warn to use cookie auth)
+def test_failures():
+  pass

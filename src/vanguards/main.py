@@ -15,6 +15,8 @@ from . import config
 
 from .logger import plog
 
+_MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.0-alpha")
+
 def main():
   config.apply_config(config._CONFIG_FILE)
   options = config.setup_options()
@@ -66,9 +68,18 @@ def main():
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.bw_event, bandwidths),
                                   stem.control.EventType.BW)
-    controller.add_event_listener(
-                 functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
-                                  stem.control.EventType.CIRC_BW)
+    if controller.get_version() >= _MIN_TOR_VERSION_FOR_BW:
+      controller.add_event_listener(
+                   functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
+                                    stem.control.EventType.CIRC_BW)
+      controller.add_event_listener(
+                   functools.partial(bandguards.BandwidthStats.circ_minor_event, bandwidths),
+                                    stem.control.EventType.CIRC_MINOR)
+    else:
+      plog("NOTICE", "In order for bandwidth-based protections to be "+
+                      "enabled, you must use Tor 0.3.4.0-alpha or newer.")
+
+
 
   if config.ENABLE_CBTVERIFY:
     controller.add_event_listener(
