@@ -34,17 +34,10 @@ class FlagsRestriction(NodeRestriction):
       if f in router.flags: return False
     return True
 
-  def __str__(self):
-    return self.__class__.__name__+"("+str(self.mandatory)+","+str(self.forbidden)+")"
-
 class MetaNodeRestriction(NodeRestriction):
   """Interface for a NodeRestriction that is an expression consisting of
      multiple other NodeRestrictions"""
-  def add_restriction(self, rstr): raise NotImplemented()
-  # TODO: these should collapse the restriction and return a new
-  # instance for re-insertion (or None)
   def next_rstr(self): raise NotImplemented()
-  def del_restriction(self, RestrictionClass): raise NotImplemented()
 
 class NodeRestrictionList(MetaNodeRestriction):
   "Class to manage a list of NodeRestrictions"
@@ -58,27 +51,6 @@ class NodeRestrictionList(MetaNodeRestriction):
       if not rs.r_is_ok(r): return False
     return True
 
-  def add_restriction(self, restr):
-    "Add a NodeRestriction 'restr' to the list of restrictions"
-    self.restrictions.append(restr)
-
-  # TODO: This does not collapse meta restrictions..
-  def del_restriction(self, RestrictionClass):
-    """Remove all restrictions of type RestrictionClass from the list.
-       Does NOT inspect or collapse MetaNode Restrictions (though 
-       MetaRestrictions can be removed if RestrictionClass is 
-       MetaNodeRestriction)"""
-    self.restrictions = filter(
-        lambda r: not isinstance(r, RestrictionClass),
-          self.restrictions)
-
-  def clear(self):
-    """ Remove all restrictions """
-    self.restrictions = []
-
-  def __str__(self):
-    return self.__class__.__name__+"("+str(map(str, self.restrictions))+")"
-
 class NodeGenerator:
   "Interface for node generation"
   def __init__(self, sorted_r, rstr_list):
@@ -87,11 +59,6 @@ class NodeGenerator:
     self.rstr_list = rstr_list
     self.rebuild(sorted_r)
     self.rewind()
-
-  def reset_restriction(self, rstr_list):
-    "Reset the restriction list to a new list"
-    self.rstr_list = rstr_list
-    self.rebuild()
 
   def rewind(self):
     "Rewind the generator to the 'beginning'"
@@ -111,15 +78,6 @@ class NodeGenerator:
     if not self.rstr_routers:
       plog("NOTICE", "No routers left after restrictions applied: "+str(self.rstr_list))
       raise NoNodesRemain(str(self.rstr_list))
-
-  def mark_chosen(self, r):
-    """Mark a router as chosen: remove it from the list of routers
-     that can be returned in the future"""
-    self.routers.remove(r)
-
-  def all_chosen(self):
-    "Return true if all the routers have been marked as chosen"
-    return not self.routers
 
   def generate(self):
     "Return a python generator that yields routers according to the policy"
