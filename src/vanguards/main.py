@@ -18,15 +18,21 @@ from .logger import plog
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.0-alpha")
 
 def main():
-  config.apply_config(config._CONFIG_FILE)
+  try:
+    config.apply_config(config._CONFIG_FILE)
+  except:
+    pass # Default config can be absent.
   options = config.setup_options()
 
   # If the user specifies a config file, any values there should override
   # any previous config file options, but not options on the command line.
   if options.config_file != config._CONFIG_FILE:
-    if not config.apply_config(options.config_file):
+    try:
+      config.apply_config(options.config_file)
+    except Exception as e:
       plog("ERROR",
-           "Specified config file "+options.config_file+ " can't be read!")
+           "Specified config file "+options.config_file+\
+           " can't be read: "+str(e))
       sys.exit(1)
     options = config.setup_options()
 

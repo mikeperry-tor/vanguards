@@ -7,6 +7,8 @@ import vanguards.config
 import vanguards.main
 
 GOT_SOCKET = ""
+THROW_SOCKET = None
+TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
 
 class MockController:
   def __init__(self):
@@ -19,8 +21,11 @@ class MockController:
   @staticmethod
   def from_socket_file(infile):
     global GOT_SOCKET
-    GOT_SOCKET = infile
-    return MockController()
+    if THROW_SOCKET:
+      raise stem.SocketError("Ded")
+    else:
+      GOT_SOCKET = infile
+      return MockController()
 
   # FIXME: os.path.join
   def get_network_statuses(self):
@@ -35,7 +40,7 @@ class MockController:
     pass
 
   def get_version(self):
-    return stem.version.Version("0.3.3.5-rc-dev")
+    return TOR_VERSION
 
   def get_conf(self, key):
     if key == "DataDirectory":
@@ -91,13 +96,34 @@ def test_configs():
   except SystemExit:
     assert True
 
-  # XXX: Test fail to read config file (and add better error reporting)
-
-  # XXX: Test fail to read state file
-
-
-# XXX: Test connection failures for socket+ file
-# XXX: Test password auth (and password auth should warn to use cookie auth)
-# XXX: Test no auth (and no auth should warn to use cookie auth)
 def test_failures():
-  pass
+  global THROW_SOCKET
+  global TOR_VERSION
+  # Test fail to read config file
+  sys.argv = ["test_main", "--config", "None.conf" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  # Test fail to read state file
+  sys.argv = ["test_main", "--state", "None.state" ]
+  vanguards.main.main()
+
+  # Test connection failures for socket+ file
+  sys.argv = ["test_main", "--control_socket", "None.conf" ]
+  THROW_SOCKET=True
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  # Cover unsupported Tor version
+  THROW_SOCKET=False
+  TOR_VERSION=stem.version.Version("0.3.3.5-rc-dev")
+  vanguards.main.main()
+
+  # XXX: Test password auth (and password auth should warn to use cookie auth)
+  # XXX: Test no auth (and no auth should warn to use cookie auth)

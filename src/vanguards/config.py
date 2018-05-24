@@ -156,14 +156,9 @@ def generate_config():
 def apply_config(config_file):
   config = SafeConfigParser(allow_no_value=True)
 
-  try:
-    config.readfp(open(config_file, "r"))
-  except:
-    return 0
+  config.readfp(open(config_file, "r"))
 
   get_options_for_module(config, sys.modules[__name__], "Global")
   get_options_for_module(config, vanguards, "Vanguards")
   get_options_for_module(config, bandguards, "Bandguards")
   get_options_for_module(config, rendguard, "Rendguard")
-
-  return 1
