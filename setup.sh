@@ -28,11 +28,11 @@ then
 fi
 
 # 2. Initialize virtualenv
-if [ ! -f vanguardenv/bin/activate ]
+if [ ! -f ${DEST}/bin/activate ]
 then
-  virtualenv -p $SYS_PYTHON vanguardenv
+  virtualenv -p $SYS_PYTHON $DEST
 fi
-source vanguardenv/bin/activate
+source ${DEST}/bin/activate
 
 # 3. Install stem+setuptools
 pip install -r requirements.txt
@@ -45,5 +45,5 @@ $(basename $SYS_PYTHON) setup.py install
 echo
 echo "If we got this far, everything should be ready!"
 echo
-echo "Run 'source vanguardenv/bin/activate' to start the environment."
+echo "Run 'source ${DEST}/bin/activate' to start the environment."
 echo "Then run 'vanguards'"
