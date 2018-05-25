@@ -1,1 +1,2 @@
-stem==1.4.1b
+stem==1.5.4 \
+    --hash=sha256:3649133037ee186e80115650094a2fb2f60a23f006ebddab34d9039be9b2f7c8

@@ -26,7 +26,7 @@ setup(
     package_dir={'': 'src'},
     entry_points={
         "console_scripts": [
-            'vanguards = vanguards.vanguards:main',
+            'vanguards = vanguards.main:main',
         ]},
     description="Vanguards help guard you from getting vanned...",
     long_description=read('README.md'),
