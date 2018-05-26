@@ -41,6 +41,8 @@ def cbt():
 #  - Make builttimeout event
 def test_cbt():
   ts = TimeoutStats()
+  assert ts.timeout_rate_hs() == 0.0
+  assert ts.timeout_rate_all() == 0.0
 
   i = 0
   while i < 8:
@@ -90,3 +92,8 @@ def test_cbt():
   assert ts.timeout_rate_all() == 0.15
 
   ts.cbt_event(cbt())
+
+  # Cover double-launch:
+  i+=1
+  ts.circ_event(launched_hs_circ(i))
+  ts.circ_event(launched_hs_circ(i))
