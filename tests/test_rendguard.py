@@ -3,6 +3,7 @@ import time
 
 from stem.response import ControlMessage
 
+import vanguards.rendguard
 from vanguards.rendguard import REND_USE_GLOBAL_START_COUNT
 from vanguards.rendguard import REND_USE_SCALE_AT_COUNT
 from vanguards.rendguard import RendGuard
@@ -63,12 +64,17 @@ def test_usecounts():
     # Verify we're getting the right rend node
     assert rg.use_counts["7791CA6B67303ACE46C2B6F5211206B765948147"].used == i
 
+  # Test circuit closing functionality
+  c.closed_circ = None
   rg.circ_event(c, rend_circ(i))
   assert c.closed_circ == str(i)
 
   i += 1
+  vanguards.rendguard.REND_USE_CLOSE_CIRCUITS_ON_OVERUSE = False
+  c.closed_circ = None
   rg.circ_event(c, rend_circ(i))
-  assert c.closed_circ == str(i)
+  assert c.closed_circ == None
+  vanguards.rendguard.REND_USE_CLOSE_CIRCUITS_ON_OVERUSE = True
 
   # Test scaling
   state = VanguardState("tests/junk")

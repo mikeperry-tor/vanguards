@@ -17,6 +17,9 @@ REND_USE_RELAY_START_COUNT = 10
 # How many times more than its bandwidth must a relay be used?
 REND_USE_MAX_USE_TO_BW_RATIO = 2.0
 
+# Should we close circuits on rend point overuse?
+REND_USE_CLOSE_CIRCUITS_ON_OVERUSE = True
+
 try:
   xrange
 except NameError:
@@ -83,6 +86,7 @@ class RendGuard:
   def circ_event(self, controller, event):
     if event.status == "BUILT" and event.purpose == "HS_SERVICE_REND":
       if not self.valid_rend_use(event.path[-1][0]):
-        control.try_close_circuit(controller, event.id)
+        if REND_USE_CLOSE_CIRCUITS_ON_OVERUSE:
+           control.try_close_circuit(controller, event.id)
 
     plog("DEBUG", event.raw_content())
