@@ -14,7 +14,7 @@ mkdir -p $DEST
 # 1. Install python if needed
 if [ -z "$(which $SYS_PYTHON)" ]
 then
-  echo "We need pypy, pypy3 ,python3, or python2 to be in the path."
+  echo "We need pypy, pypy3, python3, or python2 to be in the path."
   echo "If you are on a Debian or Ubuntu system, you can try: "
   echo " sudo apt-get install pypy python-virtualenv"
   exit 1
@@ -36,8 +36,6 @@ source ${DEST}/bin/activate
 
 # 3. Install stem+setuptools
 pip install -r requirements.txt
-
-echo $SYS_PYTHON
 
 $(basename $SYS_PYTHON) setup.py install
 
