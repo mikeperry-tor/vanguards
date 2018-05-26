@@ -121,10 +121,15 @@ class VanguardState:
     if LAYER1_LIFETIME_DAYS > 0:
       controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME_DAYS)+" days")
 
-    controller.set_conf("HSLayer2Nodes", self.layer2_guardset())
+    try:
+      controller.set_conf("HSLayer2Nodes", self.layer2_guardset())
 
-    if NUM_LAYER3_GUARDS:
-      controller.set_conf("HSLayer3Nodes", self.layer3_guardset())
+      if NUM_LAYER3_GUARDS:
+        controller.set_conf("HSLayer3Nodes", self.layer3_guardset())
+    except stem.InvalidArguments:
+      plog("ERROR",
+           "Vanguards requires Tor 0.3.3.x (and ideally 0.3.4.x or newer).")
+      sys.exit(1)
 
     controller.save_conf()
 

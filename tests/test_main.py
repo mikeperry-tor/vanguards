@@ -12,6 +12,7 @@ GOT_SOCKET = ""
 THROW_SOCKET = False
 THROW_AUTH = False
 DATA_DIR = "tests"
+NO_HSLAYER = False
 TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
 DEFAULT_CONFIG=os.path.join("tests", "default.conf")
 
@@ -60,7 +61,8 @@ class MockController:
       return DATA_DIR
 
   def set_conf(self, key, val):
-    pass
+    if NO_HSLAYER and key == "HSLayer2Nodes":
+      raise stem.InvalidArguments("Bad")
 
   def save_conf(self):
     pass
@@ -116,7 +118,7 @@ def test_configs():
     assert True
 
 def test_failures():
-  global THROW_SOCKET,THROW_AUTH,DATA_DIR
+  global THROW_SOCKET,THROW_AUTH,DATA_DIR,NO_HSLAYER
   global TOR_VERSION
   # Test lack of failures
   vanguards.config.apply_config(DEFAULT_CONFIG)
@@ -189,7 +191,7 @@ def test_failures():
   except SystemExit:
     assert True
 
-  # Cover unsupported Tor version
+  # Cover partially unsupported Tor versions
   vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main" ]
   TOR_VERSION=stem.version.Version("0.3.3.5-rc-dev")
@@ -198,6 +200,18 @@ def test_failures():
     assert True
   except SystemExit:
     assert False
+
+  # Test fully unsupported Tor version
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  NO_HSLAYER=True
+  sys.argv = ["test_main" ]
+  TOR_VERSION=stem.version.Version("0.2.9.6")
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+  NO_HSLAYER=False
 
   # Test loglevel failure
   vanguards.config.apply_config(DEFAULT_CONFIG)
