@@ -70,102 +70,47 @@ configuration as well. See the Configuration section for more details.
 
 These limits (along with a reason for checking them) are as follows:
 
-1. Dropped Cell Rate
+1. ***Dropped Cell Rate***
 
-Back in 2014, the Tor network [was
-attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack)
-by Carnegie Mellon researchers ([likely on behalf of the
-FBI](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The
-attack used was to inject a side channel using a special packet type that
-could be recognized at both ends of a Tor circuit.
+ ...Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack used was to inject a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
 
-This side channel was fixed. Unfortunately, there are many other side channels
-available that allow an adversary to inject traffic that is ignored by a Tor
-client.
+ ...This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
-These remaining side channels are not as severe -- they cannot immediately be
-recognized by colluding relays using packet information alone, instead the
-adversary must rely on packet volume and timing information in order to
-recognize the signal. However, if the volume of injected traffic is large
-enough, it may still be possible to use statistical methods to recover a
-signal.
+ ...These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone, instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough, it may still be possible to use statistical methods to recover a signal.
 
-This option uses [new control port
-features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
-the quantity of traffic that Tor decides to drop from a circuit. If this
-quantity exceeds a specified percentage of the legitimate traffic (currently
-2.5%), then the bandguards subsystem will close the circuit and issue a
-warning log message.
+ ...This option uses [new control port features](https://trac.torproject.org/projects/tor/ticket/25903) to measure the quantity of traffic that Tor decides to drop from a circuit. If this quantity exceeds a specified percentage of the legitimate traffic (currently 2.5%), then the bandguards subsystem will close the circuit and issue a warning log message.
 
-Note that in normal operation, Tor onion service clients may still trigger
-this mechanism. This is because [clients can and do close connections before
-reading all of the data from
-them](https://trac.torproject.org/projects/tor/ticket/25573). Luckily on the
-service side, this does not happen. For this reason, on service-side circuits,
-the log message emitted is at WARN level. On the client side, it is at NOTICE
-level. In both cases, the circuit where this happens is closed by this script
-as soon as the limit is reached.
+ ...Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). Luckily on the service side, this does not happen. For this reason, on service-side circuits, the log message emitted is at WARN level. On the client side, it is at NOTICE level. In both cases, the circuit where this happens is closed by this script as soon as the limit is reached.
 
-2. Total Hidden Service Descriptor Bytes
+2. ***Total Hidden Service Descriptor Kilobytes***
 
-In addition to injecting relay cells that are dropped, it is also possible for
-relays to inject data at the end of an onion service descriptor, or in
-response to an onion service descriptor submission. Tor will continue reading
-this data prior to attempting to parse the descriptor or response, and these
-parsers can be convinced to discard additional data.
+ ...In addition to injecting relay cells that are dropped, it is also possible for relays to inject data at the end of an onion service descriptor, or in response to an onion service descriptor submission. Tor will continue reading this data prior to attempting to parse the descriptor or response, and these parsers can be convinced to discard additional data.
 
-The bandguards subsystem sets a limit on the total amount of traffic allowed
-on onion service descriptor circuits (currently 30 kilobytes). Once this limit
-is exceeded, the circuit is closed and a WARN log message is emitted by the
-bandguards subsystem.
+ ...The bandguards subsystem sets a limit on the total amount of traffic allowed on onion service descriptor circuits (currently 30 kilobytes). Once this limit is exceeded, the circuit is closed and a WARN log message is emitted by the bandguards subsystem.
 
-3. Total Circuit Byte
+3. ***Total Circuit Megabytes***
 
-A final vector for injecting side channel traffic is at the application layer.
+ ...A final vector for injecting side channel traffic is at the application layer.
 
-If an attacker wants to introduce a side channel towards an onion service,
-they can fetch large quantities of data from that service, or make large HTTP
-posts towards the service, in order to generate detectable traffic patterns.
+ ...If an attacker wants to introduce a side channel towards an onion service, they can fetch large quantities of data from that service, or make large HTTP posts towards the service, in order to generate detectable traffic patterns.
 
-These traffic patterns can be detected in the relay bandwidth statistics, as
-well as via netflow connection volume records. The Tor Project is currently
-working on various mechanisms to reduce the granularity of these statistics
-and has deployed padding mechanisms to limit the resolution of netflow traffic
-logs, but it is not clear that these mechanisms are sufficient to obscure
-large volumes of traffic.
+ ...These traffic patterns can be detected in the relay bandwidth statistics, as well as via netflow connection volume records. The Tor Project is currently working on various mechanisms to reduce the granularity of these statistics and has deployed padding mechanisms to limit the resolution of netflow traffic logs, but it is not clear that these mechanisms are sufficient to obscure large volumes of traffic.
 
-Because of this, the bandguards subsystem has the ability to limit the
-total number of bytes sent over a circuit before a WARN is emitted and the
-circuit is closed. This limit is currently 100MB.
+ ...Because of this, the bandguards subsystem has the ability to limit the total number of bytes sent over a circuit before a WARN is emitted and the circuit is closed. This limit is currently 100MB.
 
-If your service depends upon the ability of people to make large HTTP POSTs
-(such as a SecureDrop instance), you may need to raise this limit. HTTP GET
-activity should be able to resume such interrupted downloads.
+ ...If your service depends upon the ability of people to make large HTTP POSTs (such as a SecureDrop instance), you may need to raise this limit. HTTP GET activity should be able to resume such interrupted downloads.
 
-We believe that using two entry guards makes closing the circuit a worthwhile
-defense: if they are forced to split their side channel across multiple
-circuit, the adversary won't necessarily know which guard node each circuit
-traversed. This should increase the quantity of data they must inject in order
-to successfully mount this attack.
+ ...We believe that using two entry guards makes closing the circuit a worthwhile defense: if they are forced to split their side channel across multiple circuit, the adversary won't necessarily know which guard node each circuit traversed. This should increase the quantity of data they must inject in order to successfully mount this attack.
 
-4. Circuit Age
+4. ***Circuit Age***
 
-Since Tor currently rotates to new TLS connections every week, if a circuit
-stays open longer than this period, then it will cause its old TLS connection
-to be held open. After a while, the circuit will be one of the few things
-using that TLS connection. This lack of multiplexing makes traffic analysis
-easier.
+ ...Since Tor currently rotates to new TLS connections every week, if a circuit stays open longer than this period, then it will cause its old TLS connection to be held open. After a while, the circuit will be one of the few things using that TLS connection. This lack of multiplexing makes traffic analysis easier.
 
-For an example of an attack that makes use of this type of side channel, see
-[TorScan](https://eprint.iacr.org/2012/432.pdf). For additional discussion,
-see Tor Ticket [#22728](https://trac.torproject.org/projects/tor/ticket/22728)
-and [#23980](https://trac.torproject.org/projects/tor/ticket/23980).
+ ...For an example of an attack that makes use of this type of side channel, see [TorScan](https://eprint.iacr.org/2012/432.pdf). For additional discussion, see Tor Ticket [#22728](https://trac.torproject.org/projects/tor/ticket/22728) and [#23980](https://trac.torproject.org/projects/tor/ticket/23980).
 
-For this reason, if your onion service does not require long-lived circuits,
-it is wise to close any that hang around for long enough to approach this
-rotation time.
+ ...For this reason, if your onion service does not require long-lived circuits, it is wise to close any that hang around for long enough to approach this rotation time.
 
-The current default for maximum circuit age is 24 hours.
+ ...The current default for maximum circuit age is 24 hours.
 
 ## The Rendguard Subsystem
 
@@ -206,12 +151,12 @@ file specified in that variable.
 **CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
 3. Ensure Tor's DataDirectory can be read by the UNIX user or group that you
 intend to run this script under.
-4. [Install Stem](https://stem.torproject.org/download.html)
-5. Start Tor (and bring up your hidden service).
+4. Start Tor (and bring up your hidden service).
 
 ## Running this script directly from git
 
-1. Run **./src/vanguards.py**
+1. [Install Stem](https://stem.torproject.org/download.html)
+2. Run **./src/vanguards.py**
     * If your control port is on an alternate IP and Port, specify that with
 **--control_host _IP_ --control_port _portnum_**. If you are using a control
 socket, specify its full path with **--control_socket /path/to/socket**.
