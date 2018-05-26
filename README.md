@@ -14,7 +14,7 @@ possible.
 
 ## What sort of attacks remain?
 
-We believe that the most serious threat that onion services currently face is
+We believe that the most serious threat that v3 onion services currently face is
 guard discovery. A guard discovery attack enables an adversary to determine
 the guard node(s) that are in use by a Tor client and/or Tor onion service.
 
@@ -69,8 +69,8 @@ See the Configuration section of this README for config information.
 
 ## The Rendguard Subsystem
 
-The Rendguard system keeps track of how often various relays appear in the
-rendezvous point position on the service side of a hidden service. Since
+The Rendguard subsystem keeps track of how often various relays appear in the
+rendezvous point position on the service side of an onion service. Since
 rendezvous points are be chosen by the client that connects to a service, it
 is possible for clients to [choose malicious, colluding rendezvous
 points](https://www.ieee-security.org/TC/SP2013/papers/4977a080.pdf) to
@@ -156,11 +156,10 @@ file specified in that variable.
 ## Prerequisites
 
 1. Install Tor 0.3.3.6 or above (0.3.4.x+ to make use of Bandguards).
-2. Set either **ControlPort** or **ControlSocket**, and ideally also
-**CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
-3. Ensure Tor's DataDirectory can be read by the UNIX user or group that you
-intend to run this script under.
-4. Start Tor (and bring up your hidden service).
+2. Set either **ControlPort** or **ControlSocket**, and ideally also **CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
+3. Explicitly set **DataDirectory** in your torrc.
+4. Ensure Tor's DataDirectory can be read by the UNIX user or group that you intend to run this script under. (This script must directly parse the consensus).
+5. Start Tor (and bring up your onion service).
 
 ## Running this script directly from git
 
@@ -179,12 +178,12 @@ To install Stem and Vanguards into their own python virtualenv, run:
 2. source vanguardenv/bin/activate
 3. vanguards
 
-If you do not want your environment to be in the vanguardenv directory, you
+If you do not want your environment to be in the vanguardenv subdirectory, you
 can specify a different directory as an argument to setup.sh.
 
 ## PyPy and other performance tuning
 
-For very high traffic hidden services, we recommend using
+For very high traffic onion services, we recommend using
 [PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
 make this script run considerably faster.
 
