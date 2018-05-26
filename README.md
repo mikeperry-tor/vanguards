@@ -2,7 +2,7 @@
 
 Even after deployment of the [new v3 onion service
 protocol](https://gitweb.torproject.org/torspec.git/tree/proposals/224-rend-spec-ng.txt),
-the set of attacks facing onion services are wide-ranging, and still require
+the attacks facing onion services are wide-ranging, and still require
 more extensive modifications to fix in Tor-core itself.
 
 Because of this, we have decided to rapid-prototype these defenses in a
@@ -12,19 +12,21 @@ possible.
 
 ## What sort of attacks remain?
 
-We believe that the most serious threats that onion services face are guard
-discovery and the related traffic analysis attacks that enable an adversary to
-deanonymize an onion service (or onion service user) once they know the guard
-node.
+We believe that the most serious threat that onion services currently face is
+guard discovery. A guard discovery attack enables an adversary to determine
+the guard node(s) that are in use by a Tor client and/or Tor onion service.
 
-In brief, guard discovery attacks enable an adversary to determine the guard
-node(s) that are in use by a Tor client and/or Tor onion service.
+Once the guard node is known, traffic analysis attacks that can deanonymize an
+onion service (or onion service user) become easier.
 
 The most basic form of this attack is to make many connections to a Tor onion
 service, in order to force it to create circuits until one of the adversary's
-nodes is chosen for the middle hop next to the guard. At that point, a side
-channel is used to confirm that the node is in fact next to the actual onion
-service, leading to discovery of that onion service's guard node.
+nodes is chosen for the middle hop next to the guard. At that point, a traffic
+analysis side channel is used to confirm that the node is in fact next to the
+actual onion service, leading to discovery of that onion service's guard node.
+
+From that point, the guard node can be compromised, coerced, or surveilled to
+determine the actual IP address of the onion service or client.
 
 There are other vectors of attack, too. For more information (including the
 Tor Project's mitigation plans), see [the SponsorV
@@ -118,7 +120,7 @@ These limits (along with a reason for checking them) are as follows:
 
    We believe that using two entry guards makes closing the circuit a worthwhile defense: if they are forced to split their side channel across multiple circuit, the adversary won't necessarily know which guard node each circuit traversed. This should increase the quantity of data they must inject in order to successfully mount this attack.
 
-4. ***Circuit Age***
+4. ***Max Circuit Age***
 
    Since Tor currently rotates to new TLS connections every week, if a circuit stays open longer than this period, then it will cause its old TLS connection to be held open. After a while, the circuit will be one of the few things using that TLS connection. This lack of multiplexing makes traffic analysis easier.
 
