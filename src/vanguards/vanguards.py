@@ -32,11 +32,6 @@ MAX_LAYER2_LIFETIME_HOURS = 24*45
 MIN_LAYER3_LIFETIME_HOURS = 1
 MAX_LAYER3_LIFETIME_HOURS = 48
 
-try:
-  xrange
-except NameError:
-  xrange = range
-
 _SEC_PER_HOUR = (60*60)
 
 class GuardNode:
@@ -65,7 +60,6 @@ class VanguardState:
         # FIXME: Hrmm...
         r.measured = r.bandwidth
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
-    for i in xrange(len(sorted_r)): sorted_r[i].list_rank = i
     for r in sorted_r: dict_r[r.fingerprint] = r
     return (sorted_r, dict_r)
 

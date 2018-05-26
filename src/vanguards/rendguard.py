@@ -20,11 +20,6 @@ REND_USE_MAX_USE_TO_BW_RATIO = 2.0
 # Should we close circuits on rend point overuse?
 REND_USE_CLOSE_CIRCUITS_ON_OVERUSE = True
 
-try:
-  xrange
-except NameError:
-  xrange = range
-
 class RendUseCount:
   def __init__(self, idhex, weight):
     self.idhex = idhex
@@ -66,10 +61,13 @@ class RendGuard:
     for r in node_gen.sorted_r:
        self.use_counts[r.fingerprint] = RendUseCount(r.fingerprint, 0)
 
-    for i in xrange(len(node_gen.rstr_routers)):
+    i = 0
+    rlen = len(node_gen.rstr_routers)
+    while i < rlen:
       r = node_gen.rstr_routers[i]
       self.use_counts[r.fingerprint].weight = \
          node_gen.node_weights[i]/node_gen.weight_total
+      i+=1
 
     # Periodically we divide counts by two, to avoid overcounting
     # high-uptime relays vs old ones
