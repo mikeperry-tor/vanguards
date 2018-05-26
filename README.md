@@ -140,9 +140,11 @@ document](https://riseup.net/en/security/network-security/tor/onionservices-best
 
 # Configuration
 
-All of the above mechanisms can be tuned via a configuration file. [An example
+All of the above mechanisms can be tuned via a configuration file. Check out
+this documented [example
 configuration
 file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
+for more information.
 
 Configuration files can be specified on the command line. The default is to
 read **vanguards.conf** from the current working directory. If the environment
