@@ -4,6 +4,7 @@ import random
 import os
 import time
 import pickle
+import sys
 
 import stem
 
@@ -82,9 +83,22 @@ class VanguardState:
 
   def new_consensus_event(self, controller, event):
     routers = controller.get_network_statuses()
+
+    data_dir = controller.get_conf("DataDirectory")
+    if data_dir == None:
+      plog("ERROR",
+           "You must set a DataDirectory location option in your torrc.")
+      sys.exit(1)
+
     consensus_file = os.path.join(controller.get_conf("DataDirectory"),
                              "cached-microdesc-consensus")
-    weights = control.get_consensus_weights(consensus_file)
+
+    try:
+      weights = control.get_consensus_weights(consensus_file)
+    except IOError as e:
+      plog("ERROR", "Cannot read"+consensus_file+": "+str(e))
+      sys.exit(1)
+
     self.consensus_update(routers, weights)
 
     self.configure_tor(controller)

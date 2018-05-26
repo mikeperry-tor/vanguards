@@ -10,6 +10,7 @@ import vanguards.main
 GOT_SOCKET = ""
 THROW_SOCKET = False
 THROW_AUTH = False
+DATA_DIR = "tests"
 TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
 
 class MockController:
@@ -54,7 +55,7 @@ class MockController:
 
   def get_conf(self, key):
     if key == "DataDirectory":
-      return "tests"
+      return DATA_DIR
 
   def set_conf(self, key, val):
     pass
@@ -110,8 +111,35 @@ def test_configs():
     assert True
 
 def test_failures():
-  global THROW_SOCKET,THROW_AUTH
+  global THROW_SOCKET,THROW_AUTH,DATA_DIR
   global TOR_VERSION
+  # Test lack of failures
+  sys.argv = ["test_main" ]
+  try:
+    vanguards.main.main()
+    assert True
+  except SystemExit:
+    assert False
+
+  # Test empty DataDirectory
+  DATA_DIR = None
+  sys.argv = ["test_main" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+
+  # Test bogus DataDirectory
+  DATA_DIR = "/.bogus23"
+  sys.argv = ["test_main" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+  DATA_DIR = "tests"
+
   # Test connection failures for socket
   vanguards.config.CONTROL_SOCKET=""
   sys.argv = ["test_main" ]
