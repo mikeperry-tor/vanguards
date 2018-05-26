@@ -35,6 +35,7 @@ class RendGuard:
   def __init__(self):
     self.use_counts = {}
     self.total_use_counts = 0
+    self.pickle_revision = 1
 
   def valid_rend_use(self, r):
     if r not in self.use_counts:

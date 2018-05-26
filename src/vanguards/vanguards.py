@@ -51,6 +51,7 @@ class VanguardState:
     self.layer3 = []
     self.state_file = state_file
     self.rendguard = rendguard.RendGuard()
+    self.pickle_revision = 1
 
   def set_state_file(self, state_file):
     self.state_file = state_file
