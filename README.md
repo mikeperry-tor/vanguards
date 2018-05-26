@@ -1,18 +1,21 @@
 # Vanguards (and other guard discovery mitigations)
 
-This project is a prototype of the [Tor Mesh Vanguards
-Proposal](https://github.com/asn-d6/torspec/blob/mesh-vanguards-squashed/proposals/xxx-mesh-vanguards.txt).
+Even after deployment of the [new v3 onion service
+protocol](https://gitweb.torproject.org/torspec.git/tree/proposals/224-rend-spec-ng.txt),
+the set of attacks facing onion services are wide-ranging, and still require
+more extensive modifications to fix in Tor-core itself.
 
-We created this prototype to enable us to rapidly test different parameters of
-that proposal for performance. We also hope that it will be useful for people
-who run onion services that require high security.
+Because of this, we have decided to rapid-prototype these defenses in a
+controller script in order to make them available ahead of their official
+Tor-core release, for onion services that require high security as soon as
+possible.
 
-The set of attacks facing onion services are still wide-ranging, and will
-require extensive modifications to fix in Tor-core itself. Because of this, we
-have decided to use this project to make these defenses available in a
-controller script ahead of their official Tor-core release.
+## What sort of attacks remain?
 
-## What are guard discovery attacks?
+We believe that the most serious threats that onion services face are guard
+discovery and the related traffic analysis attacks that enable an adversary to
+deanonymize an onion service (or onion service user) once they know the guard
+node.
 
 In brief, guard discovery attacks enable an adversary to determine the guard
 node(s) that are in use by a Tor client and/or Tor onion service.
@@ -37,7 +40,7 @@ library](https://stem.torproject.org/) to connect to a Tor control port
 listening on port 9051 (or on an alternate user-specified port, or UNIX file
 system socket).
 
-It has three defense subsystems: Vanguards, Bandguards, and Rendguard.
+It has three defense subsystems: Vanguards, Rendguard, and Bandguards.
 
 All three subsystems apply to both service-side and client-side onion service
 activity, but **NOT** to any client traffic that exits the Tor network to the
@@ -59,6 +62,19 @@ times for each set, can be specified as config file parameters. The subsystem
 currently uses 2 entry guards, 3 layer2 guards, and 8 layer3 guards.
 
 See the Configuration section of this README for config information.
+
+## The Rendguard Subsystem
+
+The Rendguard system keeps track of how often various relays appear in the
+rendezvous point position on the service side of a hidden service. Since
+rendezvous points are be chosen by the client that connects to a service, it
+is possible for clients to [choose malicious, colluding rendezvous
+points](https://www.ieee-security.org/TC/SP2013/papers/4977a080.pdf) to
+help them mount guard discovery and other attacks. 
+
+This subsystem emits warnings and optionally closes the circuit when a
+rendezvous point is chosen more than a 2X multiple of its consensus bandwidth
+weight. 
 
 ## The Bandguards Subsystem
 
@@ -111,19 +127,6 @@ These limits (along with a reason for checking them) are as follows:
    For this reason, if your onion service does not require long-lived circuits, it is wise to close any that hang around for long enough to approach this rotation time.
 
    The current default for maximum circuit age is 24 hours.
-
-## The Rendguard Subsystem
-
-The Rendguard system keeps track of how often various relays appear in the
-rendezvous point position on the service side of a hidden service. Since
-rendezvous points are be chosen by the client that connects to a service, it
-is possible for clients to [choose malicious, colluding rendezvous
-points](https://www.ieee-security.org/TC/SP2013/papers/4977a080.pdf) to
-help them mount guard discovery and other attacks. 
-
-This subsystem emits warnings and optionally closes the circuit when a
-rendezvous point is chosen more than a 2X multiple of its consensus bandwidth
-weight. 
 
 ## Is this all I need to stay safe?
 
