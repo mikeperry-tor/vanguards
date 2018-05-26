@@ -1,7 +1,6 @@
 TODO items that should maybe go into the bug tracker
 
-* Update README with conf information + new features
-* Version the pickled state file
+* Finish XXX sections of README
 * Make deb and pip packages
 * Write blog post
 * Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
