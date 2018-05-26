@@ -41,7 +41,7 @@ setup(
     keywords='tor',
     install_requires=[
         'setuptools',
-        'stem>=1.2.2',
+        'stem==1.5.4',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',
