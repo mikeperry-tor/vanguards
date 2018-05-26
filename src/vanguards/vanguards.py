@@ -97,13 +97,18 @@ class VanguardState:
     try:
       weights = control.get_consensus_weights(consensus_file)
     except IOError as e:
-      plog("ERROR", "Cannot read"+consensus_file+": "+str(e))
+      plog("ERROR", "Cannot read "+consensus_file+": "+str(e))
       sys.exit(1)
 
     self.consensus_update(routers, weights)
 
     self.configure_tor(controller)
-    self.write_to_file(open(self.state_file, "wb"))
+    try:
+      self.write_to_file(open(self.state_file, "wb"))
+    except IOError as e:
+      plog("ERROR", "Cannot write state to "+self.state_file+": "+str(e))
+      sys.exit(1)
+
 
   def configure_tor(self, controller):
     if NUM_LAYER1_GUARDS:

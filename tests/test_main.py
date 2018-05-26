@@ -1,6 +1,7 @@
 import sys
 import stem
 import getpass
+import os
 
 import stem.control
 import vanguards.control
@@ -12,6 +13,7 @@ THROW_SOCKET = False
 THROW_AUTH = False
 DATA_DIR = "tests"
 TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
+DEFAULT_CONFIG=os.path.join("tests", "default.conf")
 
 class MockController:
   def __init__(self):
@@ -93,16 +95,19 @@ def test_configs():
   vanguards.main.main()
   assert GOT_SOCKET == "arg.sock"
 
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--config", "tests/conf.mock"]
   vanguards.main.main()
   assert GOT_SOCKET == "conf.sock"
 
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--control_socket", "arg.sock", "--config", "tests/conf.mock" ]
   EXPECTED_SOCKET = "arg.sock"
   vanguards.main.main()
   assert GOT_SOCKET == "arg.sock"
 
   # TODO: Check that this is sane
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--generate_config", "wrote.conf" ]
   try:
     vanguards.main.main()
@@ -114,6 +119,7 @@ def test_failures():
   global THROW_SOCKET,THROW_AUTH,DATA_DIR
   global TOR_VERSION
   # Test lack of failures
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main" ]
   try:
     vanguards.main.main()
@@ -122,6 +128,7 @@ def test_failures():
     assert False
 
   # Test empty DataDirectory
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   DATA_DIR = None
   sys.argv = ["test_main" ]
   try:
@@ -131,6 +138,7 @@ def test_failures():
     assert True
 
   # Test bogus DataDirectory
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   DATA_DIR = "/.bogus23"
   sys.argv = ["test_main" ]
   try:
@@ -141,6 +149,7 @@ def test_failures():
   DATA_DIR = "tests"
 
   # Test connection failures for socket
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   vanguards.config.CONTROL_SOCKET=""
   sys.argv = ["test_main" ]
   THROW_SOCKET=True
@@ -152,6 +161,7 @@ def test_failures():
   THROW_SOCKET=False
 
   # Test connection failures for socket+ file
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--control_socket", "None.conf" ]
   THROW_SOCKET=True
   try:
@@ -162,6 +172,7 @@ def test_failures():
   THROW_SOCKET=False
 
   # Test fail to read config file
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--config", "None.conf" ]
   try:
     vanguards.main.main()
@@ -170,10 +181,17 @@ def test_failures():
     assert True
 
   # Test fail to read state file
-  sys.argv = ["test_main", "--state", "None.state" ]
-  vanguards.main.main()
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main", "--state", "/.bogus/None.state" ]
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
 
   # Cover unsupported Tor version
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main" ]
   TOR_VERSION=stem.version.Version("0.3.3.5-rc-dev")
   try:
     vanguards.main.main()
@@ -182,6 +200,7 @@ def test_failures():
     assert False
 
   # Test loglevel failure
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--loglevel", "INFOg" ]
   try:
     vanguards.main.main()
@@ -190,6 +209,7 @@ def test_failures():
     assert True
 
   # Test log failure
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "/.invalid/diaf" ]
   try:
     vanguards.main.main()
@@ -198,6 +218,7 @@ def test_failures():
     assert True
 
   # Test loglevel and log success
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "valid" ]
   try:
     vanguards.main.main()
@@ -206,6 +227,7 @@ def test_failures():
     assert False
 
   # Test bad password auth:
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   THROW_AUTH=True
   sys.argv = ["test_main"]
   try:
@@ -214,6 +236,7 @@ def test_failures():
   except SystemExit:
     assert True
 
+  vanguards.config.apply_config(DEFAULT_CONFIG)
   THROW_AUTH=False
   sys.argv = ["test_main", "--control_pass", "invalid" ]
   try:
