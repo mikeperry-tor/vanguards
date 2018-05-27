@@ -65,7 +65,7 @@ class MockController:
       raise stem.InvalidArguments("Bad")
 
   def save_conf(self):
-    pass
+    raise stem.OperationFailed("Bad")
 
   def is_alive(self):
     if self.alive:

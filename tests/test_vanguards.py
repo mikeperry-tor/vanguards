@@ -89,7 +89,7 @@ class MockController:
       raise stem.InvalidArguments()
 
   def save_conf(self):
-    pass
+    raise stem.OperationFailed("Bad")
 
 def test_new_vanguards():
   state = VanguardState("tests/state.mock2")

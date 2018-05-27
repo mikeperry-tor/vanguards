@@ -125,7 +125,12 @@ class VanguardState:
            "Vanguards requires Tor 0.3.3.x (and ideally 0.3.4.x or newer).")
       sys.exit(1)
 
-    controller.save_conf()
+    # This is not a fatal error. Things like onionperf use stdin for conf
+    # files. Maybe other stuff too. But let the user know.
+    try:
+      controller.save_conf()
+    except stem.OperationFailed as e:
+      plog("NOTICE", "Tor can't save its own config file: "+str(e))
 
   def write_to_file(self, outfile):
     return pickle.dump(self, outfile)
