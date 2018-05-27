@@ -112,6 +112,8 @@ class BandwidthStats:
        event.purpose == "HS_SERVICE_HSDIR":
       self.circs[event.id].is_hsdir = 1
 
+    plog("DEBUG", event.raw_content())
+
   def circbw_event(self, event):
     if event.id in self.circs:
       plog("DEBUG", event.raw_content())
