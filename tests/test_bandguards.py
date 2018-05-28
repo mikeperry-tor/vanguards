@@ -116,7 +116,7 @@ def check_ratio(state, controller, circ_id):
     read += 500*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
-  state.circbw_event(circ_bw(circ_id, 500*_CELL_PAYLOAD_SIZE, 0,
+  state.circbw_event(circ_bw(circ_id, 510*_CELL_PAYLOAD_SIZE, 0,
                              floor(valid_bytes), 0,
                              ceil(valid_bytes), 0))
 

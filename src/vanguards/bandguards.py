@@ -37,7 +37,9 @@ _RELAY_HEADER_SIZE = 11
 _CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
 # Every circuit takes about this much non-app data to set up. Subtract it from
 # the dropped bytes total (this should just be stream SENDMEs at this point).
-_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*2
+# If one end hangs up on a stream right after sending its data, then there
+# can be up to 10 SENDME cells in flight on the stream.
+_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*10
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
