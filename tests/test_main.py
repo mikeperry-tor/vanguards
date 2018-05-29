@@ -13,7 +13,7 @@ THROW_SOCKET = False
 THROW_AUTH = False
 DATA_DIR = "tests"
 NO_HSLAYER = False
-TOR_VERSION = stem.version.Version("0.3.4.0-alpha")
+TOR_VERSION = stem.version.Version("0.3.4.1-alpha")
 DEFAULT_CONFIG=os.path.join("tests", "default.conf")
 
 class MockController:

@@ -15,7 +15,7 @@ from . import config
 
 from .logger import plog
 
-_MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.0-alpha")
+_MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.1-alpha")
 
 def main():
   try:
