@@ -171,7 +171,7 @@ class BandwidthStats:
       else: loglevel = "NOTICE"
       self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_BYTES_PERCENT",
                           circ.circ_id,
-                          circ.dropped_read_rate(),
+                          circ.dropped_read_rate()*100.0,
                           CIRC_MAX_DROPPED_BYTES_PERCENT,
                           "Total: "+str(circ.read_bytes)+\
                           ", dropped: "+str(circ.dropped_read_bytes()))
