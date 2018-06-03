@@ -96,7 +96,12 @@ These limits (along with a reason for checking them) are as follows:
 
    This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
-   These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone, instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough, it may still be possible to use statistical methods to recover a signal.
+  These remaining side channels are not as severe -- they cannot immediately
+be recognized by colluding relays using packet information alone, instead the
+adversary must rely on packet volume and timing information in order to
+recognize the signal. However, if the volume of injected traffic is large
+enough or other conditions are right, [it may still be
+possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
 
    This option uses [new control port features](https://trac.torproject.org/projects/tor/ticket/25903) to measure the quantity of traffic that Tor decides to drop from a circuit. If this quantity exceeds a specified percentage of the legitimate traffic (currently 2.5%), then the bandguards subsystem will close the circuit and issue a warning log message.
 
