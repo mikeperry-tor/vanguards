@@ -59,7 +59,7 @@ and HSLayer3Nodes.
 
 Each of these options is assigned its own set of nodes, which are rotated
 based on the randomized selection algorithm specified in [the Mesh Vanguards
-Proposal](https://github.com/asn-d6/torspec/blob/mesh-vanguards-squashed/proposals/xxx-mesh-vanguards.txt).
+Proposal](https://gitweb.torproject.org/torspec.git/tree/proposals/292-mesh-vanguards.txt).
 
 The number of nodes in each of these sets, as well as the ranges on rotation
 times for each set, can be specified as config file parameters. The subsystem
@@ -71,14 +71,14 @@ See the Configuration section of this README for config information.
 
 The Rendguard subsystem keeps track of how often various relays appear in the
 rendezvous point position on the service side of an onion service. Since
-rendezvous points are be chosen by the client that connects to a service, it
+rendezvous points are chosen by the client that connects to a service, it
 is possible for clients to [choose malicious, colluding rendezvous
 points](https://www.ieee-security.org/TC/SP2013/papers/4977a080.pdf) to
-help them mount guard discovery and other attacks. 
+help them mount guard discovery and other attacks.
 
 This subsystem emits warnings and optionally closes the circuit when a
 rendezvous point is chosen more than a 2X multiple of its consensus bandwidth
-weight. 
+weight.
 
 ## The Bandguards Subsystem
 
@@ -92,7 +92,7 @@ These limits (along with a reason for checking them) are as follows:
 
 1. ***Dropped Cell Rate***
 
-   Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack used was to inject a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
+   Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI)](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack used was to inject a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
 
    This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
