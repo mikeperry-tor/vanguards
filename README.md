@@ -114,13 +114,13 @@ These limits (along with a reason for checking them) are as follows:
 
    If an attacker wants to introduce a side channel towards an onion service, they can fetch large quantities of data from that service, or make large HTTP posts towards the service, in order to generate detectable traffic patterns.
 
-   These traffic patterns can be detected in the relay bandwidth statistics, as well as via netflow connection volume records. The Tor Project is currently working on various mechanisms to reduce the granularity of these statistics and has deployed padding mechanisms to limit the resolution of netflow traffic logs, but it is not clear that these mechanisms are sufficient to obscure large volumes of traffic.
+   These traffic patterns can be detected in Tor's public relay bandwidth statistics, as well as via netflow connection volume records. The Tor Project is currently working on various mechanisms to reduce the granularity of these statistics and has deployed padding mechanisms to limit the resolution of netflow traffic logs, but it is not clear that these mechanisms are sufficient to obscure very large volumes of traffic.
 
    Because of this, the bandguards subsystem has the ability to limit the total number of bytes sent over a circuit before a WARN is emitted and the circuit is closed. This limit is currently 100MB.
 
-   If your service depends upon the ability of people to make large HTTP POSTs (such as a SecureDrop instance), you may need to raise this limit. HTTP GET activity should be able to resume such interrupted downloads.
+   If your service depends upon the ability of people to make large HTTP POSTs (such as a SecureDrop instance), you may need to raise this limit, or set it to 0 to disable it entirely. HTTP GET activity should be able to resume such interrupted downloads.
 
-   We believe that using two entry guards makes closing the circuit a worthwhile defense: if they are forced to split their side channel across multiple circuit, the adversary won't necessarily know which guard node each circuit traversed. This should increase the quantity of data they must inject in order to successfully mount this attack.
+   We believe that using two entry guards makes closing the circuit a worthwhile defense: if the adversary is forced to split their side channel across multiple circuit, they won't necessarily know which guard node each circuit traversed. This should increase the quantity of data they must inject in order to successfully mount this attack.
 
 4. ***Max Circuit Age***
 
