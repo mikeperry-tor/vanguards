@@ -155,7 +155,7 @@ file specified in that variable.
 
 ## Prerequisites
 
-1. Install Tor 0.3.3.6 or above (0.3.4.x+ to make use of Bandguards).
+1. Install Tor 0.3.3.6 or above (0.3.4.4+ to make use of Bandguards).
 2. Set either **ControlPort** or **ControlSocket**, and ideally also **CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
 3. Explicitly set **DataDirectory** in your torrc.
 4. Ensure Tor's DataDirectory can be read by the UNIX user or group that you intend to run this script under. (This script must directly parse the consensus).
