@@ -122,7 +122,7 @@ a 10 cell circuit setup overhead, and 0% after that), then the bandguards subsys
 
    Because of this, the bandguards subsystem has the ability to limit the
 total number of bytes sent over a circuit before a WARN is emitted and the
-circuit is closed.  This limit is currently set to -1 (which means unlimited).
+circuit is closed.  This limit is currently set to 0 (which means unlimited).
 If you know a reasonable bound for the amount of data your application or
 service should send on a circuit, be sure to set it to that value.
 

@@ -20,7 +20,7 @@ CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
 # split up over multipe requests (such as large HTTP posts for eg:
 # securedrop, or sharing large files via onionshare), you must set
 # this high enough for those uploads not to get truncated!
-CIRC_MAX_MEGABYTES = -1
+CIRC_MAX_MEGABYTES = 0
 
 # Kill circuits older than this many seconds.
 # Really old circuits will continue to use old guards after the TLS connection
