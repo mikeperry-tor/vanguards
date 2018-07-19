@@ -123,6 +123,7 @@ def check_ratio(state, controller, circ_id):
 # Test plan:
 def test_bwstats():
   global CIRC_MAX_DROPPED_BYTES_PERCENT
+  global CIRC_MAX_MEGABYTES
   controller = MockController()
   state = BandwidthStats(controller)
   controller.bwstats = state
@@ -178,6 +179,8 @@ def test_bwstats():
   # - Max bytes exceed (read, write)
   circ_id += 1
   controller.closed_circ = None
+  vanguards.bandguards.CIRC_MAX_MEGABYTES = 100
+  CIRC_MAX_MEGABYTES = 100
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   check_maxbytes(state, controller, circ_id)
   assert controller.closed_circ == str(circ_id)
@@ -217,6 +220,8 @@ def test_bwstats():
   assert controller.closed_circ == None
 
   # - Read ratio exceeded (but writes are ignored)
+  CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
+  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
   CIRC_MAX_DROPPED_BYTES_PERCENT /= 100.0
   circ_id += 1
   controller.closed_circ = None
@@ -234,6 +239,16 @@ def test_bwstats():
 
   # - Read ratio disabled
   circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 100.0
+  check_ratio(state, controller, circ_id)
+  assert controller.closed_circ == None
+  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = CIRC_MAX_DROPPED_BYTES_PERCENT*100
+
+  # - Read ratio set to 0 but there still is overhead.
+  circ_id += 1
+  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
   controller.closed_circ = None
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 100.0
