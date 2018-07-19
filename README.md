@@ -98,7 +98,11 @@ These limits (along with a reason for checking them) are as follows:
 
    These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone, instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough or other conditions are right, [it may still be possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
 
-   This option uses [new control port features](https://trac.torproject.org/projects/tor/ticket/25903) to measure the quantity of traffic that Tor decides to drop from a circuit. If this quantity exceeds a specified percentage of the legitimate traffic (currently 2.5%), then the bandguards subsystem will close the circuit and issue a warning log message.
+   This option uses [new control port
+features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
+the quantity of traffic that Tor decides to drop from a circuit. If this
+quantity exceeds a specified percentage of the legitimate traffic (currently
+a 10 cell circuit setup overhead, and 0% after that), then the bandguards subsystem will close the circuit and issue a warning log message.
 
    Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). Luckily on the service side, this does not happen. For this reason, on service-side circuits, the log message emitted is at WARN level. On the client side, it is at NOTICE level. In both cases, the circuit where this happens is closed by this script as soon as the limit is reached.
 
@@ -116,11 +120,22 @@ These limits (along with a reason for checking them) are as follows:
 
    These traffic patterns can be detected in Tor's public relay bandwidth statistics, as well as via netflow connection volume records. The Tor Project is currently working on various mechanisms to reduce the granularity of these statistics and has deployed padding mechanisms to limit the resolution of netflow traffic logs, but it is not clear that these mechanisms are sufficient to obscure very large volumes of traffic.
 
-   Because of this, the bandguards subsystem has the ability to limit the total number of bytes sent over a circuit before a WARN is emitted and the circuit is closed. This limit is currently 100MB.
+   Because of this, the bandguards subsystem has the ability to limit the
+total number of bytes sent over a circuit before a WARN is emitted and the
+circuit is closed.  This limit is currently set to -1 (which means unlimited).
+If you know a reasonable bound for the amount of data your application or
+service should send on a circuit, be sure to set it to that value.
 
-   If your service depends upon the ability of people to make large HTTP POSTs (such as a SecureDrop instance), you may need to raise this limit, or set it to 0 to disable it entirely. HTTP GET activity should be able to resume such interrupted downloads.
+   **If your service or application depends upon the ability of people to make
+very very large transfers (such as OnionShare, or a SecureDrop instance), you
+should keep this disabled, or at best, set it to multiple gigabytes.**
 
-   We believe that using two entry guards makes closing the circuit a worthwhile defense: if the adversary is forced to split their side channel across multiple circuit, they won't necessarily know which guard node each circuit traversed. This should increase the quantity of data they must inject in order to successfully mount this attack.
+   We believe that using two entry guards makes closing the circuit a
+worthwhile defense for applications where it is possible to use it. If the
+adversary is forced to split their side channel across multiple circuits, they
+won't necessarily know which guard node each circuit traversed. This should
+increase the quantity of data they must inject in order to successfully mount
+this attack (and by more than just a factor of two, because of this uncertainty).
 
 4. ***Max Circuit Age***
 

@@ -11,15 +11,16 @@ from .logger import plog
 # Kill a circuit if this much received bandwidth is not application related.
 # This prevents an adversary from inserting cells that are silently dropped
 # into a circuit, to use as a timing side channel.
-CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
+CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
 
 # Kill a circuit if this many read+write bytes have been exceeded.
 # Very loud application circuits could be used to introduce timing
 # side channels.
 # Warning: if your application has large resources that cannot be
 # split up over multipe requests (such as large HTTP posts for eg:
-# securedrop), you must set this higher.
-CIRC_MAX_MEGABYTES = 100
+# securedrop, or sharing large files via onionshare), you must set
+# this high enough for those uploads not to get truncated!
+CIRC_MAX_MEGABYTES = -1
 
 # Kill circuits older than this many seconds.
 # Really old circuits will continue to use old guards after the TLS connection
@@ -35,10 +36,10 @@ CIRC_MAX_HSDESC_KILOBYTES = 30
 _CELL_PAYLOAD_SIZE = 509
 _RELAY_HEADER_SIZE = 11
 _CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
-# Every circuit takes about this much non-app data to set up. Subtract it from
-# the dropped bytes total (this should just be stream SENDMEs at this point).
+# This is the number of SENDME cells that can be in flight at a given time.
 # If one end hangs up on a stream right after sending its data, then there
-# can be up to 10 SENDME cells in flight on the stream.
+# can be up to 10 SENDME cells in flight on the stream. They will arrive
+# on an unknown stream-id at the other end, after the hangup.
 _CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*10
 
 _SECS_PER_HOUR = 60*60
