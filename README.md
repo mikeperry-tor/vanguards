@@ -25,7 +25,8 @@ The most basic form of this attack is to make many connections to a Tor onion
 service, in order to force it to create circuits until one of the adversary's
 nodes is chosen for the middle hop next to the guard. At that point, a traffic
 analysis side channel is used to confirm that the node is in fact next to the
-actual onion service, leading to discovery of that onion service's guard node.
+onion service's guard node, leading to discovery of that onion service's guard
+node.
 
 From that point, the guard node can be compromised, coerced, or surveilled to
 determine the actual IP address of the onion service or client.
@@ -180,8 +181,8 @@ file specified in that variable.
 
 ## Running this script directly from git
 
-**This is the safest option to use, since it avoids allowing pip and/or
-virtualenv from downloading packages from PYPI without verification.**
+**This is the safest option to use, since it avoids having pip and/or
+virtualenv download packages from PYPI without verification.**
 
 0. Retrieve this repository and optionally verify a signed git version tag.
 1. [Install Stem](https://stem.torproject.org/download.html)
@@ -220,33 +221,6 @@ latest release via pip, do:
 torsocks pip install vanguards
 ```
 
-## Performance Tuning
-
-For very high traffic onion services, we recommend using
-[PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
-make this script run considerably faster.
-
-The easiest way to use PyPy is to do **sudo apt-get install pypy** or
-equivalent before running **./setup.sh** as per above. The setup script will
-then see that pypy is installed, and use it by default in the resulting
-virtualenv.
-
-To switch to pypy after running **setup.sh**, simply remove the vanguardenv
-directory and run **setup.sh** again.
-
-A safer way to use pypy is to install Stem on your system (though use 1.5.4 or
-earlier, since Stem 1.6.0 is
-[https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy
-at the moment)), and then run the script directly from the source tree with:
-
-```
-  pypy ./src/vanguards.py
-```
-
-Additionally, you can disable components to reduce processing overhead. Try
-disabling Rendguard first. If that is still insufficient, disable Bandguards.
-Vanguards by itself should not require much overhead.
-
 # How to use the script
 
 ## Onion service use
@@ -278,6 +252,33 @@ To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards.py script to it.
 
 Note that as described above, Tor clients with the bandguards system will emit false positives about the dropped limit being exceeded, due to Tor Browser closing some connections before all data is read. These log messages will be at NOTICE level for this activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573) for more information. Since OnionShare operates as a service, it should not cause these false positives.
+
+## Performance Tuning
+
+For very high traffic onion services, we recommend using
+[PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
+make this script run considerably faster.
+
+The easiest way to use PyPy is to do **sudo apt-get install pypy** or
+equivalent before running **./setup.sh** as per above. The setup script will
+then see that pypy is installed, and use it by default in the resulting
+virtualenv.
+
+To switch to pypy after running **setup.sh**, simply remove the vanguardenv
+directory and run **setup.sh** again.
+
+The safest way to use pypy is to install Stem on your system (though use 1.5.4 or
+earlier, since Stem 1.6.0 is
+[https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy
+at the moment)), and then run the script directly from the source tree with:
+
+```
+  pypy ./src/vanguards.py
+```
+
+Additionally, you can disable components to reduce processing overhead. Try
+disabling Rendguard first. If that is still insufficient, disable Bandguards.
+Vanguards by itself should not require much overhead.
 
 # Other Caveats and Known Issues
 
