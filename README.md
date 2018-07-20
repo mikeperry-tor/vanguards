@@ -228,7 +228,7 @@ This project is also listed on the Python Package Index. To install the
 latest release via pip, do:
 
 ```
-torsocks pip install --require-hashes vanguards==0.1.1 --hash=sha256:XXX
+torsocks pip install vanguards
 ```
 
 ## How to use the script
