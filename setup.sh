@@ -35,7 +35,7 @@ fi
 source ${DEST}/bin/activate
 
 # 3. Install stem+setuptools
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt
 
 $(basename $SYS_PYTHON) setup.py install
 
