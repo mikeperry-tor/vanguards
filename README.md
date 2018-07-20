@@ -211,6 +211,15 @@ downloads, virtualenv may still download some packages without verification.
 If you do not want your environment to be in the vanguardenv subdirectory, you
 can specify a different directory as an argument to **setup.sh**.
 
+## Pip
+
+This project is also listed on the Python Package Index. To install the
+latest release via pip, do:
+
+```
+torsocks pip install vanguards
+```
+
 ## Performance Tuning
 
 For very high traffic onion services, we recommend using
@@ -238,18 +247,9 @@ Additionally, you can disable components to reduce processing overhead. Try
 disabling Rendguard first. If that is still insufficient, disable Bandguards.
 Vanguards by itself should not require much overhead.
 
-## Pip
+# How to use the script
 
-This project is also listed on the Python Package Index. To install the
-latest release via pip, do:
-
-```
-torsocks pip install vanguards
-```
-
-## How to use the script
-
-### Onion service use
+## Onion service use
 
 This script is primarily intended for onion service operators. To do so, setup
 your onion service to expose a control port listener using the ControlPort
@@ -264,7 +264,7 @@ DataDirectory /path/to/tor/datadir
 and then point your vanguards.py script to connect to it with --control\_port=9099
 (or --control\_socket /path/to/socket).
 
-### Client use
+## Client use
 
 It is also possible to use the vanguards script as a regular Tor client with
 Tor Browser or with Onionshare.
