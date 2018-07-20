@@ -156,27 +156,14 @@ For additional operational security information on running an onion service,
 you should have a look at the [Riseup Onion Services Best Practices
 document](https://riseup.net/en/security/network-security/tor/onionservices-best-practices).
 
-# Configuration
-
-All of the above mechanisms can be tuned via a configuration file. Check out
-this documented [example
-configuration
-file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
-for more information.
-
-Configuration files can be specified on the command line. The default is to
-read **vanguards.conf** from the current working directory. If the environment
-variable **$VANGUARDS\_CONFIG** is set, the config file will be read from the
-file specified in that variable.
-
 # Installation
 
 ## Prerequisites
 
 1. Install Tor 0.3.3.6 or above (0.3.4.4+ to make use of Bandguards).
-2. Set either **ControlPort** or **ControlSocket**, and ideally also **CookieAuthentication** in your torrc. See the [Tor manpage](https://www.torproject.org/docs/tor-manual.html.en) for more information.
-3. Explicitly set **DataDirectory** in your torrc.
-4. Ensure Tor's DataDirectory can be read by the UNIX user or group that you intend to run this script under. (This script must directly parse the consensus).
+2. Set either **ControlPort** or **ControlSocket**, and also **CookieAuthentication** in your torrc. 
+3. Set **DataDirectory** in your torrc.
+4. Ensure Tor's DataDirectory can be read by the user that will run this script. (This script must parse the consensus from disk).
 5. Start Tor (and bring up your onion service).
 
 ## Running this script directly from git
@@ -206,8 +193,9 @@ source vanguardenv/bin/activate
 vanguards
 ```
 
-Note that while the setup.sh script tells pip to require hashes on all
-downloads, virtualenv may still download some packages without verification.
+**Note that while the setup.sh script tells pip to require hashes on all
+downloads, virtualenv itself may still download some packages without
+verification if they are not present on your system**.
 
 If you do not want your environment to be in the vanguardenv subdirectory, you
 can specify a different directory as an argument to **setup.sh**.
@@ -215,13 +203,23 @@ can specify a different directory as an argument to **setup.sh**.
 ## Pip
 
 This project is also listed on the Python Package Index. To install the
-latest release via pip, do:
+latest release via pip without any verification, do:
 
 ```
 torsocks pip install vanguards
 ```
 
 # How to use the script
+
+## Configuration
+
+All of the subsystems of this addon can be tuned via a configuration file.
+Check out this documented [example configuration file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf) for more information.
+
+Configuration files can be specified on the command line. The default is to
+read **vanguards.conf** from the current working directory. If the environment
+variable **$VANGUARDS\_CONFIG** is set, the config file will be read from the
+file specified in that variable.
 
 ## Onion service use
 
@@ -238,6 +236,9 @@ DataDirectory /path/to/tor/datadir
 and then point your vanguards.py script to connect to it with --control\_port=9099
 (or --control\_socket /path/to/socket).
 
+**Be aware that this script sets HSLayer2Nodes and HSLayer3Nodes in your
+torrc. If you stop using this script, you should remove those directives.**
+
 ## Client use
 
 It is also possible to use the vanguards script as a regular Tor client with
@@ -252,6 +253,9 @@ To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards.py script to it.
 
 Note that as described above, Tor clients with the bandguards system will emit false positives about the dropped limit being exceeded, due to Tor Browser closing some connections before all data is read. These log messages will be at NOTICE level for this activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573) for more information. Since OnionShare operates as a service, it should not cause these false positives.
+
+**Be aware that this script sets HSLayer2Nodes and HSLayer3Nodes in your
+torrc. If you stop using this script, you should remove those directives.**
 
 ## Performance Tuning
 
@@ -268,9 +272,7 @@ To switch to pypy after running **setup.sh**, simply remove the vanguardenv
 directory and run **setup.sh** again.
 
 The safest way to use pypy is to install Stem on your system (though use 1.5.4 or
-earlier, since Stem 1.6.0 is
-[https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy
-at the moment)), and then run the script directly from the source tree with:
+earlier, since Stem 1.6.0 is [https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy at the moment)), and then run the script directly from the source tree with:
 
 ```
   pypy ./src/vanguards.py
