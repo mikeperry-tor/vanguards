@@ -217,16 +217,37 @@ Vanguards by itself should not require much overhead.
 
 XXX: Make pip packages
 
-## Using Tor Browser
+## How to use the script
 
-This script is primarily intended for onion service operators. However, it is
-also possible to use it with Tor Browser to protect client activity.
+### Onion service use
 
-Note that as described above, the bandguards system will emit false positives
-about the dropped limit being exceeded, due to Tor Browser closing some
-connections before all data is read. These log messages will be at NOTICE
-level for this activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573) for more
+This script is primarily intended for onion service operators. To do so, setup
+your onion service to expose a control port listener using the ControlPort
+torrc directive:
+
+```ControlPort 9099
+CookieAuthentication 1
+```
+
+and then point your vanguards.py script to connect to it with --control-port=9099
+
+### Client use
+
+It is also possible to use the vanguards script as a regular Tor client with
+Tor Browser or with Onionshare.
+
+To use it with Tor Browser you should hack the torrc of Tor Browser so that it
+exposes a control port, and then connect to it with vanguards.py. You can do it
+by editing the ./Browser/TorBrowser/Data/Tor/torrc file and adding the Control
+Port directive.
+
+To use it with Onionshare, set up your Tor to expose a control port and attach
+both onionshare and the vanguards.py script to it.
+
+Note that as described above, Tor clients with the bandguards system will emit
+false positives about the dropped limit being exceeded, due to Tor Browser
+closing some connections before all data is read. These log messages will be at
+NOTICE level for this activity as a result. See [Ticket
+#25573](https://trac.torproject.org/projects/tor/ticket/25573) for more
 information.
 
-XXX: Describe this for Mac, Linux.
-XXX: File a ticket for py2exe+windows, link here
