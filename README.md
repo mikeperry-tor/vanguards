@@ -92,7 +92,7 @@ These limits (along with a reason for checking them) are as follows:
 
 1. ***Dropped Cell Rate***
 
-   Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI)](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack used was to inject a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
+   Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI)](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack injected a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
 
    This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
@@ -102,9 +102,11 @@ These limits (along with a reason for checking them) are as follows:
 features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
 the quantity of traffic that Tor decides to drop from a circuit. If this
 quantity exceeds a specified percentage of the legitimate traffic (currently
-a 11 cell circuit setup overhead, and 0% after that), then the bandguards subsystem will close the circuit and issue a warning log message.
+an 11 cell circuit setup overhead, and 0% after that), then the bandguards subsystem will close the circuit and issue a warning log message.
 
-   Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). Luckily on the service side, this does not happen. For this reason, on service-side circuits, the log message emitted is at WARN level. On the client side, it is at NOTICE level. In both cases, the circuit where this happens is closed by this script as soon as the limit is reached.
+   Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). On the service side, the webservers we have tested do not do this, and this message should not appear.
+
+   For this reason, on service-side circuits, the log message emitted is at WARN level. On the client side, it is at NOTICE level. In both cases, the circuit where this happens is closed by this script as soon as the limit is reached.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 
@@ -178,36 +180,43 @@ file specified in that variable.
 
 ## Running this script directly from git
 
-1. [Install Stem](https://stem.torproject.org/download.html)
+1. [Install Stem 1.5.4](https://stem.torproject.org/download.html)
 2. Run **./src/vanguards.py**
-    * If your control port is on an alternate IP and Port, specify that with
-**--control_host _IP_ --control_port _portnum_**. If you are using a control
-socket, specify its full path with **--control_socket /path/to/socket**.
-    * Note that **./src/vanguards.py** has several other options under **--help**.
+
+If your control port is on an alternate IP and Port, specify that with
+**--control_host _IP_ --control_port _portnum_**.
+
+If you are using a control socket, specify its full path with
+**--control_socket /path/to/socket**.
+
+Note that **./src/vanguards.py** has several other options under **--help**.
 
 ## Using VirtualEnv
 
 To install Stem and Vanguards into their own python virtualenv, run:
 
-1. ./setup.sh
-2. source vanguardenv/bin/activate
-3. vanguards
+```
+torsocks ./setup.sh
+source vanguardenv/bin/activate
+vanguards
+```
 
 If you do not want your environment to be in the vanguardenv subdirectory, you
-can specify a different directory as an argument to setup.sh.
+can specify a different directory as an argument to **setup.sh**.
 
-## PyPy and other performance tuning
+## Performance Tuning
 
 For very high traffic onion services, we recommend using
 [PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
 make this script run considerably faster.
 
-The setup.sh script above will automatically use pypy or pypy3 to create the
-virtualenv if they are installed. This means that if you do **sudo apt-get
-install pypy** or equivalent before running **./setup.sh**, your environment
-will be using pypy when you run **vanguards** inside it. To switch to pypy
-after running setup.sh, simply remove the vanguardenv directory and run
-setup.sh again.
+The easiest way to use PyPy is to do **sudo apt-get install pypy** or
+equivalent before running **./setup.sh** as per above. The setup script will
+then see that pypy is installed, and use it by default in the resulting
+virtualenv.
+
+To switch to pypy after running **setup.sh**, simply remove the vanguardenv
+directory and run **setup.sh** again.
 
 Additionally, you can disable components to reduce processing overhead. Try
 disabling Rendguard first. If that is still insufficient, disable Bandguards.
@@ -215,7 +224,12 @@ Vanguards by itself should not require much overhead.
 
 ## Pip
 
-XXX: Make pip packages
+This project is also listed on the Python Package Index. To install the
+latest release via pip, do:
+
+```
+torsocks pip install --require-hashes vanguards==0.1.1 --hash=sha256:XXX
+```
 
 ## How to use the script
 
@@ -223,13 +237,16 @@ XXX: Make pip packages
 
 This script is primarily intended for onion service operators. To do so, setup
 your onion service to expose a control port listener using the ControlPort
-torrc directive:
+or ControlSocket torrc directives:
 
-```ControlPort 9099
+```
+ControlPort 9099             # or ControlSocket /path/to/socket
 CookieAuthentication 1
+DataDirectory /path/to/tor/datadir
 ```
 
-and then point your vanguards.py script to connect to it with --control-port=9099
+and then point your vanguards.py script to connect to it with --control\_port=9099
+(or --control\_socket /path/to/socket).
 
 ### Client use
 
@@ -244,10 +261,16 @@ Port directive.
 To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards.py script to it.
 
-Note that as described above, Tor clients with the bandguards system will emit
-false positives about the dropped limit being exceeded, due to Tor Browser
-closing some connections before all data is read. These log messages will be at
-NOTICE level for this activity as a result. See [Ticket
-#25573](https://trac.torproject.org/projects/tor/ticket/25573) for more
-information.
+Note that as described above, Tor clients with the bandguards system will emit false positives about the dropped limit being exceeded, due to Tor Browser closing some connections before all data is read. These log messages will be at NOTICE level for this activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573) for more information. Since OnionShare operates as a service, it should not cause these false positives.
 
+# Other Caveats and Known Issues
+
+1. ***ExcludeNodes compatibility***
+
+   This script currently does not actively interact with the torrc **ExcludeNodes** directive. While the underlying Tor instance will not use these nodes in any actual paths, it still is possible for the script to choose an entire vanguards layer from your ExcludeNodes list by bad luck.
+
+   When this happens, Tor will not complete any circuits. Obviously this is bad.  If this is a highly desired feature, we can add code to read ExcludeNodes, parse it, and ensure we do not pick any vanguards from this list/set. This [issue is tracked in the issue tracker](https://github.com/mikeperry-tor/vanguards/issues/11)
+
+2. ***OnionBalance compatibility***
+
+   This script should be compatible with [OnionBalance](https://github.com/DonnchaC/onionbalance). However, because multiple instances of this script do not communicate through OnionBalance, each additional instance of this script will choose different vanguards. This increases the overall exposure to guard discovery attacks, because more vanguards are in use. In cases where it is just as bad for the adversary to discover any of your onion service instances as it is to discover all of them, then obviously each additional instance lowers your security a bit.
