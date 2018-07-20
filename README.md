@@ -180,7 +180,11 @@ file specified in that variable.
 
 ## Running this script directly from git
 
-1. [Install Stem 1.5.4](https://stem.torproject.org/download.html)
+**This is the safest option to use, since it avoids allowing pip and/or
+virtualenv from downloading packages from PYPI without verification.**
+
+0. Retrieve this repository and optionally verify a signed git version tag.
+1. [Install Stem](https://stem.torproject.org/download.html)
 2. Run **./src/vanguards.py**
 
 If your control port is on an alternate IP and Port, specify that with
@@ -201,6 +205,9 @@ source vanguardenv/bin/activate
 vanguards
 ```
 
+Note that while the setup.sh script tells pip to require hashes on all
+downloads, virtualenv may still download some packages without verification.
+
 If you do not want your environment to be in the vanguardenv subdirectory, you
 can specify a different directory as an argument to **setup.sh**.
 
@@ -217,6 +224,15 @@ virtualenv.
 
 To switch to pypy after running **setup.sh**, simply remove the vanguardenv
 directory and run **setup.sh** again.
+
+A safer way to use pypy is to install Stem on your system (though use 1.5.4 or
+earlier, since Stem 1.6.0 is
+[https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy
+at the moment)), and then run the script directly from the source tree with:
+
+```
+  pypy ./src/vanguards.py
+```
 
 Additionally, you can disable components to reduce processing overhead. Try
 disabling Rendguard first. If that is still insufficient, disable Bandguards.
