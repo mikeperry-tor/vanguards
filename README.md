@@ -102,7 +102,7 @@ These limits (along with a reason for checking them) are as follows:
 features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
 the quantity of traffic that Tor decides to drop from a circuit. If this
 quantity exceeds a specified percentage of the legitimate traffic (currently
-a 10 cell circuit setup overhead, and 0% after that), then the bandguards subsystem will close the circuit and issue a warning log message.
+a 11 cell circuit setup overhead, and 0% after that), then the bandguards subsystem will close the circuit and issue a warning log message.
 
    Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). Luckily on the service side, this does not happen. For this reason, on service-side circuits, the log message emitted is at WARN level. On the client side, it is at NOTICE level. In both cases, the circuit where this happens is closed by this script as soon as the limit is reached.
 

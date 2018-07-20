@@ -38,9 +38,9 @@ _RELAY_HEADER_SIZE = 11
 _CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
 # This is the number of SENDME cells that can be in flight at a given time.
 # If one end hangs up on a stream right after sending its data, then there
-# can be up to 10 SENDME cells in flight on the stream. They will arrive
-# on an unknown stream-id at the other end, after the hangup.
-_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*10
+# can be up to 10 SENDME cells in flight on the stream, plus an END cell.
+# They will arrive on an unknown stream-id at the other end, after the hangup.
+_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*11
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
