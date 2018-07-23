@@ -1,0 +1,20 @@
+Source: vanguards
+Maintainer: unknown <unknown@unknown>
+Section: python
+Priority: optional
+Build-Depends: python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 7.4.3)
+Standards-Version: 3.9.1
+
+
+
+Package: python-vanguards
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: Vanguards help guard you from getting vanned...
+ .
+ For the full README and other project information, please see the
+ `Vanguard project page on github <https://github.com/mikeperry-tor/vanguards>`_.
+ .
+
+
+
