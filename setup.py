@@ -41,7 +41,6 @@ setup(
     author_email=module_info.get('__contact__'),
     url=module_info.get('__url__'),
     license=module_info.get('__license__'),
-    setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     keywords='tor',
     install_requires=[
