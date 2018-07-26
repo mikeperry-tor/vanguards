@@ -2,6 +2,7 @@ import sys
 import stem
 import getpass
 import os
+import shutil
 
 import stem.control
 import vanguards.control
@@ -75,15 +76,17 @@ class MockController:
 
 stem.control.Controller = MockController
 vanguards.config.ENABLE_CBTVERIFY = True
-vanguards.config.STATE_FILE = "tests/state.mock"
+vanguards.config.STATE_FILE = "tests/state.mock.test"
 
 def mock_getpass(msg):
   return "foo"
 getpass.getpass = mock_getpass
 
 def test_main():
+  shutil.copy("tests/state.mock", "tests/state.mock.test")
   sys.argv = ["test_main"]
   vanguards.main.main()
+  os.remove("tests/state.mock.test")
 
 # Test plan:
 # - Test ability to override CONTROL_SOCKET
@@ -93,6 +96,7 @@ def test_main():
 # TODO: - Test other params too?
 def test_configs():
   global GOT_SOCKET
+  shutil.copy("tests/state.mock", "tests/state.mock.test")
   sys.argv = ["test_main", "--control_socket", "arg.sock" ]
   vanguards.main.main()
   assert GOT_SOCKET == "arg.sock"
@@ -116,10 +120,12 @@ def test_configs():
     assert False
   except SystemExit:
     assert True
+  os.remove("tests/state.mock.test")
 
 def test_failures():
   global THROW_SOCKET,THROW_AUTH,DATA_DIR,NO_HSLAYER
   global TOR_VERSION
+  shutil.copy("tests/state.mock", "tests/state.mock.test")
   # Test lack of failures
   vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main" ]
@@ -233,12 +239,13 @@ def test_failures():
 
   # Test loglevel and log success
   vanguards.config.apply_config(DEFAULT_CONFIG)
-  sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "valid" ]
+  sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "valid.log.test" ]
   try:
     vanguards.main.main()
     assert True
   except SystemExit:
     assert False
+  os.stat("valid.log.test")
 
   # Test bad password auth:
   vanguards.config.apply_config(DEFAULT_CONFIG)
@@ -258,3 +265,8 @@ def test_failures():
     assert False
   except SystemExit:
     assert True
+
+  # Clean up temporary test data
+  os.remove("tests/state.mock.test")
+  os.remove("vanguards.state.test")
+  os.remove("valid.log.test")

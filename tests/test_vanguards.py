@@ -1,5 +1,7 @@
 import stem
 import time
+import os
+import shutil
 
 from stem.response import ControlMessage
 
@@ -113,8 +115,10 @@ def test_new_vanguards():
 def test_update_vanguards():
   controller = MockController()
   vanguards.vanguards.LAYER1_LIFETIME_DAYS = 30
-  state = VanguardState.read_from_file("tests/state.mock")
+  shutil.copy("tests/state.mock", "tests/state.mock.test")
+  state = VanguardState.read_from_file("tests/state.mock.test")
   sanity_check(state)
 
   state.new_consensus_event(controller, None)
   sanity_check(state)
+  os.remove("tests/state.mock.test")
