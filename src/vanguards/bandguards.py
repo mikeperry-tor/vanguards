@@ -17,7 +17,7 @@ CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
 # Very loud application circuits could be used to introduce timing
 # side channels.
 # Warning: if your application has large resources that cannot be
-# split up over multipe requests (such as large HTTP posts for eg:
+# split up over multiple requests (such as large HTTP posts for eg:
 # securedrop, or sharing large files via onionshare), you must set
 # this high enough for those uploads not to get truncated!
 CIRC_MAX_MEGABYTES = 0
