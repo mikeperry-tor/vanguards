@@ -171,9 +171,9 @@ document](https://riseup.net/en/security/network-security/tor/onionservices-best
 **This is the safest option to use, since it avoids having pip and/or
 virtualenv download packages from PYPI without verification.**
 
-0. Retrieve this repository and optionally verify a signed git version tag.
-1. [Install Stem](https://stem.torproject.org/download.html)
-2. Run **./src/vanguards.py**
+1. Retrieve this repository and optionally verify a signed git version tag.
+2. [Install Stem](https://stem.torproject.org/download.html)
+3. Run **./src/vanguards.py**
 
 If your control port is on an alternate IP and Port, specify that with
 **--control_host _IP_ --control_port _portnum_**.
