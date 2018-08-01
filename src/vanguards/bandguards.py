@@ -75,8 +75,8 @@ class BwCircuitStat:
   def allowed_dropped_bytes(self):
     cells_sent = (self.sent_bytes/(_CELL_PAYLOAD_SIZE*_CELL_DATA_RATE))
     sendme_count = cells_sent/_STREAM_SENDME_INCREMENT
-    max_sendmes = int(min(sendme_count,
-                      1+_STREAM_SENDME_WINDOW/_STREAM_SENDME_INCREMENT))
+    max_sendmes = 1+int(min(sendme_count,
+                            _STREAM_SENDME_WINDOW/_STREAM_SENDME_INCREMENT))
     return max_sendmes*_CELL_PAYLOAD_SIZE
 
   def dropped_read_bytes_extra(self):
