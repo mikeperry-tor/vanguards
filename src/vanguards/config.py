@@ -90,7 +90,7 @@ def setup_options():
                       default=CONTROL_PASS,
                       help="The Tor Control Port password (optional) ")
 
-  parser.add_argument("--retry-limit", dest="retry_limit",
+  parser.add_argument("--retry_limit", dest="retry_limit",
                       default=_RETRY_LIMIT, type=int,
                       help="Reconnect attempt limit on failure (default: Infinite)")
 
