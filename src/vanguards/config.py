@@ -20,7 +20,8 @@ except ImportError:
 
 ################# Global options ##################
 
-# Are use counts enabled?
+ENABLE_VANGUARDS=True
+
 ENABLE_RENDGUARD=True
 
 ENABLE_BANDGUARDS=True
@@ -53,7 +54,7 @@ def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
   global LOGLEVEL, LOGFILE
-  global ONE_SHOT_VANGUARDS
+  global ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS
 
   parser = argparse.ArgumentParser()
 
@@ -98,6 +99,11 @@ def setup_options():
                       action="store_true",
                       help="Write layer2 and layer3 guards to Torrc and exit.")
 
+  parser.add_argument("--disable_vanguards", dest="vanguards_enabled",
+                      action="store_false",
+                      help="Disable setting any layer2 and layer3 guards.")
+  parser.set_defaults(vanguards_enabled=ENABLE_VANGUARDS)
+
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",
                       help="Disable circuit side channel checks (may help performance)")
@@ -117,11 +123,12 @@ def setup_options():
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
    ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY,
-   ONE_SHOT_VANGUARDS) = \
+   ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.control_pass,
        options.bandguards_enabled, options.rendguard_enabled,
-       options.cbtverify_enabled, options.one_shot_vanguards)
+       options.cbtverify_enabled, options.one_shot_vanguards,
+       options.vanguards_enabled)
 
   if options.logfile != None:
     LOGFILE = options.logfile

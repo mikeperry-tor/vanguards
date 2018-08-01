@@ -45,6 +45,7 @@ def main():
     plog("NOTICE", "Creating new vanguard state file at: "+config.STATE_FILE)
     state = vanguards.VanguardState(config.STATE_FILE)
 
+  state.enable_vanguards = config.ENABLE_VANGUARDS
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
 
   reconnects = 0
@@ -75,8 +76,11 @@ def control_loop(state):
 
   control.authenticate_any(controller, config.CONTROL_PASS)
 
-  # XXX: Some subset of this should not run every reconnect
-  state.new_consensus_event(controller, None)
+  # The new_consensus_event must still get called even if vanguards
+  # is "disabled", because we also have to parse the consensus to
+  # update rendguard counts
+  if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
+    state.new_consensus_event(controller, None)
 
   if config.ONE_SHOT_VANGUARDS:
     try:
@@ -99,6 +103,7 @@ def control_loop(state):
                  functools.partial(rendguard.RendGuard.circ_event,
                                    state.rendguard, controller),
                                   stem.control.EventType.CIRC)
+
   if config.ENABLE_BANDGUARDS:
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.circ_event, bandwidths),
@@ -127,10 +132,11 @@ def control_loop(state):
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
-  controller.add_event_listener(
-               functools.partial(vanguards.VanguardState.new_consensus_event,
-                                 state, controller),
-                                stem.control.EventType.NEWCONSENSUS)
+  if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
+    controller.add_event_listener(
+                   functools.partial(vanguards.VanguardState.new_consensus_event,
+                                     state, controller),
+                                    stem.control.EventType.NEWCONSENSUS)
 
   # Blah...
   while controller.is_alive():

@@ -144,6 +144,7 @@ class VanguardState:
     self.state_file = state_file
     self.rendguard = rendguard.RendGuard()
     self.pickle_revision = 1
+    self.enable_vanguards = True # Set from main, irrelevant to pickle
 
   def set_state_file(self, state_file):
     self.state_file = state_file
@@ -167,24 +168,24 @@ class VanguardState:
                                                              ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
     gen = ng.generate()
+    if self.enable_vanguards:
+      # Remove any nodes that are now down in the consensus
+      self.remove_down_from_layer(self.layer2, dict_r)
+      self.remove_down_from_layer(self.layer3, dict_r)
 
-    # Remove any nodes that are now down in the consensus
-    self.remove_down_from_layer(self.layer2, dict_r)
-    self.remove_down_from_layer(self.layer3, dict_r)
+      # Remove any nodes whose rotation times are past due.
+      # FIXME: We should check this more often... But we also
+      # need to replenish our layers if they get too low/empty.
+      # This can be slow (consensus parse required)... :/
+      self.remove_expired_from_layer(self.layer2)
+      self.remove_expired_from_layer(self.layer3)
 
-    # Remove any nodes whose rotation times are past due.
-    # FIXME: We should check this more often... But we also
-    # need to replenish our layers if they get too low/empty.
-    # This can be slow (consensus parse required)... :/
-    self.remove_expired_from_layer(self.layer2)
-    self.remove_expired_from_layer(self.layer3)
+      # Remove any nodes in case ExcludeNodes changed.
+      self.remove_excluded_from_layer(self.layer2, dict_r, exclude)
+      self.remove_excluded_from_layer(self.layer3, dict_r, exclude)
 
-    # Remove any nodes in case ExcludeNodes changed.
-    self.remove_excluded_from_layer(self.layer2, dict_r, exclude)
-    self.remove_excluded_from_layer(self.layer3, dict_r, exclude)
-
-    # Replenish our guard lists with new nodes
-    self.replenish_layers(gen, exclude)
+      # Replenish our guard lists with new nodes
+      self.replenish_layers(gen, exclude)
 
     # Transfer and scale RP use counts to this consensus
     self.rendguard.xfer_use_counts(ng)
@@ -211,7 +212,9 @@ class VanguardState:
 
     self.consensus_update(routers, weights, exclude_nodes)
 
-    self.configure_tor(controller)
+    if self.enable_vanguards:
+      self.configure_tor(controller)
+
     try:
       self.write_to_file(open(self.state_file, "wb"))
     except IOError as e:

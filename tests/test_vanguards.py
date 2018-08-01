@@ -117,6 +117,8 @@ class MockController:
   def __init__(self):
     self.exclude_nodes = None
     self.exclude_unknown = "1"
+    self.got_set_conf = False
+    self.got_save_conf = False
     self.get_info_vals = {}
 
   # FIXME: os.path.join
@@ -134,10 +136,12 @@ class MockController:
       return self.exclude_unknown
 
   def set_conf(self, key, val):
+    self.got_set_conf = True
     if key == "NumPrimaryGuards":
       raise stem.InvalidArguments()
 
   def save_conf(self):
+    self.got_save_conf = True
     raise stem.OperationFailed("Bad")
 
   def get_info(self, key, default=None):
@@ -170,6 +174,7 @@ def test_update_vanguards():
   vanguards.vanguards.LAYER1_LIFETIME_DAYS = 30
   shutil.copy("tests/state.mock", "tests/state.mock.test")
   state = VanguardState.read_from_file("tests/state.mock.test")
+  state.enable_vanguards = True
   sanity_check(state)
 
   state.new_consensus_event(controller, None)
@@ -230,4 +235,18 @@ def test_excludenodes():
   assert keep2 in map(lambda x: x.idhex, state.layer2)
 
   # FIXME: IPv6. Stem before 1.7.0 does not support IPv6 relays..
+
+def test_disable():
+  controller = MockController()
+  vanguards.vanguards.LAYER1_LIFETIME_DAYS = 30
+  shutil.copy("tests/state.mock", "tests/state.mock.test")
+  state = VanguardState.read_from_file("tests/state.mock.test")
+  state.enable_vanguards = False
+  sanity_check(state)
+
+  state.new_consensus_event(controller, None)
+  sanity_check(state)
+  assert controller.got_set_conf == False
+  assert controller.got_save_conf == False
+  os.remove("tests/state.mock.test")
 
