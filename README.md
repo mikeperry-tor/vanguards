@@ -272,7 +272,7 @@ To switch to pypy after running **setup.sh**, simply remove the vanguardenv
 directory and run **setup.sh** again.
 
 The safest way to use pypy is to install Stem on your system (though use 1.5.4 or
-earlier, since Stem 1.6.0 is [https://trac.torproject.org/projects/tor/ticket/26207](incompatible with pypy at the moment)), and then run the script directly from the source tree with:
+earlier, since Stem 1.6.0 is [incompatible with pypy at the moment](https://trac.torproject.org/projects/tor/ticket/26207), and then run the script directly from the source tree with:
 
 ```
   pypy ./src/vanguards.py
@@ -282,14 +282,6 @@ Additionally, you can disable components to reduce processing overhead. Try
 disabling Rendguard first. If that is still insufficient, disable Bandguards.
 Vanguards by itself should not require much overhead.
 
-# Other Caveats and Known Issues
-
-1. ***ExcludeNodes compatibility***
-
-   This script currently does not actively interact with the torrc **ExcludeNodes** directive. While the underlying Tor instance will not use these nodes in any actual paths, it still is possible for the script to choose an entire vanguards layer from your ExcludeNodes list by bad luck.
-
-   When this happens, Tor will not complete any circuits. Obviously this is bad.  If this is a highly desired feature, we can add code to read ExcludeNodes, parse it, and ensure we do not pick any vanguards from this list/set. This [issue is tracked in the issue tracker](https://github.com/mikeperry-tor/vanguards/issues/11)
-
-2. ***OnionBalance compatibility***
+# OnionBalance compatibility
 
    This script should be compatible with [OnionBalance](https://github.com/DonnchaC/onionbalance). However, because multiple instances of this script do not communicate through OnionBalance, each additional instance of this script will choose different vanguards. This increases the overall exposure to guard discovery attacks, because more vanguards are in use. In cases where it is just as bad for the adversary to discover any of your onion service instances as it is to discover all of them, then obviously each additional instance lowers your security a bit.
