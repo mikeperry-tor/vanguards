@@ -36,11 +36,11 @@ CIRC_MAX_HSDESC_KILOBYTES = 30
 _CELL_PAYLOAD_SIZE = 509
 _RELAY_HEADER_SIZE = 11
 _CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
-# This is the number of SENDME cells that can be in flight at a given time.
-# If one end hangs up on a stream right after sending its data, then there
-# can be up to 10 SENDME cells in flight on the stream, plus an END cell.
-# They will arrive on an unknown stream-id at the other end, after the hangup.
-_CIRC_SETUP_BYTES = _CELL_PAYLOAD_SIZE*11
+
+# Constants from connection_edge_consider_sending_sendme(). These govern the
+# max SENDMEs can be expected to be in-flight.
+_STREAM_SENDME_INCREMENT = 50
+_STREAM_SENDME_WINDOW = 500
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
@@ -67,8 +67,21 @@ class BwCircuitStat:
     return self.read_bytes - \
            (self.delivered_read_bytes+self.overhead_read_bytes)
 
+  # The allowed dropped bytes is the number of expected SENDMEs we may have
+  # pending based on the stream window, because one end can close the stream
+  # before they arrive (causing them to get dropped). One SENDME is sent every
+  # 50 cells, up to 500. This means a max of 10 should be in-flight, plus 1
+  # if the other side decides to send an END as well once it gets all data.
+  def allowed_dropped_bytes(self):
+    cells_sent = (self.sent_bytes/(_CELL_PAYLOAD_SIZE*_CELL_DATA_RATE))
+    sendme_count = cells_sent/_STREAM_SENDME_INCREMENT
+    max_sendmes = int(min(sendme_count,
+                      1+_STREAM_SENDME_WINDOW/_STREAM_SENDME_INCREMENT))
+    return max_sendmes*_CELL_PAYLOAD_SIZE
+
   def dropped_read_bytes_extra(self):
-    return max(_CIRC_SETUP_BYTES,self.dropped_read_bytes())-_CIRC_SETUP_BYTES
+    return max(self.allowed_dropped_bytes(),
+               self.dropped_read_bytes())-self.allowed_dropped_bytes()
 
   def dropped_read_rate(self):
     return self.dropped_read_bytes_extra()/self.read_bytes
@@ -163,8 +176,7 @@ class BandwidthStats:
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
-    if circ.read_bytes > _CIRC_SETUP_BYTES \
-       and circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
+    if circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
       # When clients hang up on streams before they close, this can result in
       # dropped data from those now-invalid/unknown stream IDs. Servers should
       # not do this. Hence warn for service case, notice for clients.
