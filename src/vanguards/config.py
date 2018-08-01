@@ -44,6 +44,8 @@ CONTROL_PORT = 9051
 CONTROL_SOCKET = ""
 CONTROL_PASS = ""
 
+_RETRY_LIMIT = None
+
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
@@ -83,6 +85,10 @@ def setup_options():
   parser.add_argument("--control_pass", dest="control_pass",
                       default=CONTROL_PASS,
                       help="The Tor Control Port password (optional) ")
+
+  parser.add_argument("--retry-limit", dest="retry_limit",
+                      default=_RETRY_LIMIT, type=int,
+                      help="Reconnect attempt limit on failure (default: Infinite)")
 
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",

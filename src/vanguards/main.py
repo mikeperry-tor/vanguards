@@ -47,13 +47,35 @@ def main():
 
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
 
-  if config.CONTROL_SOCKET != "":
-    controller = control.connect_to_socket(config.CONTROL_SOCKET)
-  else:
-    controller = control.connect_to_ip(config.CONTROL_IP, config.CONTROL_PORT)
+  reconnects = 0
+  connected = False
+  while options.retry_limit == None or reconnects < options.retry_limit:
+    ret = control_loop(state)
+    if ret == "closed":
+      connected = True
+    # Try once per second but only tell the user every 10 seconds
+    if ret == "closed" or reconnects % 10 == 0:
+      plog("NOTICE", "Tor connection "+ret+". Trying again...")
+    reconnects += 1
+    time.sleep(1)
+
+  if not connected:
+    sys.exit(1)
+
+def control_loop(state):
+  try:
+    if config.CONTROL_SOCKET != "":
+      controller = \
+        stem.control.Controller.from_socket_file(config.CONTROL_SOCKET)
+    else:
+      controller = stem.control.Controller.from_port(config.CONTROL_IP,
+                                                     config.CONTROL_PORT)
+  except stem.SocketError as e:
+    return "failed: "+str(e)
 
   control.authenticate_any(controller, config.CONTROL_PASS)
 
+  # XXX: Some subset of this should not run every reconnect
   state.new_consensus_event(controller, None)
   timeouts = cbtverify.TimeoutStats()
   bandwidths = bandguards.BandwidthStats(controller)
@@ -83,9 +105,7 @@ def main():
                                     stem.control.EventType.CIRC_MINOR)
     else:
       plog("NOTICE", "In order for bandwidth-based protections to be "+
-                      "enabled, you must use Tor 0.3.4.0-alpha or newer.")
-
-
+                      "enabled, you must use Tor 0.3.4.4-rc or newer.")
 
   if config.ENABLE_CBTVERIFY:
     controller.add_event_listener(
@@ -106,3 +126,4 @@ def main():
   while controller.is_alive():
     time.sleep(1)
 
+  return "closed"

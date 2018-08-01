@@ -80,6 +80,7 @@ class MockController:
 stem.control.Controller = MockController
 vanguards.config.ENABLE_CBTVERIFY = True
 vanguards.config.STATE_FILE = "tests/state.mock.test"
+vanguards.config._RETRY_LIMIT = 1
 
 def mock_getpass(msg):
   return "foo"

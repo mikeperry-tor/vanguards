@@ -4,24 +4,6 @@ import getpass
 
 from .logger import plog
 
-def connect_to_socket(control_socket):
-  try:
-    controller = stem.control.Controller.from_socket_file(control_socket)
-  except stem.SocketError as exc:
-    print("Unable to connect to Tor Control Socket at "\
-          +control_socket+": %s" % exc)
-    sys.exit(1)
-  return controller
-
-def connect_to_ip(ip, port):
-  try:
-    controller = stem.control.Controller.from_port(ip, port)
-  except stem.SocketError as exc:
-    print("Unable to connect to Tor Control Port at "+ip+":"
-           +str(port)+" %s" % exc)
-    sys.exit(1)
-  return controller
-
 def authenticate_any(controller, passwd=""):
   try:
     controller.authenticate()
