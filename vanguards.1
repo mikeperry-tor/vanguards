@@ -1,0 +1,60 @@
+.TH vanguards "1" "July 2018" "vanguards" "User Commands"
+.SH NAME
+vanguards \- Additional protections for Tor onion services
+.SH SYNOPSIS
+vanguards [\-h] [\-\-state STATE_FILE] [\-\-generate_config WRITE_FILE]
+[\-\-loglevel LOGLEVEL] [\-\-logfile LOGFILE]
+[\-\-config CONFIG_FILE] [\-\-control_ip CONTROL_IP]
+[\-\-control_port CONTROL_PORT]
+[\-\-control_socket CONTROL_SOCKET]
+[\-\-control_pass CONTROL_PASS] [\-\-disable_bandguards]
+[\-\-disable_rendguard] [\-\-enable_cbtverify]
+.SH DESCRIPTION
+Connect to a Tor process via its control port to manage additional protections
+for onion services.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show help message and exit
+.TP
+\fB\-\-state\fR STATE_FILE
+File to store vanguard state
+.TP
+\fB\-\-generate_config\fR WRITE_FILE
+Write config to a file after applying command args
+.TP
+\fB\-\-loglevel\fR LOGLEVEL
+Log verbosity (DEBUG, INFO, NOTICE, WARN, or ERROR)
+.TP
+\fB\-\-logfile\fR LOGFILE
+Log to LOGFILE instead of stdout
+.TP
+\fB\-\-config\fR CONFIG_FILE
+Location of config file with more advanced settings
+.TP
+\fB\-\-control_ip\fR CONTROL_IP
+The IP address of the Tor Control Port to connect to
+(default: 127.0.0.1)
+.TP
+\fB\-\-control_port\fR CONTROL_PORT
+The Tor Control Port to connect to (default: 9051)
+.TP
+\fB\-\-control_socket\fR CONTROL_SOCKET
+The Tor Control Socket path to connect to
+.TP
+\fB\-\-control_pass\fR CONTROL_PASS
+The Tor Control Port password (optional)
+.TP
+\fB\-\-disable_bandguards\fR
+Disable circuit side channel checks (may help
+performance)
+.TP
+\fB\-\-disable_rendguard\fR
+Disable rendezvous misuse checks (may help
+performance)
+.TP
+\fB\-\-enable_cbtverify\fR
+Enable Circuit Build Time monitoring
+.SH SEE ALSO
+tor(1)
+
+https://github.com/mikeperry-tor/vanguards/blob/master/README.md
