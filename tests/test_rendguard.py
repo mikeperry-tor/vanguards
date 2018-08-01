@@ -31,6 +31,9 @@ class MockController:
     if key == "DataDirectory":
       return "tests"
 
+  def get_info(self, key, default=None):
+    return default
+
   # XXX: Test throw stem.InvalidArguments on NumPrimaryGuards
   def set_conf(self, key, val):
     pass

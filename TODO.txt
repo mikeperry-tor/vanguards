@@ -1,12 +1,8 @@
 TODO items that should maybe go into the bug tracker
 
-* Make Test pip package
+* Make deb and fedora packages
 * Test with https://github.com/hiromipaw/onionperf-docker
   * (2-3-8,2-4-8) x (service-only, service+client) 
-* Finish XXX sections of README
-* Provide ExcludeNodes compatibility (ie GETCONF and don't pick nodes in it)
-* Make real deb and pip packages
-* Write blog post
 * Investigate sharing vanguard state between multiple instances, for
-  better use with onionshare.
+  better use with onionbalance.
 * Provide per-layer Include/Exclude sets (requires Tor patches :/)

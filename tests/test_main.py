@@ -61,6 +61,9 @@ class MockController:
     if key == "DataDirectory":
       return DATA_DIR
 
+  def get_info(self, key, default=None):
+    return default
+
   def set_conf(self, key, val):
     if NO_HSLAYER and key == "HSLayer2Nodes":
       raise stem.InvalidArguments("Bad")

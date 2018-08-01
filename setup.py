@@ -45,6 +45,7 @@ setup(
     keywords='tor',
     install_requires=[
         'setuptools',
+        'ipaddress',
         'stem==1.5.4',
         ],
     classifiers=[
