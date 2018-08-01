@@ -18,6 +18,12 @@ from .logger import plog
 from . import control
 from . import rendguard
 
+# Unicode, damnit
+try:
+  UNICODE_DAMNIT = bool(type(unicode))
+except NameError:
+  unicode = str
+
 ################### Vanguard options ##################
 #
 NUM_LAYER1_GUARDS = 2 # 0 is Tor default
