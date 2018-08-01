@@ -16,6 +16,8 @@ DATA_DIR = "tests"
 NO_HSLAYER = False
 TOR_VERSION = stem.version.Version("0.3.4.4-rc")
 DEFAULT_CONFIG=os.path.join("tests", "default.conf")
+GOT_SAVE_CONF = False
+FAIL_SAVE_CONF = False
 
 class MockController:
   def __init__(self):
@@ -69,7 +71,10 @@ class MockController:
       raise stem.InvalidArguments("Bad")
 
   def save_conf(self):
-    raise stem.OperationFailed("Bad")
+    global GOT_SAVE_CONF
+    GOT_SAVE_CONF = True
+    if FAIL_SAVE_CONF:
+      raise stem.OperationFailed("Bad")
 
   def is_alive(self):
     if self.alive:
@@ -274,3 +279,42 @@ def test_failures():
   os.remove("tests/state.mock.test")
   os.remove("vanguards.state.test")
   os.remove("valid.log.test")
+
+def test_oneshot():
+  global GOT_SAVE_CONF, FAIL_SAVE_CONF
+  # Test no saveconf, no exit by default
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main" ]
+  try:
+    assert not GOT_SAVE_CONF
+    vanguards.main.main()
+    assert True
+    assert not GOT_SAVE_CONF
+  except SystemExit:
+    assert False
+
+  # Test lack of failures
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main", "--one_shot_vanguards" ]
+  try:
+    assert not GOT_SAVE_CONF
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+    assert GOT_SAVE_CONF
+
+  # Test failure
+  GOT_SAVE_CONF = False
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main", "--one_shot_vanguards" ]
+  try:
+    assert not GOT_SAVE_CONF
+    FAIL_SAVE_CONF = True
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+    assert GOT_SAVE_CONF
+
+  os.remove("vanguards.state.test")

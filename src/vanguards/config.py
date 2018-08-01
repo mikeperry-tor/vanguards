@@ -39,6 +39,9 @@ LOGLEVEL = "NOTICE"
 # Log to file instead of stdout
 LOGFILE = ""
 
+# If true, write/update vanguards to torrc and then exit
+ONE_SHOT_VANGUARDS = False
+
 CONTROL_IP = "127.0.0.1"
 CONTROL_PORT = 9051
 CONTROL_SOCKET = ""
@@ -50,6 +53,7 @@ def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
   global LOGLEVEL, LOGFILE
+  global ONE_SHOT_VANGUARDS
 
   parser = argparse.ArgumentParser()
 
@@ -90,6 +94,10 @@ def setup_options():
                       default=_RETRY_LIMIT, type=int,
                       help="Reconnect attempt limit on failure (default: Infinite)")
 
+  parser.add_argument("--one_shot_vanguards", dest="one_shot_vanguards",
+                      action="store_true",
+                      help="Write layer2 and layer3 guards to Torrc and exit.")
+
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",
                       help="Disable circuit side channel checks (may help performance)")
@@ -108,11 +116,12 @@ def setup_options():
   options = parser.parse_args()
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
-   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY) = \
+   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY,
+   ONE_SHOT_VANGUARDS) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.control_pass,
        options.bandguards_enabled, options.rendguard_enabled,
-       options.cbtverify_enabled)
+       options.cbtverify_enabled, options.one_shot_vanguards)
 
   if options.logfile != None:
     LOGFILE = options.logfile

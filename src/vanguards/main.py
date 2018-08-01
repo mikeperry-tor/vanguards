@@ -77,6 +77,16 @@ def control_loop(state):
 
   # XXX: Some subset of this should not run every reconnect
   state.new_consensus_event(controller, None)
+
+  if config.ONE_SHOT_VANGUARDS:
+    try:
+      controller.save_conf()
+    except stem.OperationFailed as e:
+      plog("NOTICE", "Tor can't save its own config file: "+str(e))
+      sys.exit(1)
+    plog("NOTICE", "Updated vanguards in torrc. Exiting.")
+    sys.exit(0)
+
   timeouts = cbtverify.TimeoutStats()
   bandwidths = bandguards.BandwidthStats(controller)
 
