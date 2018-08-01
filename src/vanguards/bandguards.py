@@ -176,7 +176,8 @@ class BandwidthStats:
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
-    if circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
+    if circ.read_bytes > 0 and \
+       circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
       # When clients hang up on streams before they close, this can result in
       # dropped data from those now-invalid/unknown stream IDs. Servers should
       # not do this. Hence warn for service case, notice for clients.
