@@ -306,7 +306,8 @@ network activity of your relay. See [Ticket #16585](https://trac.torproject.org/
 One way around this is to run your Tor relay as a separate process on the same
 machine as your onion service Tor process, but **also** use that relay locally
 as a bridge. In this way, your onion service activity will not directly block
-the relay activity. For this, you would add something like the following to
+the relay activity, but will still share all of its outbound TLS connections
+to other relays. For this, you would add something like the following to
 your onion service torrc:
 
 ```
@@ -321,11 +322,15 @@ in-network. OnionBalance is one way to address this (ie: running several Tor
 relays on different machines, each with their own OnionBalance Backend
 Instance), but again, if the adversary is able to determine that you are using
 OnionBalance, they can try to determine if your individual Backend Instances
-go up and down in correlation with any Tor relays. This is likely much harder
-for them to do accurately, but it may still be possible.
+go up and down in correlation with any Tor relays over time. It is likely
+harder for them to do this accurately than with a single relay and a single
+service, but it may still be possible.
 
 To look as much like a normal onion service as possible, you should use two
 OnionBalance Backend Instances, one for each relay, and each on different
 machines in different data centers. In this way, your traffic will appear as an
 onion service that is using your two guards, and your onion service as a whole
 won't go down unless both of your relays are down.
+
+Again, this whole setup should be vigilantly monitored for any downtime of any
+components, as any extended downtime will leak information.
