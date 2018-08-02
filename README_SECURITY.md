@@ -195,6 +195,9 @@ service. This is a good reason to monitor your onion service reachability very
 closely with something like [Munin](http://munin-monitoring.org/) or other
 reliability monitoring software.
 
+If you use bridges, you should monitor their uptime as well, and replace them
+if they go down.
+
 We are also [investigating adding heuristics to detect suspicious connection
 activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
 bandguards component. Patches and testing are welcome.
