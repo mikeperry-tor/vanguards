@@ -18,9 +18,13 @@ middle hops for rendezvous circuits are picked from the set of all relays:
 
 ![Current Onion Service Paths](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustrations/illustrations/current_system.jpg)
 
+This attack can also be performed against clients, by inducing them to create
+lots of connections to different onion services, by for example, injecting
+lots of onion-hosted images/elements into a page.
+
 A traffic analysis side channel can be used to confirm that the malicious node
 is in fact part of the rendezvous circuit, leading to the discovery of that
-onion service's guard node. From that point, the guard node can be
+onion service's or client's guard node. From that point, the guard node can be
 compromised, coerced, or surveilled to determine the actual IP address of the
 onion service or client.
 
@@ -140,7 +144,13 @@ file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.c
 
    If an attacker wants to introduce a side channel towards an onion service, they can fetch large quantities of data from that service, or make large HTTP posts towards the service, in order to generate detectable traffic patterns.
 
-   These traffic patterns can be detected in Tor's public relay bandwidth statistics, as well as via netflow connection volume records. The Tor Project is currently working on various mechanisms to reduce the granularity of these statistics and has deployed padding mechanisms to limit the resolution of netflow traffic logs, but it is not clear that these mechanisms are sufficient to obscure very large volumes of traffic.
+   These traffic patterns can be detected in Tor's public relay bandwidth
+statistics, as well as via netflow connection volume records. The Tor Project
+is currently working on various mechanisms to reduce the granularity of these
+statistics (and has already reduced them to 24 hours of aggregate data), and
+has also deployed padding mechanisms to limit the resolution of netflow traffic
+logs, but it is not clear that these mechanisms are sufficient to obscure very
+large volumes of traffic.
 
    Because of this, the bandguards subsystem has the ability to limit the
 total number of bytes sent over a circuit before a WARN is emitted and the
