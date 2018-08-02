@@ -35,9 +35,10 @@ network adversaries can still perform the following attacks:
 1. Determine your Guard relays, if they run one of your Layer2 middles.
 2. Determine that your onion service is using this addon, if they run one of
    your Guard relays.
-3. Confirm that a specific onion service is using their Guard or Layer2 middle
+3. Guess that your onion service may be using a particular Guard.
+4. Confirm that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
-4. Confirm that a specific onion service is not using their Guard or Layer2
+5. Confirm that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
 
 The vanguards addon is designed to make these attacks as difficult and unlikely as
@@ -48,6 +49,15 @@ but for now, this addon is the best way we have to defend against this
 adversary class.
 
 For statistics on how long the first two attacks take, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
+
+The network adversary may be able to guess that you are using a particular
+Guard by attacking that guard. If that guard goes down or becomes slower, they
+may notice the effect on your onion service. This is one of the reasons why
+the vanguards addon uses two guards in a balanced way by default.
+Additionally, they may be able to flood your onion service with data to notice
+spikes in our relay bandwidth statistics at the guard. Setting
+**circ_max_megabytes** to an appropriate value for your service can help you
+detect and mitigate this.
 
 The network adversary is able to perform confirmation attacks via the
 following mechanisms:
