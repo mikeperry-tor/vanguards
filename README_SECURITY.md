@@ -280,7 +280,7 @@ We are also [investigating adding heuristics to detect suspicious connection
 activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
 bandguards component. Patches and testing are welcome.
 
-## Maaaybe Run Tor Relays (Or Bridges)
+## Consider Running Tor Relays Or Bridges
 
 All of the attacks performed by local and global adversaries, as well as some
 of the confirmation attacks performed by network adversaries, are much harder if
