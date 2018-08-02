@@ -187,22 +187,6 @@ bridge itself does not need to have the same setting.
 You can get that obfs4proxy binary as a debian package, or from a recent Tor
 Browser version, or [build it from source](https://gitweb.torproject.org/pluggable-transports/obfs4.git/).
 
-## Monitor Your Reachability
-
-As we discussed above, confirmation attacks can be performed by local and
-global adversaries that block your access to Tor (or kill your Tor
-connections) to determine if this impacts the reachability of a suspect hidden
-service. This is a good reason to monitor your onion service reachability very
-closely with something like [Munin](http://munin-monitoring.org/) or other
-reliability monitoring software.
-
-If you use bridges, you should monitor their uptime as well, and replace them
-if they go down.
-
-We are also [investigating adding heuristics to detect suspicious connection
-activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
-bandguards component. Patches and testing are welcome.
-
 ## If You OnionBalance, OnionBalance Carefully
 
 If you use it correctly,
@@ -236,7 +220,7 @@ just as bad for the adversary to discover any of your onion service instances
 as it is to discover all of them, then obviously each additional instance
 lowers your security a bit.
 
-### Using OnionBalance
+### How to OnionBalance
 
 The workaround for this is to copy the vanguards state file from your OnionBalance
 Management Server to each of your Backend Instances, via tor+scp or some other
@@ -264,3 +248,25 @@ itself disabled. This is done with something like:
 These backend instances will then still monitor and react to bandwidth side
 channel attacks and Rendezvous Point overuse, without changing your layer2 or
 layer3 guards.
+
+## Monitor Your Reachability
+
+As we discussed above, confirmation attacks can be performed by local and
+global adversaries that block your access to Tor (or kill your Tor
+connections) to determine if this impacts the reachability of a suspect hidden
+service. This is a good reason to monitor your onion service reachability very
+closely with something like [Munin](http://munin-monitoring.org/) or other
+reliability monitoring software.
+
+If you use OnionBalance, you need to monitor the ability of each of your
+Backend Instances to connect to Tor and receive connections to their unique
+backend onion service keys. If the adversary is able to determine that you are
+using OnionBalance, they can perform reachability confirmation attacks against
+the specific backend instances.
+
+If you use bridges, you should monitor their uptime as well, and replace them
+if they go down.
+
+We are also [investigating adding heuristics to detect suspicious connection
+activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
+bandguards component. Patches and testing are welcome.
