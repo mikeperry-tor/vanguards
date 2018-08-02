@@ -28,28 +28,36 @@ their choice (especially against onion services).
 The vanguards addon is designed to protect against network adversaries.
 Setting aside the attacks that this addon defends against (which are
 documented in
-[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md),
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md)),
 network adversaries can still perform the following attacks:
 
-1. Determine that your onion service is using this addon, if they run one of
+1. Determine your Guard relays, if they run one of your Layer2 middles.
+2. Determine that your onion service is using this addon, if they run one of
    your Guard relays.
-2. Determine your Guard nodes, if they run one of your Layer2 middles.
 3. Confirm that a specific onion service is using their Guard or Layer2 middle
-   nodes, if it is.
+   relays, if it is.
 4. Confirm that a specific onion service is not using their Guard or Layer2
-   middle nodes, if it is not.
+   middle relays, if it is not.
 
-The addon is designed to make these attacks as difficult and unlikely as
+The vanguards addon is designed to make these attacks as difficult and unlikely as
 possible, and to take as long as possible, but they can still succeed if you
 get unlucky. Tor takes these attacks seriously, and they are topics of [active
 research](https://blog.torproject.org/tors-open-research-topics-2018-edition),
 but for now, this addon is the best way we have to defend against this
 adversary class.
 
-For statistics on how long these types of attacks take, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
+For statistics on how long the first two attacks take, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
 
-The addon has additional checks to detect activity that makes these attacks
-easier, as well. Those details are covered in
+The network adversary is able to perform confirmation attacks via the
+following mechanisms:
+
+1. Inject special types of traffic at specific times towards your onion service (as was done [by CMU with RELAY_EARLY](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack), and [shown in the DropMark attack](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)).
+2. Inject large amounts of traffic towards your onion service, and look for these additional traffic patterns on their relays.
+3. Close circuits at their relays, and observe if this causes any of their connections to your onion service to close.
+4. Utilize [cryptographic tagging attacks](https://lists.torproject.org/pipermail/tor-dev/2012-March/003347.html) to mark circuits at their relays, and observe this mark at other relays (such
+as the Rendezvous Point).
+
+The vanguards addon has additional checks to detect activity related to these attacks, as well. Those details are covered in
 [README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md).
 
 ## Adversaries: Local
@@ -87,7 +95,7 @@ today). Proposal 291 is a consensus parameter change. The rest of the Tor
 Project just has to agree that it is a good idea. Agreement can take a while,
 but once we decide, the change will be immediate.
 
-With this information, the network adversary may suspect that you are running
+With this information, the local adversary may suspect that you are running
 an onion service, and maybe even one that wants high security, but they will
 not know which one it is. If they are interested in specific onion services,
 they can attempt to confirm that you are running one of them via a few
@@ -113,7 +121,7 @@ can, but everywhere. This means that they can:
 1. Get a list of most/all IPs that connect to the public Tor network.
 2. Guess which of these IPs might be running onion services.
 3. Guess which of these IPs might be using this addon (soon to be fixed).
-4. Guess that an IP is running a specific onion service address, if it is
+4. Guess that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
 
 This same adversary can theoretically perform additional attacks to attempt to
@@ -121,7 +129,7 @@ deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
 those attacks scale. These limits are also the reason that the global
 confirmation attack has been degraded to a "guess" for #4. If there is enough
-other traffic present, or other mitigating factors they may not always be
+other traffic present, or other mitigating factors, they may not always be
 certain, unless they send a large amount of traffic over a long period of
 time, or become active on a global scale in terms of blocking or closing
 very many connections (which is very expensive, noisy, and noticeable).
@@ -176,7 +184,7 @@ outgoing traffic, which is exactly the direction you want as a service. The
 bridge itself does not need to have the same setting.
 
 You can get that obfs4proxy binary as a debian package, or from a recent Tor
-Browser version.
+Browser version, or [build it from source](https://gitweb.torproject.org/pluggable-transports/obfs4.git/).
 
 ## Monitor Your Reachability
 
