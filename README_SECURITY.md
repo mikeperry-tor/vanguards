@@ -222,10 +222,18 @@ lowers your security a bit.
 
 ### How to OnionBalance
 
-The workaround for this is to copy the vanguards state file from your OnionBalance
-Management Server to each of your Backend Instances, via tor+scp or some other
-secure mechanism. This should be done once per hour (crontab is a good way to
-do this).
+To attempt to conceal the fact that you are using OnionBalance, you want your
+OnionBalance service to produce descriptors with similar numbers of
+introduction points as normal services. Normal services typically have between
+3 and 7 introduction points. This means you should set the
+**MAX_INTRO_POINTS** OnionBalance setting to 7, and also set
+**DISTINCT_DESCRIPTORS=False**, to prevent it from generating multiple
+descriptors.
+
+To keep your layer2 and layer3 vanguards in sync, copy the vanguards state
+file from your OnionBalance Management Server to each of your Backend
+Instances, via tor+scp or some other secure mechanism. This should be done
+once per hour (crontab is a good way to do this).
 
 When they get this statefile (let's call it **mgmt-vanguards.state**), each of
 your Backend Instances should run
@@ -255,8 +263,9 @@ As we discussed above, confirmation attacks can be performed by local and
 global adversaries that block your access to Tor (or kill your Tor
 connections) to determine if this impacts the reachability of a suspect hidden
 service. This is a good reason to monitor your onion service reachability very
-closely with something like [Munin](http://munin-monitoring.org/) or other
-reliability monitoring software.
+closely with something like [Nagios](https://www.nagios.org/),
+[Munin](http://munin-monitoring.org/) or other reliability monitoring
+software.
 
 If you use OnionBalance, you need to monitor the ability of each of your
 Backend Instances to connect to Tor and receive connections to their unique
@@ -270,3 +279,53 @@ if they go down.
 We are also [investigating adding heuristics to detect suspicious connection
 activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
 bandguards component. Patches and testing are welcome.
+
+## Maaaybe Run Tor Relays (Or Bridges)
+
+All of the attacks performed by local and global adversaries, as well as some
+of the confirmation attacks performed by network adversaries, are much harder if
+there is additional traffic for your onion service to blend in with.
+
+One way to accomplish this is to run a Tor relay or Tor Bridge with your onion
+service. If the relay or bridge is used enough (especially by other onion
+service client and service traffic), this will help obscure your service's
+traffic.
+
+For this to work, you have to be careful about how you set it up. Simply
+running an additional Tor daemon on the same machine is not enough -- your
+onion service will make separate (and distinguishable) TLS connections to other
+relays, and thus you will get no benefit from the additional traffic against
+an adversary that understands how Tor works.
+
+The seemingly obvious approach would be to use the same Tor process for your
+relay as you use for your onion service. This will accomplish the traffic
+blending on the same TLS connections. Unfortunately, because Tor is single
+threaded, your onion service activity can still cause stalls in the overall
+network activity of your relay. See [Ticket #16585](https://trac.torproject.org/projects/tor/ticket/16585) for the gory details.
+
+One way around this is to run your Tor relay as a separate process on the same
+machine as your onion service Tor process, but **also** use that relay locally
+as a bridge. In this way, your onion service activity will not directly block
+the relay activity. For this, you would add something like the following to
+your onion service torrc:
+
+```
+UseBridges 1
+Bridge 127.0.0.1:9001 # 9001 is the relay process's OR port.
+```
+
+The story deepens, however. When you do this, your onion service uptime will
+be even more strongly correlated to your relay uptime, and both are now very
+easily observable by adversaries that aren't local, global, or even
+in-network. OnionBalance is one way to address this (ie: running several Tor
+relays on different machines, each with their own OnionBalance Backend
+Instance), but again, if the adversary is able to determine that you are using
+OnionBalance, they can try to determine if your individual Backend Instances
+go up and down in correlation with any Tor relays. This is likely much harder
+for them to do accurately, but it may still be possible.
+
+To look as much like a normal onion service as possible, you should use two
+OnionBalance Backend Instances, one for each relay, and each on different
+machines in different data centers. In this way, your traffic will appear as an
+onion service that is using your two guards, and your onion service as a whole
+won't go down unless both of your relays are down.
