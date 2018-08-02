@@ -44,6 +44,15 @@ The Tor Control Socket path to connect to
 \fB\-\-control_pass\fR CONTROL_PASS
 The Tor Control Port password (optional)
 .TP
+\fB\-\-retry_limit\fR RETRY_LIMIT
+Reconnect attempt limit on failure (default: Infinite)
+.TP
+\fB\-\-one_shot_vanguards\fR
+Set and write layer2 and layer3 guards to torrc and exit.
+.TP
+\fB\-\-disable_vanguards\fR
+Disable setting any layer2 and layer3 guards.
+.TP
 \fB\-\-disable_bandguards\fR
 Disable circuit side channel checks (may help
 performance)
