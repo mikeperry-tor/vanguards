@@ -6,10 +6,11 @@ The attacks that you are at risk for depend on who your adversary is.
 
 To help make this more clear, we're going to first go through the general
 taxonomy of adversaries along with the types of attacks they can perform in
-the **Adversaries** section.
+the [Adversaries](#adversaries) section.
 
-In the **What can I do to be safer?** section, we'll give some specific
-recommendations that will help defend against these adversaries.
+In the [What can I do to be safer?](#what-can-i-do-to-be-safer) section, we'll
+give some specific recommendations that will help defend against these
+adversaries.
 
 # Adversaries
 
