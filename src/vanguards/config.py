@@ -97,7 +97,7 @@ def setup_options():
 
   parser.add_argument("--one_shot_vanguards", dest="one_shot_vanguards",
                       action="store_true",
-                      help="Write layer2 and layer3 guards to Torrc and exit.")
+                      help="Set and write layer2 and layer3 guards to Torrc and exit.")
 
   parser.add_argument("--disable_vanguards", dest="vanguards_enabled",
                       action="store_false",
