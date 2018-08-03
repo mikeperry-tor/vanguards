@@ -111,10 +111,13 @@ class BwWeightedGenerator(NodeGenerator):
   #
   # Note that we deliberately *don't* re-normalize weight_total
   # since we don't want to lower the upper bound of the rest
-  # of the nodes due to this madness.
+  # of the nodes due to this madness. But we do want a separate
+  # exit_total for use with these Exit nodes (since it gives their
+  # selection probability for cannibalized circs).
   def repair_exits(self):
     oldpos = self.position
     self.position = BwWeightedGenerator.POSITION_EXIT
+    self.exit_total = 0
 
     i = 0
     rlen = len(self.rstr_routers)
@@ -122,6 +125,7 @@ class BwWeightedGenerator(NodeGenerator):
       r = self.rstr_routers[i]
       if "Exit" in r.flags:
         self.node_weights[i] = r.measured*self.flag_to_weight(r)
+        self.exit_total += self.node_weights[i]
 
       i+=1
 

@@ -65,8 +65,13 @@ class RendGuard:
     rlen = len(node_gen.rstr_routers)
     while i < rlen:
       r = node_gen.rstr_routers[i]
-      self.use_counts[r.fingerprint].weight = \
-         node_gen.node_weights[i]/node_gen.weight_total
+
+      if "Exit" in r.flags:
+        self.use_counts[r.fingerprint].weight = \
+           node_gen.node_weights[i]/node_gen.exit_total
+      else:
+        self.use_counts[r.fingerprint].weight = \
+           node_gen.node_weights[i]/node_gen.weight_total
       i+=1
 
     # Periodically we divide counts by two, to avoid overcounting
