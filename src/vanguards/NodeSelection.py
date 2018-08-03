@@ -100,6 +100,33 @@ class BwWeightedGenerator(NodeGenerator):
 
     return self.bw_weights[u'Wmm']/self.WEIGHT_SCALE
 
+
+  # This function handles https://github.com/mikeperry-tor/vanguards/issues/24
+  #
+  # Exit nodes got their weights set to 0 by the BwWeightedGenerator,
+  # because we told it we were selecting for middle. Since they can
+  # still be used as RPs in normal client cannibalized circuits,
+  # we need to set their upper bound to be their exit selection
+  # probability.
+  #
+  # Note that we deliberately *don't* re-normalize weight_total
+  # since we don't want to lower the upper bound of the rest
+  # of the nodes due to this madness.
+  def repair_exits(self):
+    oldpos = self.position
+    self.position = BwWeightedGenerator.POSITION_EXIT
+
+    i = 0
+    rlen = len(self.rstr_routers)
+    while i < rlen:
+      r = self.rstr_routers[i]
+      if "Exit" in r.flags:
+        self.node_weights[i] = r.measured*self.flag_to_weight(r)
+
+      i+=1
+
+    self.position = oldpos
+
   def rebuild(self, sorted_r=None):
     NodeGenerator.rebuild(self, sorted_r)
     NodeGenerator.rewind(self)

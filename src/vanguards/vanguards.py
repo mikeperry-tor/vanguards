@@ -187,6 +187,9 @@ class VanguardState:
       # Replenish our guard lists with new nodes
       self.replenish_layers(gen, exclude)
 
+    # Repair Exit-flagged node weights, since they can be chosen
+    # sometimes by other clients as RPs (when cannibalized)
+    ng.repair_exits()
     # Transfer and scale RP use counts to this consensus
     self.rendguard.xfer_use_counts(ng)
 
