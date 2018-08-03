@@ -64,6 +64,9 @@ class MockController:
       return DATA_DIR
 
   def get_info(self, key, default=None):
+    if key == "orconn-status":
+      return "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED\n"+\
+             "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED"
     return default
 
   def set_conf(self, key, val):

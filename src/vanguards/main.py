@@ -91,9 +91,6 @@ def control_loop(state):
     plog("NOTICE", "Updated vanguards in torrc. Exiting.")
     sys.exit(0)
 
-  timeouts = cbtverify.TimeoutStats()
-  bandwidths = bandguards.BandwidthStats(controller)
-
   # Thread-safety: state, timeouts, and bandwidths are effectively
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
@@ -105,12 +102,18 @@ def control_loop(state):
                                   stem.control.EventType.CIRC)
 
   if config.ENABLE_BANDGUARDS:
+    bandwidths = bandguards.BandwidthStats(controller)
+
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.circ_event, bandwidths),
                                   stem.control.EventType.CIRC)
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.bw_event, bandwidths),
                                   stem.control.EventType.BW)
+    controller.add_event_listener(
+                 functools.partial(bandguards.BandwidthStats.orconn_event, bandwidths),
+                                  stem.control.EventType.ORCONN)
+
     if controller.get_version() >= _MIN_TOR_VERSION_FOR_BW:
       controller.add_event_listener(
                    functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
@@ -123,6 +126,8 @@ def control_loop(state):
                       "enabled, you must use Tor 0.3.4.4-rc or newer.")
 
   if config.ENABLE_CBTVERIFY:
+    timeouts = cbtverify.TimeoutStats()
+
     controller.add_event_listener(
                  functools.partial(cbtverify.TimeoutStats.circ_event, timeouts),
                                   stem.control.EventType.CIRC)

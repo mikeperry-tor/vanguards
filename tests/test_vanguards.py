@@ -24,6 +24,7 @@ try:
 except NameError:
   xrange = range
 
+# XXX: All of these in vs not-in checks should be exhaustive
 def replacement_checks(state, routers, weights):
   layer2_idhex = state.layer2[0].idhex
   layer3_idhex = state.layer3[0].idhex
