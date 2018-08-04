@@ -140,4 +140,29 @@ with fresh layer2 and layer3 guards:
   pypy ./src/vanguards.py --one_shot_vanguards
 ```
 
+# What do the logs mean?
 
+This is an experimental addon with many heuristics that still need tuning.
+Events that represent severe issues are at WARNING level. You should
+react to these events. Warns are currently emitted for the following
+conditions:
+
+1. When your client is disconnected from the Tor network, or cannot build
+circuits. Downtime can be a side channel signal or a passive information leak,
+and you should ensure your Internet connection is reliable to minimize
+downtime as much as possible.
+2. When a dropped cell is received very early after circuit build, before
+application data. If this happens, it is either a bug, or an actual attack.
+3. When a hidden service descriptor circuit sends more than 30KB. If this
+happens, it is either a bug, a heavily-modified hidden service descriptor,
+or an actual attack.
+4. When you set ExcludeNodes in Tor to exclude countries, but do not give
+Tor a GeoIP file.
+
+Events that are detected by heuristics that still need tuning are at NOTICE
+level. They may be a bug, a false positive, or an actual attack. If in doubt,
+don't panic. Please check the [Github
+issues](https://github.com/mikeperry-tor/vanguards/issues/) to see if any
+known false positives are related to these lines, and if not, consider filing
+an issue. Please redact any relay fingerprints from the messages before
+posting.
