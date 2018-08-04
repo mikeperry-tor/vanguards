@@ -62,7 +62,7 @@ _BYTES_PER_MB = 1024*_BYTES_PER_KB
 # give it until the next couple in case there is a scheduled events hiccup
 _MAX_CIRC_DESTROY_LAG_SECS = 2
 
-# At least 500 bytes must be "delievered" to the application before
+# At least 200 bytes must be "delievered" to the application before
 # we allow any drops. This helps protect against DropMark even if
 # CIRC_MAX_DROPPED_CELLS is set.
 # WARN before this, NOTICE after
@@ -153,6 +153,10 @@ class BandwidthStats:
       self.live_guard_conns[event.id] = self.guards[guard_fp]
       self.guards[guard_fp].conns_made += 1
       self.no_conns_since = 0
+      if self.disconnected_conns:
+        disconnected_secs = event.arrived_at - self.no_conns_since
+        plog("NOTICE", "Reconnected to the Tor network after %d seconds.",
+             disconnected_secs)
       self.disconnected_conns = False
     elif event.status == "CLOSED" or event.status == "FAILED":
       if event.id not in self.live_guard_conns:
@@ -237,6 +241,10 @@ class BandwidthStats:
     # to be "in_use".
     if event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT":
+      if self.disconnected_circs:
+        disconnected_secs = event.arrived_at - self.no_circs_since
+        plog("NOTICE", "Circuit use resumed after %d seconds.",
+             disconnected_secs)
       self.no_circs_since = None
       self.disconnected_circs = False
       if event.purpose[0:9] == "HS_CLIENT" or \
@@ -248,6 +256,10 @@ class BandwidthStats:
 
     # Extending a circuit means the network is OK
     elif event.status == "EXTENDED":
+      if self.disconnected_circs:
+        disconnected_secs = event.arrived_at - self.no_circs_since
+        plog("NOTICE", "Circuit use resumed after %d seconds.",
+             disconnected_secs)
       self.no_circs_since = None
       self.disconnected_circs = False
 
@@ -277,6 +289,10 @@ class BandwidthStats:
 
   def circbw_event(self, event):
     # Circuit bandwidth means circuits are working
+    if self.disconnected_circs:
+      disconnected_secs = event.arrived_at - self.no_circs_since
+      plog("NOTICE", "Circuit use resumed after %d seconds.",
+           disconnected_secs)
     self.no_circs_since = None
     self.disconnected_circs = False
 
