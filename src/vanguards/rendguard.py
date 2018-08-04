@@ -88,7 +88,10 @@ class RendGuard:
     self.total_use_counts = float(self.total_use_counts)
 
   def circ_event(self, controller, event):
-    if event.status == "BUILT" and event.purpose == "HS_SERVICE_REND":
+    if event.status == "BUILT" and \
+       event.purpose == "HS_SERVICE_REND" and \
+       event.purpose == "HS_SERVICE_REND" and \
+       event.hs_state == "HSSR_CONNECTING":
       if not self.valid_rend_use(event.path[-1][0]):
         if REND_USE_CLOSE_CIRCUITS_ON_OVERUSE:
            control.try_close_circuit(controller, event.id)
