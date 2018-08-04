@@ -24,45 +24,53 @@ try:
 except NameError:
   xrange = range
 
-# XXX: All of these in vs not-in checks should be exhaustive
 def replacement_checks(state, routers, weights):
-  layer2_idhex = state.layer2[0].idhex
-  layer3_idhex = state.layer3[0].idhex
+  remove2_idhex = state.layer2[0].idhex
+  remove3_idhex = state.layer3[0].idhex
 
   # - Remove a layer2 guard from it
   # - Remove a layer3 guard from it
-  routers = list(filter(lambda x: x.fingerprint != layer2_idhex \
-                         and x.fingerprint != layer3_idhex,
+  routers = list(filter(lambda x: x.fingerprint != remove2_idhex \
+                         and x.fingerprint != remove3_idhex,
                    routers))
 
-  assert layer2_idhex in map(lambda x: x.idhex, state.layer2)
-  assert layer3_idhex in map(lambda x: x.idhex, state.layer3)
-  keep2 = [state.layer2[1].idhex, state.layer2[2].idhex]
-  keep3 = [state.layer3[1].idhex, state.layer3[2].idhex]
+  assert remove2_idhex in map(lambda x: x.idhex, state.layer2)
+  assert remove3_idhex in map(lambda x: x.idhex, state.layer3)
+  keep2 = map(lambda x: x.idhex,
+              filter(lambda x: x.idhex != remove2_idhex \
+                               and x.idhex != remove3_idhex,
+                     state.layer2))
+  keep3 = map(lambda x: x.idhex,
+              filter(lambda x: x.idhex != remove2_idhex \
+                               and x.idhex != remove3_idhex,
+                     state.layer3))
   state.consensus_update(routers, weights, ExcludeNodes(MockController()))
   sanity_check(state)
-  assert not layer2_idhex in map(lambda x: x.idhex, state.layer2)
-  assert not layer3_idhex in map(lambda x: x.idhex, state.layer3)
+  assert not remove2_idhex in map(lambda x: x.idhex, state.layer2)
+  assert not remove3_idhex in map(lambda x: x.idhex, state.layer3)
   for k in keep2: assert k in map(lambda x: x.idhex, state.layer2)
   for k in keep3: assert k in map(lambda x: x.idhex, state.layer3)
 
-  layer2_idhex = state.layer2[1].idhex
-  layer3_idhex = state.layer3[1].idhex
+  remove2_idhex = state.layer2[1].idhex
+  remove3_idhex = state.layer3[1].idhex
 
   # - Mark a layer2 guard way in the past
   # - Mark a layer3 guard way in the past
   state.layer2[1].expires_at = time.time() - 10
   state.layer3[1].expires_at = time.time() - 10
 
-  assert layer2_idhex in map(lambda x: x.idhex, state.layer2)
-  assert layer3_idhex in map(lambda x: x.idhex, state.layer3)
-  keep2 = [state.layer2[0].idhex, state.layer2[2].idhex]
-  keep3 = [state.layer3[0].idhex, state.layer3[2].idhex]
-
+  assert remove2_idhex in map(lambda x: x.idhex, state.layer2)
+  assert remove3_idhex in map(lambda x: x.idhex, state.layer3)
+  keep2 = map(lambda x: x.idhex,
+              filter(lambda x: x.idhex != remove2_idhex,
+                     state.layer2))
+  keep3 = map(lambda x: x.idhex,
+              filter(lambda x: x.idhex != remove3_idhex,
+                     state.layer3))
   state.consensus_update(routers, weights, ExcludeNodes(MockController()))
   sanity_check(state)
-  assert not layer2_idhex in map(lambda x: x.idhex, state.layer2)
-  assert not layer3_idhex in map(lambda x: x.idhex, state.layer3)
+  assert not remove2_idhex in map(lambda x: x.idhex, state.layer2)
+  assert not remove3_idhex in map(lambda x: x.idhex, state.layer3)
   for k in keep2: assert k in map(lambda x: x.idhex, state.layer2)
   for k in keep3: assert k in map(lambda x: x.idhex, state.layer3)
 
