@@ -7,7 +7,7 @@ from vanguards.bandguards import BandwidthStats
 from vanguards.bandguards import CIRC_MAX_HSDESC_KILOBYTES
 from vanguards.bandguards import CIRC_MAX_MEGABYTES
 from vanguards.bandguards import CIRC_MAX_AGE_HOURS
-from vanguards.bandguards import CIRC_MAX_DROPPED_BYTES_PERCENT
+from vanguards.bandguards import CIRC_MAX_DROPPED_CELLS
 from vanguards.bandguards import CIRC_MAX_DISCONNECTED_SECS
 from vanguards.bandguards import CONN_MAX_DISCONNECTED_SECS
 
@@ -16,6 +16,7 @@ from vanguards.bandguards import _CELL_DATA_RATE
 from vanguards.bandguards import _SECS_PER_HOUR
 from vanguards.bandguards import _BYTES_PER_KB
 from vanguards.bandguards import _BYTES_PER_MB
+from vanguards.bandguards import _MIN_BYTES_UNTIL_DROPS
 
 import vanguards.logger
 
@@ -59,6 +60,10 @@ def built_circ(circ_id, purpose, guard="$5416F3E8F80101A133B1970495B04FDBD1C7446
   s = "650 CIRC "+str(circ_id)+" BUILT "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
+def extended_circ(circ_id, purpose, guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
+  s = "650 CIRC "+str(circ_id)+" EXTENDED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
+  return ControlMessage.from_str(s, "EVENT")
+
 def purpose_changed_circ(circ_id, old_purpose, new_purpose, guard):
   s = "650 CIRC_MINOR "+str(circ_id)+" PURPOSE_CHANGED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+new_purpose+" OLD_PURPOSE="+old_purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
   return ControlMessage.from_str(s, "EVENT")
@@ -93,7 +98,7 @@ def circ_bw(circ_id, read, sent, delivered_read, delivered_sent,
   return ControlMessage.from_str(s, "EVENT")
 
 def check_hsdir(state, controller, circ_id):
-  read = 0
+  read = _CELL_PAYLOAD_SIZE
   while read < CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
     state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
                                _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
@@ -105,48 +110,42 @@ def check_hsdir(state, controller, circ_id):
 
 def check_maxbytes(state, controller, circ_id):
   read = 0
-  while read+2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE < \
+  while read+2000*_CELL_PAYLOAD_SIZE < \
         CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
     state.circbw_event(circ_bw(circ_id, 1000*_CELL_PAYLOAD_SIZE,
                                1000*_CELL_PAYLOAD_SIZE,
                                1000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
-    read += 2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE
+    read += 2000*_CELL_PAYLOAD_SIZE
     assert controller.closed_circ == None
 
   state.circbw_event(circ_bw(circ_id, 2000*_CELL_PAYLOAD_SIZE, 0,
                              2000*_CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
 
-def check_ratio(state, controller, circ_id):
-  # First read for a while (using the max as a token value) at a drop rate 50%
-  # below our limit
+def check_dropped_bytes(state, controller, circ_id,
+                        delivered_cells, dropped_cells):
+  # First read for a while with no dropped bytes
   read = 0
-  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-CIRC_MAX_DROPPED_BYTES_PERCENT*0.5))/2
-  while read < CIRC_MAX_MEGABYTES*1000:
+  valid_bytes = _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE/2
+  while read < delivered_cells:
     state.circbw_event(circ_bw(circ_id,
-                               500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
+                               _CELL_PAYLOAD_SIZE, _CELL_PAYLOAD_SIZE,
                                floor(valid_bytes), 0,
                                ceil(valid_bytes), 0))
-    read += 500*_CELL_PAYLOAD_SIZE
+    read += 1
     assert controller.closed_circ == None
 
-  # Now read for a while (using the max as a token value) at a drop rate 50%
-  # above our limit. This should bring us right up to our limit.
+  # Now get some dropped cells
   read = 0
-  valid_bytes = 500*_CELL_DATA_RATE*(_CELL_PAYLOAD_SIZE*(1.0-CIRC_MAX_DROPPED_BYTES_PERCENT*1.5))/2
-  while read < CIRC_MAX_MEGABYTES*1000:
-    state.circbw_event(circ_bw(circ_id, 500*_CELL_PAYLOAD_SIZE, 500*_CELL_PAYLOAD_SIZE,
-                               floor(valid_bytes), 0,
-                               ceil(valid_bytes), 0))
-    read += 500*_CELL_PAYLOAD_SIZE
+  while read < dropped_cells:
     assert controller.closed_circ == None
-
-  state.circbw_event(circ_bw(circ_id, 510*_CELL_PAYLOAD_SIZE, 0,
-                             floor(valid_bytes), 0,
-                             ceil(valid_bytes), 0))
+    state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE,
+                               _CELL_PAYLOAD_SIZE,
+                               0, 0, 0, 0))
+    read += 1
 
 # Test plan:
 def test_bwstats():
-  global CIRC_MAX_DROPPED_BYTES_PERCENT
+  global CIRC_MAX_DROPPED_CELLS
   global CIRC_MAX_MEGABYTES
   controller = MockController()
   state = BandwidthStats(controller)
@@ -243,42 +242,35 @@ def test_bwstats():
   state.bw_event(MockEvent(time.time()))
   assert controller.closed_circ == None
 
-  # - Read ratio exceeded (but writes are ignored)
-  CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 2.5
-  CIRC_MAX_DROPPED_BYTES_PERCENT /= 100.0
+  # Test that regular reading is ok
   circ_id += 1
   controller.closed_circ = None
-  state.circ_event(built_circ(circ_id, "HS_CLIENT_REND"))
-  check_ratio(state, controller, circ_id)
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  check_dropped_bytes(state, controller, circ_id, 100, 0)
+  assert controller.closed_circ == None
+
+  # Test that no dropped cells are allowed before app data
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # - Read ratio exceeded for service (but writes are ignored)
+  # Test that no dropped cells are allowed on not-built circ.
   circ_id += 1
   controller.closed_circ = None
-  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
-  state.circ_minor_event(cannibalized_circ(circ_id, "HS_SERVICE_REND"))
-  check_ratio(state, controller, circ_id)
+  state.circ_event(extended_circ(circ_id, "HS_VANGUARDS"))
+  check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # - Read ratio disabled
+  # Test that after app data, up to CIRC_MAX_DROPPED_CELLS
+  # allowed, and then we close.
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 100.0
-  check_ratio(state, controller, circ_id)
-  assert controller.closed_circ == None
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = CIRC_MAX_DROPPED_BYTES_PERCENT*100
-
-  # - Read ratio set to 0 but there still is overhead.
-  circ_id += 1
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
-  controller.closed_circ = None
-  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = 100.0
-  check_ratio(state, controller, circ_id)
-  assert controller.closed_circ == None
-  vanguards.bandguards.CIRC_MAX_DROPPED_BYTES_PERCENT = CIRC_MAX_DROPPED_BYTES_PERCENT*100
+  check_dropped_bytes(state, controller, circ_id,
+                      1000, CIRC_MAX_DROPPED_CELLS+1)
+  assert controller.closed_circ == str(circ_id)
 
   # - Non-HS circs ignored:
   circ_id += 1

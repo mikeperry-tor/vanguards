@@ -8,10 +8,12 @@ from .logger import plog
 
 ############ BandGuard Options #################
 
-# Kill a circuit if this much received bandwidth is not application related.
-# This prevents an adversary from inserting cells that are silently dropped
-# into a circuit, to use as a timing side channel.
-CIRC_MAX_DROPPED_BYTES_PERCENT = 0.0
+# Kill a circuit if more than this many received cells are considered
+# invalid by Tor. This prevents an adversary from inserting cells
+# that are silently dropped into a circuit, to use as a timing side
+# channel.... To prevent dropmark attacks, a limit of 0 cells is used
+# until the first application data appears on a circuit.
+CIRC_MAX_DROPPED_CELLS = 30
 
 # Kill a circuit if this many read+write bytes have been exceeded.
 # Very loud application circuits could be used to introduce timing
@@ -41,12 +43,15 @@ CONN_MAX_DISCONNECTED_SECS = 15
 ############ Constants ###############
 _CELL_PAYLOAD_SIZE = 509
 _RELAY_HEADER_SIZE = 11
-_CELL_DATA_RATE = (float(_CELL_PAYLOAD_SIZE-_RELAY_HEADER_SIZE)/_CELL_PAYLOAD_SIZE)
+_RELAY_PAYLOAD_SIZE = _CELL_PAYLOAD_SIZE - _RELAY_HEADER_SIZE
+_CELL_DATA_RATE = (float(_RELAY_PAYLOAD_SIZE)/_CELL_PAYLOAD_SIZE)
+_RELAY_CELL_RATE = (float(_CELL_PAYLOAD_SIZE)/_RELAY_PAYLOAD_SIZE)
 
 # Constants from connection_edge_consider_sending_sendme(). These govern the
-# max SENDMEs can be expected to be in-flight.
+# max SENDMEs can be expected to be in-flight (we use circ window because
+# there can be multiple streams on one circ).
 _STREAM_SENDME_INCREMENT = 50
-_STREAM_SENDME_WINDOW = 500
+_CIRC_SENDME_WINDOW = 1000
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
@@ -56,6 +61,12 @@ _BYTES_PER_MB = 1024*_BYTES_PER_KB
 # The event really should arrive in the same second, but let's
 # give it until the next couple in case there is a scheduled events hiccup
 _MAX_CIRC_DESTROY_LAG_SECS = 2
+
+# At least 500 bytes must be "delievered" to the application before
+# we allow any drops. This helps protect against DropMark even if
+# CIRC_MAX_DROPPED_CELLS is set.
+# WARN before this, NOTICE after
+_MIN_BYTES_UNTIL_DROPS = 500
 
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
@@ -77,28 +88,9 @@ class BwCircuitStat:
   def total_bytes(self):
     return self.read_bytes + self.sent_bytes
 
-  def dropped_read_bytes(self):
-    return self.read_bytes - \
-           (self.delivered_read_bytes+self.overhead_read_bytes)
-
-  # The allowed dropped bytes is the number of expected SENDMEs we may have
-  # pending based on the stream window, because one end can close the stream
-  # before they arrive (causing them to get dropped). One SENDME is sent every
-  # 50 cells, up to 500. This means a max of 10 should be in-flight, plus 1
-  # if the other side decides to send an END as well once it gets all data.
-  def allowed_dropped_bytes(self):
-    cells_sent = (self.sent_bytes/(_CELL_PAYLOAD_SIZE*_CELL_DATA_RATE))
-    sendme_count = cells_sent/_STREAM_SENDME_INCREMENT
-    max_sendmes = 1+int(min(sendme_count,
-                            _STREAM_SENDME_WINDOW/_STREAM_SENDME_INCREMENT))
-    return max_sendmes*_CELL_PAYLOAD_SIZE
-
-  def dropped_read_bytes_extra(self):
-    return max(self.allowed_dropped_bytes(),
-               self.dropped_read_bytes())-self.allowed_dropped_bytes()
-
-  def dropped_read_rate(self):
-    return self.dropped_read_bytes_extra()/self.read_bytes
+  def dropped_read_cells(self):
+    return self.read_bytes/_CELL_PAYLOAD_SIZE - \
+           (self.delivered_read_bytes+self.overhead_read_bytes)/_RELAY_PAYLOAD_SIZE
 
 class BwGuardStat:
   def __init__(self, guard_fp):
@@ -251,6 +243,8 @@ class BandwidthStats:
          event.purpose[0:10] == "HS_SERVICE":
         self.circs[event.id].in_use = 1
         self.circs[event.id].guard_fp = event.path[0][0]
+        plog("INFO", "Circ "+event.id+" now in-use. %d delivered bytes.",
+             self.circs[event.id].delivered_read_bytes)
 
     # Extending a circuit means the network is OK
     elif event.status == "EXTENDED":
@@ -276,6 +270,8 @@ class BandwidthStats:
       if event.old_purpose == "HS_VANGUARDS":
         self.circs[event.id].in_use = 1
         self.circs[event.id].guard_fp = event.path[0][0]
+        plog("INFO", "Circ "+event.id+" now in-use. %d delivered bytes.",
+             self.circs[event.id].delivered_read_bytes)
 
     plog("DEBUG", event.raw_content())
 
@@ -298,8 +294,8 @@ class BandwidthStats:
         plog("ERROR",
              "Application written data exceeds cell data:"+event.raw_content());
 
-      self.circs[event.id].read_bytes += event.read*_CELL_DATA_RATE
-      self.circs[event.id].sent_bytes += event.written*_CELL_DATA_RATE
+      self.circs[event.id].read_bytes += event.read
+      self.circs[event.id].sent_bytes += event.written
 
       self.circs[event.id].delivered_read_bytes += delivered_read
       self.circs[event.id].delivered_sent_bytes += delivered_written
@@ -354,19 +350,24 @@ class BandwidthStats:
 
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
-    if circ.read_bytes > 0 and \
-       circ.dropped_read_rate() > CIRC_MAX_DROPPED_BYTES_PERCENT/100.0:
-      # When clients hang up on streams before they close, this can result in
-      # dropped data from those now-invalid/unknown stream IDs. Servers should
-      # not do this. Hence warn for service case, notice for clients.
-      if circ.is_service: loglevel = "WARN"
-      else: loglevel = "NOTICE"
-      self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_BYTES_PERCENT",
+
+    # DropMark hack. No dropped cells before app data.
+    if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
+      if circ.dropped_read_cells() > 0:
+        plog("WARN",
+             "Possible DropMark attack! Got a dropped cell "+\
+             "before application data on circ %s. Closing circ.",
+             circ.circ_id)
+        control.try_close_circuit(self.controller, circ.circ_id)
+    elif circ.dropped_read_cells() > CIRC_MAX_DROPPED_CELLS:
+      # XXX: Until Tor ticket #25573 is merged, this must be notice.
+      loglevel = "NOTICE"
+      self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_CELLS",
                           circ.circ_id,
-                          circ.dropped_read_rate()*100.0,
-                          CIRC_MAX_DROPPED_BYTES_PERCENT,
-                          "Total: "+str(circ.read_bytes)+\
-                          ", dropped: "+str(circ.dropped_read_bytes()))
+                          circ.dropped_read_cells(),
+                          CIRC_MAX_DROPPED_CELLS,
+                          "Total bytes: "+str(circ.read_bytes)+\
+                          "; All dropped: "+str(circ.dropped_read_cells()))
       control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
