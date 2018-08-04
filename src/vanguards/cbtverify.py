@@ -21,7 +21,7 @@ class TimeoutStats:
 
     if is_hs and event.id in self.circuits and \
       self.circuits[event.id].is_hs != is_hs:
-      plog("WARN", "Circuit "+event.id+" just changed from non-HS to HS: "\
+      plog("ERROR", "Circuit "+event.id+" just changed from non-HS to HS: "\
                    +event.raw_content())
 
     # Stages of circuits:
@@ -54,7 +54,7 @@ class TimeoutStats:
 
   def add_circuit(self, circ_id, is_hs):
     if circ_id in self.circuits:
-      plog("WARN", "Circuit "+circ_id+" already exists in map!")
+      plog("ERROR", "Circuit "+circ_id+" already exists in map!")
     self.circuits[circ_id] = CircuitStat(circ_id, is_hs)
     self.all_launched += 1
     if is_hs: self.hs_launched += 1

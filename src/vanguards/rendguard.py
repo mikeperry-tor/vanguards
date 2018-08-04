@@ -48,7 +48,7 @@ class RendGuard:
 
       if self.use_counts[r].used/self.total_use_counts > \
          self.use_counts[r].weight*REND_USE_MAX_USE_TO_BW_RATIO:
-        plog("WARN", "Relay "+r+" used "+str(self.use_counts[r].used)+
+        plog("NOTICE", "Relay "+r+" used "+str(self.use_counts[r].used)+
                      " times out of "+str(int(self.total_use_counts))+
                      ". This is above its weight of "+
                      str(self.use_counts[r].weight))
