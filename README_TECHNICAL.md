@@ -70,7 +70,7 @@ and to avoid linkability of activity, the circuit lengths have been
 altered for rendezvous point circuits, hidden service directory circuits, and
 introduction point circuits. You can see them here (where L1 is the first
 layer guard, L2 is second layer guard, L3 is third layer guard, M is random
-middle): 
+middle):
 
 ![Vanguard Path
 Lengths](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustrations/illustrations/new_paths.jpg)
@@ -93,8 +93,7 @@ points](https://www.ieee-security.org/TC/SP2013/papers/4977a080.pdf) to
 help them mount guard discovery and other attacks.
 
 This subsystem emits warnings and optionally closes the circuit when a
-rendezvous point is chosen more than a 2X multiple of its consensus bandwidth
-weight.
+rendezvous point is chosen too often compared to its consensus weight.
 
 ## The Bandguards Subsystem
 
@@ -107,7 +106,7 @@ file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.c
 
 These limits (along with a reason for checking them) are as follows:
 
-1. ***Dropped Cell Rate***
+1. ***Dropped Cell Limit***
 
    Back in 2014, the Tor network [was attacked](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack) by Carnegie Mellon researchers ([likely on behalf of the FBI)](https://blog.torproject.org/did-fbi-pay-university-attack-tor-users). The attack injected a side channel using a special packet type that could be recognized at both ends of a Tor circuit.
 
@@ -119,13 +118,22 @@ These limits (along with a reason for checking them) are as follows:
 features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
 the quantity of traffic that Tor decides to drop from a circuit. We believe we
 have tuned these new features such that the normal rate of dropped traffic is
-no more than 11 cells (and critically, no dropped cells are allowed early on in the circuit's lifetime). If this quantity is exceeded, then the bandguards subsystem will close the circuit and issue a warning log message.
+no more than 30 cells after application data has started. To protect against
+[DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf),
+no dropped cells are allowed before application data has started. If either
+quantity is exceeded, then the bandguards subsystem will close the circuit and
+issue a log message. (At WARN level for early dropped cells, and NOTICE level
+for the rest).
 
-   Note that in normal operation, Tor onion service clients may still trigger this mechanism. This is because [clients can and do close connections before reading all of the data from them](https://trac.torproject.org/projects/tor/ticket/25573). On the service side, the webservers we have tested do not do this, and this message should not appear.
-
-   For this reason, on service-side circuits, the log message emitted is at
-WARN level. On the client side, it is at NOTICE level. In both cases, the
-circuit where this happens is closed by this addon as soon as the limit is reached.
+   Note that in normal operation, Tor onion service clients may still trigger
+this mechanism. This is because [clients can and do close connections before
+reading all of the data from
+them](https://trac.torproject.org/projects/tor/ticket/25573). On the service
+side, the issue is not as bad, but it can happen with SENDME and END cells.
+Hence we still allow 30 dropped cells on a circuit after application data has
+started. Once that patch is merged, however, we should be able to set the allowed
+dropped cell count to 0 for both clients and servers, and raise the NOTICE
+message to WARN.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 
@@ -183,6 +191,20 @@ this attack (and by more than just a factor of two, because of this uncertainty)
    The current default for maximum circuit age is 24 hours, and can be changed
 via **circ_max_age_hours** in the [configuration
 file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf).
+
+5. ***Connectivity to the Tor Network***
+
+   Reachability itself is a side-channel. An adversary can correlate your
+uptime to other events to reduce your anonymity, or even actively attempt to
+influence connectivity to parts of the Tor network to determine if a specific
+service is using them. Because of this, we have added monitoring of connectivity
+to the Tor Network. The addon will alert you if all of your guard connections
+go down, or if you are unable to build circuits for a set amount of time.
+
+   Obviously, clients may want to disable this monitoring, especially if they
+are disconnected frequently. To disable these checks, change the
+***circ_max_disconnected_secs*** and ***conn_max_disconnected_secs***
+configuration settings to 0.
 
 # Security Information
 
