@@ -35,10 +35,11 @@ network adversaries can still perform the following attacks:
 1. Determine your Guard relays, if they run one of your Layer2 middles.
 2. Determine that your onion service is using this addon, if they run one of
    your Guard relays.
-3. Guess that your onion service may be using a particular Guard.
-4. Confirm that a specific onion service is using their Guard or Layer2 middle
+3. Determine that a specific onion service is running this addon.
+4. Guess that your onion service may be using a particular Guard.
+5. Confirm that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
-5. Confirm that a specific onion service is not using their Guard or Layer2
+6. Confirm that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
 
 The vanguards addon is designed to make these attacks as difficult and unlikely as
@@ -49,6 +50,12 @@ but for now, this addon is the best way we have to defend against this
 adversary class.
 
 For statistics on how long the first two attacks take, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
+
+The network adversary can determine that a specific onion service is running
+this addon by observing how that onion service behaves. In particular, it can
+attempt one of the attacks that this addon defends against, and see if the
+onion service closes circuits in response. In these cases, log lines will be
+emitted by this addon at NOTICE level or above.
 
 The network adversary may be able to guess that you are using a particular
 Guard by attacking that guard. If that guard goes down or becomes slower, they
