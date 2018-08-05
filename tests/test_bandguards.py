@@ -64,7 +64,8 @@ def extended_circ(circ_id, purpose, guard="$5416F3E8F80101A133B1970495B04FDBD1C7
   s = "650 CIRC "+str(circ_id)+" EXTENDED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
-def purpose_changed_circ(circ_id, old_purpose, new_purpose, guard):
+def purpose_changed_circ(circ_id, old_purpose, new_purpose,
+                         guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
   s = "650 CIRC_MINOR "+str(circ_id)+" PURPOSE_CHANGED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+new_purpose+" OLD_PURPOSE="+old_purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
@@ -256,6 +257,18 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
+  # Test that 1 dropped cell is allowed on pathbias
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_circ(circ_id, "HS_SERVICE_REND"))
+  state.circ_minor_event(purpose_changed_circ(circ_id,
+                                             "HS_SERVICE_REND",
+                                             "PATH_BIAS_TESTING"))
+  check_dropped_bytes(state, controller, circ_id, 0, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 0, 1)
+  assert controller.closed_circ == str(circ_id)
+
   # Test that no dropped cells are allowed on not-built circ.
   circ_id += 1
   controller.closed_circ = None
@@ -438,6 +451,7 @@ def test_connguard():
   ev = MockEvent(last_conn+CONN_MAX_DISCONNECTED_SECS*2)
   state.bw_event(ev)
   assert state.disconnected_conns == False
+  vanguards.bandguards.CONN_MAX_DISCONNECTED_SECS = CONN_MAX_DISCONNECTED_SECS
 
   # Test no circuits for 5, 10 seconds
   state.orconn_event(
@@ -478,6 +492,38 @@ def test_connguard():
   state.bw_event(ev)
   assert state.disconnected_circs == False
 
+  # Failure then success is also ok
+  ev = failed_circ(34)
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  assert state.no_circs_since
+  assert state.disconnected_circs == False
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.disconnected_circs == True
+  ev = extended_circ(35, "GENERAL")
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  assert state.no_circs_since == None
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.disconnected_circs == False
+
+  # Failure then circbw is also ok
+  ev = failed_circ(34)
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  assert state.no_circs_since
+  assert state.disconnected_circs == False
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.disconnected_circs == True
+  check_dropped_bytes(state, controller, 23, 1, 0)
+  assert state.no_circs_since == None
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.disconnected_circs == False
+
   # Test disabled
   vanguards.bandguards.CIRC_MAX_DISCONNECTED_SECS = 0
   assert CIRC_MAX_DISCONNECTED_SECS # Didn't change local val
@@ -489,18 +535,8 @@ def test_connguard():
   ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
   state.bw_event(ev)
   assert state.disconnected_circs == False
+  vanguards.bandguards.CIRC_MAX_DISCONNECTED_SECS = CIRC_MAX_DISCONNECTED_SECS
 
-  # Failure then success is also ok
-  ev = failed_circ(34)
-  ev.arrived_at = last_conn
-  state.circ_event(ev)
-  ev = built_general_circ(35)
-  ev.arrived_at = last_conn
-  state.circ_event(ev)
-  assert state.no_circs_since == None
-  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
-  state.bw_event(ev)
-  assert state.disconnected_circs == False
 
 
 # Collection of tests that mostly just ensure coverage
