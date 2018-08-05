@@ -35,7 +35,7 @@ CIRC_MAX_AGE_HOURS = 24 # 1 day
 CIRC_MAX_HSDESC_KILOBYTES = 30
 
 # Warn if Tor can't build or use circuits for this many seconds
-CIRC_MAX_DISCONNECTED_SECS = 20
+CIRC_MAX_DISCONNECTED_SECS = 30
 
 # Warn if Tor has no connections for this many seconds
 CONN_MAX_DISCONNECTED_SECS = 15
@@ -174,7 +174,8 @@ class BandwidthStats:
                  c.circ_id, event.arrived_at)
 
         del self.live_guard_conns[event.id]
-        if len(self.live_guard_conns) == 0:
+        if len(self.live_guard_conns) == 0 and \
+          not self.no_conns_since:
           self.no_conns_since = event.arrived_at
       # Keep stats on CLOSED reasons. We don't do anything with these atm
       if event.status == "CLOSED":
@@ -199,7 +200,8 @@ class BandwidthStats:
 
   def circ_event(self, event):
     # Failed circuits mean the network could be down:
-    if event.status == stem.CircStatus.FAILED:
+    if event.status == stem.CircStatus.FAILED and \
+      not self.no_circs_since:
       self.no_circs_since = event.arrived_at
 
     # Sometimes circuits get multiple FAILED+CLOSED events,
