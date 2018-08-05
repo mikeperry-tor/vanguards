@@ -14,6 +14,8 @@
   connection dies while there are live circuits on it. #23
 - Fix several false positive cases in rendguard. More may remain, so demote
   logline to NOTICE for now. #24
+- Change rendguard params to lower the false positive rate. If you use a
+  conf file, be sure to update the values there, if specified. #24.
 
 0.1.1
 -----
