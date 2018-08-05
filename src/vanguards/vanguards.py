@@ -20,7 +20,7 @@ from . import rendguard
 
 # Unicode, damnit
 try:
-  UNICODE_DAMNIT = bool(type(unicode))
+  _UNICODE_DAMNIT = bool(type(unicode))
 except NameError:
   unicode = str
 
