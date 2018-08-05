@@ -170,7 +170,7 @@ class BandwidthStats:
           if c.in_use and c.guard_fp == guard_fp:
             c.possibly_destroyed_at = event.arrived_at
             self.live_guard_conns[event.id].killed_conn_at = event.arrived_at
-            plog("INFO", "Marking possibly destroyed circ %d at %d",
+            plog("INFO", "Marking possibly destroyed circ %s at %d",
                  c.circ_id, event.arrived_at)
 
         del self.live_guard_conns[event.id]
