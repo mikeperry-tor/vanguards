@@ -327,7 +327,8 @@ class BandwidthStats:
     if self.no_conns_since:
       disconnected_secs = int(now - self.no_conns_since)
 
-      if disconnected_secs >= CONN_MAX_DISCONNECTED_SECS:
+      if CONN_MAX_DISCONNECTED_SECS > 0 and \
+         disconnected_secs >= CONN_MAX_DISCONNECTED_SECS:
         if not self.disconnected_conns or \
           disconnected_secs % CONN_MAX_DISCONNECTED_SECS == 0:
           plog("WARN", "We've been disconnected from the Tor network for %d seconds!"
@@ -336,7 +337,8 @@ class BandwidthStats:
     elif self.no_circs_since:
       disconnected_secs = int(now - self.no_circs_since)
 
-      if disconnected_secs >= CIRC_MAX_DISCONNECTED_SECS:
+      if CIRC_MAX_DISCONNECTED_SECS > 0 and \
+         disconnected_secs >= CIRC_MAX_DISCONNECTED_SECS:
         if not self.disconnected_circs or \
           disconnected_secs % CIRC_MAX_DISCONNECTED_SECS == 0:
           plog("WARN", "Tor has been failing all circuits for %d seconds!"

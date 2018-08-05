@@ -418,11 +418,26 @@ def test_connguard():
   # Test no orconns for 5, 10 seconds
   ev = MockEvent(last_conn)
   state.bw_event(ev)
-  ev = MockEvent(last_conn+5)
-  state.bw_event(ev)
+  assert state.disconnected_conns == False
   ev = MockEvent(last_conn+CONN_MAX_DISCONNECTED_SECS*2)
   state.bw_event(ev)
   assert state.disconnected_conns
+
+  # Test come back to life.
+  state.orconn_event(
+         orconn_event(15,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
+                      "CONNECTED"))
+  last_conn = int(time.time())
+  ev = MockEvent(last_conn)
+  state.bw_event(ev)
+  assert state.disconnected_conns == False
+
+  # Test disabled
+  vanguards.bandguards.CONN_MAX_DISCONNECTED_SECS = 0
+  assert CONN_MAX_DISCONNECTED_SECS # Didn't change local val
+  ev = MockEvent(last_conn+CONN_MAX_DISCONNECTED_SECS*2)
+  state.bw_event(ev)
+  assert state.disconnected_conns == False
 
   # Test no circuits for 5, 10 seconds
   state.orconn_event(
@@ -460,6 +475,18 @@ def test_connguard():
   ev.arrived_at = last_conn
   state.circ_event(ev)
   assert state.no_circs_since == None
+  state.bw_event(ev)
+  assert state.disconnected_circs == False
+
+  # Test disabled
+  vanguards.bandguards.CIRC_MAX_DISCONNECTED_SECS = 0
+  assert CIRC_MAX_DISCONNECTED_SECS # Didn't change local val
+  ev = failed_circ(313)
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  assert state.no_circs_since
+  assert state.disconnected_circs == False
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
   state.bw_event(ev)
   assert state.disconnected_circs == False
 
