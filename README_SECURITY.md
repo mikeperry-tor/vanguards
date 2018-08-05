@@ -216,12 +216,11 @@ OnionBalance, they can counteract many of the benefits.
 Despite exposing you to more local adversaries, OnionBalance helps protect
 against local adversaries because they will no longer be able to observe all
 of your onion service traffic, and it is more difficult for them to impact
-your reachability for a reachability confirmation attack. Additionally,
-when OnionBalance is used in combination with the bandguards
-**circ_max_megabytes** option, this can help protect against bandwidth
+your reachability for a reachability confirmation attack. Additionally, when
+OnionBalance is used in combination with the addon's bandguards component
+option **circ_max_megabytes**, this can help protect against bandwidth
 confirmation attacks that send high volumes of traffic to interesting onion
-services and watch for any evidence of results on a local internet
-connection.
+services and watch for any evidence of results on a local internet connection.
 
 OnionBalance helps protect against a global adversary for similar reasons. If
 your OnionService is very popular, instead of all of the traffic exiting the
@@ -294,8 +293,8 @@ If you use bridges, you should monitor their uptime as well, and replace them
 if they go down.
 
 We are also [investigating adding heuristics to detect suspicious connection
-activity](https://github.com/mikeperry-tor/vanguards/issues/23) in the
-bandguards component. Patches and testing are welcome.
+activity](https://github.com/mikeperry-tor/vanguards/issues/23) in
+this addon's bandguards component. Patches and testing are welcome.
 
 ## Consider Running Tor Relays Or Bridges
 
