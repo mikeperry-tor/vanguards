@@ -251,7 +251,7 @@ class BandwidthStats:
          event.purpose[0:10] == "HS_SERVICE":
         self.circs[event.id].in_use = 1
         self.circs[event.id].guard_fp = event.path[0][0]
-        plog("INFO", "Circ "+event.id+" now in-use. %d delivered bytes.",
+        plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
 
     # Extending a circuit means the network is OK
@@ -282,7 +282,7 @@ class BandwidthStats:
       if event.old_purpose == "HS_VANGUARDS":
         self.circs[event.id].in_use = 1
         self.circs[event.id].guard_fp = event.path[0][0]
-        plog("INFO", "Circ "+event.id+" now in-use. %d delivered bytes.",
+        plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
 
     plog("DEBUG", event.raw_content())
