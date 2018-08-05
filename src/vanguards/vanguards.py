@@ -164,8 +164,9 @@ class VanguardState:
   def consensus_update(self, routers, weights, exclude):
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
     ng = BwWeightedGenerator(sorted_r,
-                       NodeRestrictionList([FlagsRestriction(["Fast", "Stable", "Valid"],
-                                                             ["Authority"])]),
+                       NodeRestrictionList(
+                             [FlagsRestriction(["Fast", "Stable", "Valid"],
+                                               ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
     gen = ng.generate()
     if self.enable_vanguards:
@@ -186,6 +187,12 @@ class VanguardState:
 
       # Replenish our guard lists with new nodes
       self.replenish_layers(gen, exclude)
+
+    ng = BwWeightedGenerator(sorted_r,
+                       NodeRestrictionList(
+                             [FlagsRestriction(["Fast", "Valid"],
+                                               ["Authority"])]),
+                             weights, BwWeightedGenerator.POSITION_MIDDLE)
 
     # Repair Exit-flagged node weights, since they can be chosen
     # sometimes by other clients as RPs (when cannibalized)
