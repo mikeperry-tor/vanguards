@@ -75,6 +75,7 @@ class BwCircuitStat:
     self.is_service = 1
     self.is_hsdir = 0
     self.in_use = 0
+    self.path_bias_cells = 0
     self.created_at = time.time()
     self.read_bytes = 0
     self.sent_bytes = 0
@@ -286,6 +287,10 @@ class BandwidthStats:
         self.circs[event.id].guard_fp = event.path[0][0]
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
+      # XXX: We need to give path bias circs one extra cell during
+      # the DropMark check until #25573 is merged :/
+      if event.purpose == "PATH_BIAS_TESTING":
+        self.circs[event.id].path_bias_cells = 1
 
     plog("DEBUG", event.raw_content())
 
@@ -373,7 +378,8 @@ class BandwidthStats:
 
     # DropMark hack. No dropped cells before app data.
     if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
-      if circ.dropped_read_cells() > 0:
+      # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
+      if circ.dropped_read_cells() > circ.path_bias_cells:
         plog("WARN",
              "Possible DropMark attack! Got a dropped cell "+\
              "before application data on circ %s. Closing circ.",
