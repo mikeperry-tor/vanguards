@@ -5,17 +5,17 @@ from .logger import plog
 ############## Rendguard options #####################
 
 # Minimum number of hops we have to see before applying use stat checks
-REND_USE_GLOBAL_START_COUNT = 100
+REND_USE_GLOBAL_START_COUNT = 1000
 
 # Number of hops to scale counts down by two at
-REND_USE_SCALE_AT_COUNT = 1000
+REND_USE_SCALE_AT_COUNT = 20000
 
 # Minimum number of times a relay has to be used before we check it for
 # overuse
-REND_USE_RELAY_START_COUNT = 10
+REND_USE_RELAY_START_COUNT = 100
 
 # How many times more than its bandwidth must a relay be used?
-REND_USE_MAX_USE_TO_BW_RATIO = 2.0
+REND_USE_MAX_USE_TO_BW_RATIO = 10.0
 
 # Should we close circuits on rend point overuse?
 REND_USE_CLOSE_CIRCUITS_ON_OVERUSE = True
@@ -29,29 +29,40 @@ class RendUseCount:
 class RendGuard:
   def __init__(self):
     self.use_counts = {}
-    self.total_use_counts = 0
-    self.pickle_revision = 1
+    self.total_use_counts = 0.0
+    self.pickle_revision = 1.0
 
   def valid_rend_use(self, r):
     if r not in self.use_counts:
       plog("NOTICE", "Relay "+r+" is not in our consensus, but someone is using it!")
       self.use_counts[r] = RendUseCount(r, 0)
 
-    self.use_counts[r].used += 1
+    self.use_counts[r].used += 1.0
     self.total_use_counts += 1.0
+    plog("DEBUG", "Relay "+r+" used %d times out of %d, "+\
+                   "for a use rate of %f. It has a consensus "
+                   "weight of %f", int(self.use_counts[r].used),
+                   int(self.total_use_counts),
+                   self.use_counts[r].used/self.total_use_counts,
+                   self.use_counts[r].weight)
 
     # TODO: Can we base this check on statistical confidence intervals?
     if self.total_use_counts > REND_USE_GLOBAL_START_COUNT and \
        self.use_counts[r].used >= REND_USE_RELAY_START_COUNT:
-      plog("INFO", "Relay "+r+" used "+str(self.use_counts[r].used)+
-                  " times out of "+str(int(self.total_use_counts)))
-
+      plog("INFO", "Relay "+r+" used %d times out of %d, "+\
+                     "for a use rate of %f. It has a consensus "
+                     "weight of %f.", int(self.use_counts[r].used),
+                     int(self.total_use_counts),
+                     self.use_counts[r].used/self.total_use_counts,
+                     self.use_counts[r].weight)
       if self.use_counts[r].used/self.total_use_counts > \
          self.use_counts[r].weight*REND_USE_MAX_USE_TO_BW_RATIO:
-        plog("NOTICE", "Relay "+r+" used "+str(self.use_counts[r].used)+
-                     " times out of "+str(int(self.total_use_counts))+
-                     ". This is above its weight of "+
-                     str(self.use_counts[r].weight))
+        plog("NOTICE", "Relay "+r+" used %d times out of %d, "+\
+                     "for a use rate of %f. This is above its consensus "
+                     "weight of %f", int(self.use_counts[r].used),
+                     int(self.total_use_counts),
+                     self.use_counts[r].used/self.total_use_counts,
+                     self.use_counts[r].weight)
         return 0
     return 1
 
@@ -79,7 +90,7 @@ class RendGuard:
     for r in old_counts:
       if r not in self.use_counts: continue
       if self.total_use_counts > REND_USE_SCALE_AT_COUNT:
-        self.use_counts[r].used = old_counts[r].used/2
+        self.use_counts[r].used = old_counts[r].used/2.0
       else:
         self.use_counts[r].used = old_counts[r].used
 
