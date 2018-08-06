@@ -48,14 +48,8 @@ class RendGuard:
 
     # TODO: Can we base this check on statistical confidence intervals?
     if self.total_use_counts > REND_USE_GLOBAL_START_COUNT and \
-       self.use_counts[r].used >= REND_USE_RELAY_START_COUNT:
-      plog("INFO", "Relay "+r+" used %d times out of %d, "+\
-                     "for a use rate of %f%%. It has a consensus "
-                     "weight of %f%%.", int(self.use_counts[r].used),
-                     int(self.total_use_counts),
-                     (100.0*self.use_counts[r].used)/self.total_use_counts,
-                     100.0*self.use_counts[r].weight)
-      if self.use_counts[r].used/self.total_use_counts > \
+       self.use_counts[r].used >= REND_USE_RELAY_START_COUNT and \
+       self.use_counts[r].used/self.total_use_counts > \
          self.use_counts[r].weight*REND_USE_MAX_USE_TO_BW_RATIO:
         plog("NOTICE", "Relay "+r+" used %d times out of %d, "+\
                      "for a use rate of %f%%. This is above its consensus "
