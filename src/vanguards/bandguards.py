@@ -51,6 +51,7 @@ _RELAY_CELL_RATE = (float(_CELL_PAYLOAD_SIZE)/_RELAY_PAYLOAD_SIZE)
 # max SENDMEs can be expected to be in-flight (we use circ window because
 # there can be multiple streams on one circ).
 _STREAM_SENDME_INCREMENT = 50
+_STREAM_SENDME_WINDOW = 500
 _CIRC_SENDME_WINDOW = 1000
 
 _SECS_PER_HOUR = 60*60
@@ -67,6 +68,17 @@ _MAX_CIRC_DESTROY_LAG_SECS = 2
 # CIRC_MAX_DROPPED_CELLS is set.
 # WARN before this, NOTICE after
 _MIN_BYTES_UNTIL_DROPS = 500
+
+# Without #25573, optimistic data can cause us to send a bunch of
+# begins with optimistic data, and the service could send us
+# a whole stream window full of cells in response.
+_MAX_PATH_BIAS_CELLS_CLIENT = _STREAM_SENDME_WINDOW
+
+# Without #25573, the service situation is better. Path bias
+# exempts most service side circs because the rend is adversary
+# chosen, and the ones it doesn't only allow 1 cell through, then
+# the probe.
+_MAX_PATH_BIAS_CELLS_SERVICE = 2
 
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
@@ -290,7 +302,10 @@ class BandwidthStats:
       # XXX: We need to give path bias circs one extra cell during
       # the DropMark check until #25573 is merged :/
       if event.purpose == "PATH_BIAS_TESTING":
-        self.circs[event.id].path_bias_cells = 1
+        if self.circs[event.id].is_service:
+          self.circs[event.id].path_bias_cells = _MAX_PATH_BIAS_CELLS_SERVICE
+        else:
+          self.circs[event.id].path_bias_cells = _MAX_PATH_BIAS_CELLS_CLIENT
 
     plog("DEBUG", event.raw_content())
 

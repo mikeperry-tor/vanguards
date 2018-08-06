@@ -17,6 +17,8 @@ from vanguards.bandguards import _SECS_PER_HOUR
 from vanguards.bandguards import _BYTES_PER_KB
 from vanguards.bandguards import _BYTES_PER_MB
 from vanguards.bandguards import _MIN_BYTES_UNTIL_DROPS
+from vanguards.bandguards import _MAX_PATH_BIAS_CELLS_CLIENT
+from vanguards.bandguards import _MAX_PATH_BIAS_CELLS_SERVICE
 
 import vanguards.logger
 
@@ -264,8 +266,26 @@ def test_bwstats():
   state.circ_minor_event(purpose_changed_circ(circ_id,
                                              "HS_SERVICE_REND",
                                              "PATH_BIAS_TESTING"))
+  path_bias_cells = 0
+  while path_bias_cells < _MAX_PATH_BIAS_CELLS_SERVICE:
+    check_dropped_bytes(state, controller, circ_id, 0, 1)
+    assert controller.closed_circ == None
+    path_bias_cells += 1
   check_dropped_bytes(state, controller, circ_id, 0, 1)
-  assert controller.closed_circ == None
+  assert controller.closed_circ == str(circ_id)
+
+  # Test that 1 dropped cell is allowed on pathbias
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_circ(circ_id, "HS_CLIENT_REND"))
+  state.circ_minor_event(purpose_changed_circ(circ_id,
+                                             "HS_CLIENT_REND",
+                                             "PATH_BIAS_TESTING"))
+  path_bias_cells = 0
+  while path_bias_cells < _MAX_PATH_BIAS_CELLS_CLIENT:
+    check_dropped_bytes(state, controller, circ_id, 0, 1)
+    assert controller.closed_circ == None
+    path_bias_cells += 1
   check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
