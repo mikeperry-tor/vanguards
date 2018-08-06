@@ -85,6 +85,10 @@ class RendGuard:
            node_gen.node_weights[i]/node_gen.weight_total
       i+=1
 
+    if self.total_use_counts > REND_USE_SCALE_AT_COUNT:
+      plog("INFO", "Total use counts %d exceeds the scale count %d. Scaling.",
+           self.total_use_counts, REND_USE_SCALE_AT_COUNT)
+
     # Periodically we divide counts by two, to avoid overcounting
     # high-uptime relays vs old ones
     for r in old_counts:
