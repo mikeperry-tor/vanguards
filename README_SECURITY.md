@@ -80,7 +80,7 @@ The vanguards addon has additional checks to detect activity related to these at
 
 ## Adversaries: Local
 
-Local adversaries include your ISP, hosting provider, or VPN, as well as the
+Local adversaries include your WiFi router administrator, your ISP, hosting provider, or VPN, as well as the
 ISP or hosting provider of the entry relays you use to connect to the Tor
 network, and any other ISPs and routers along your path to the Tor network.
 
@@ -98,7 +98,7 @@ relays is public, and connections to them are obvious. (Unless you use bridges,
 of course, which is one of our later recommendations).
 
 Local adversaries can guess that your Tor client might be an unknown onion
-service because it exhibits traffic patterns that are unlike most other Tor
+service because [it exhibits traffic patterns](https://www.usenix.org/node/190967) that are unlike most other Tor
 clients. Your connections will stay open all of the time, and you will
 regularly transmit data while other nearby humans are asleep, as well as while
 they are awake. Your traffic will also be asymmetrical. While most Tor clients
