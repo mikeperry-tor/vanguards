@@ -158,6 +158,8 @@ happens, it is either a bug, a heavily-modified hidden service descriptor,
 or an actual attack.
 4. When you set ExcludeNodes in Tor to exclude countries, but do not give
 Tor a GeoIP file, we WARN.
+5. If you disable killing circuits in the rendguard component, we WARN when
+use counts for rends are exceeded.
 
 Events that are detected by heuristics that still need tuning are at NOTICE
 level. They may be a bug, a false positive, or an actual attack. If in doubt,
