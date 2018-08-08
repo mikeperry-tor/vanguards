@@ -63,11 +63,11 @@ _BYTES_PER_MB = 1024*_BYTES_PER_KB
 # give it until the next couple in case there is a scheduled events hiccup
 _MAX_CIRC_DESTROY_LAG_SECS = 2
 
-# At least 250 bytes must be "delievered" to the application before
+# At least 150 bytes must be "delievered" to the application before
 # we allow any drops. This helps protect against DropMark even if
 # CIRC_MAX_DROPPED_CELLS is set.
 # WARN before this, NOTICE after
-_MIN_BYTES_UNTIL_DROPS = 250
+_MIN_BYTES_UNTIL_DROPS = 150
 
 # Without #25573, optimistic data can cause us to send a bunch of
 # begins with optimistic data, and the service could send us
@@ -408,8 +408,8 @@ class BandwidthStats:
     if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
       # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
       if circ.dropped_read_cells() > circ.path_bias_cells:
-        plog("WARN",
-             "Possible DropMark attack! Got a dropped cell "+\
+        plog("NOTICE",
+             "Possible DropMark attack? Got an early dropped cell "+\
              "before application data on circ %s. Closing circ.",
              circ.circ_id)
         control.try_close_circuit(self.controller, circ.circ_id)

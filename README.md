@@ -147,18 +147,16 @@ Events that represent severe issues are at WARNING level. You should
 react to these events. Warns are currently emitted for the following
 conditions:
 
-1. When your service is disconnected from the Tor network, or cannot build
-circuits, we WARN. Downtime can be a side channel signal or a passive information leak,
+1. When your service is disconnected from the Tor network, we WARN. Downtime
+can be a side channel signal or a passive information leak,
 and you should ensure your Internet connection is reliable to minimize
 downtime of your service as much as possible.
-2. When a dropped cell is received very early after circuit build, before
-application data, we WARN. If this happens, it is either a bug, or an actual attack.
-3. When a hidden service descriptor circuit sends more than 30KB, we WARN. If this
+2. When a hidden service descriptor circuit sends more than 30KB, we WARN. If this
 happens, it is either a bug, a heavily-modified hidden service descriptor,
 or an actual attack.
-4. When you set ExcludeNodes in Tor to exclude countries, but do not give
+3. When you set ExcludeNodes in Tor to exclude countries, but do not give
 Tor a GeoIP file, we WARN.
-5. If you disable killing circuits in the rendguard component, we WARN when
+4. If you disable killing circuits in the rendguard component, we WARN when
 use counts for rends are exceeded.
 
 Events that are detected by heuristics that still need tuning are at NOTICE
