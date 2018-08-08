@@ -87,6 +87,7 @@ class BwCircuitStat:
     self.is_service = 1
     self.is_hsdir = 0
     self.in_use = 0
+    self.built = 0
     self.path_bias_cells = 0
     self.created_at = time.time()
     self.read_bytes = 0
@@ -213,7 +214,7 @@ class BandwidthStats:
 
   def any_circuits_pending(self):
     for c in self.circs.values():
-      if not c.in_use:
+      if not c.built:
         return True
     return False # All circuits in use
 
@@ -244,6 +245,7 @@ class BandwidthStats:
         plog("DEBUG", "Closed hs circ for "+event.raw_content())
         del self.circs[event.id]
       return
+
     if event.id not in self.circs:
       if event.hs_state or event.purpose[0:2] == "HS":
         self.circs[event.id] = BwCircuitStat(event.id, 1)
@@ -262,12 +264,16 @@ class BandwidthStats:
     # to be "in_use".
     if event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT":
+      if event.purpose[0:2] == "HS":
+        self.circs[event.id].built = 1
+
       if self.disconnected_circs:
         disconnected_secs = event.arrived_at - self.no_circs_since
         plog("NOTICE", "Circuit use resumed after %d seconds.",
              disconnected_secs)
       self.no_circs_since = None
       self.disconnected_circs = False
+
       if event.purpose[0:9] == "HS_CLIENT" or \
          event.purpose[0:10] == "HS_SERVICE":
         self.circs[event.id].in_use = 1
