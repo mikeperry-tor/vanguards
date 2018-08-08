@@ -9,6 +9,7 @@
 - Keep attempting to reconnect if the control port dies. #19
 - Support tighter bounds on dropped data to defend against DropMark,
   and change circ_max_dropped_bytes_percent to circ_max_dropped_cells. #20.
+- Limit rend requests from relays that are not in our consensus. #22.
 - Added connectivity accounting: Warn if we're disconnected or can't build
   circuits for more than 'max_disconnected_secs'. Emit a notice if a
   connection dies while there are live circuits on it. #23
