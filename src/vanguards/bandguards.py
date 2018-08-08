@@ -163,13 +163,13 @@ class BandwidthStats:
       self.guards[guard_fp] = BwGuardStat(guard_fp)
 
     if event.status == "CONNECTED":
-      self.live_guard_conns[event.id] = self.guards[guard_fp]
-      self.guards[guard_fp].conns_made += 1
-      self.no_conns_since = 0
       if self.disconnected_conns:
         disconnected_secs = event.arrived_at - self.no_conns_since
         plog("NOTICE", "Reconnected to the Tor network after %d seconds.",
              disconnected_secs)
+      self.live_guard_conns[event.id] = self.guards[guard_fp]
+      self.guards[guard_fp].conns_made += 1
+      self.no_conns_since = 0
       self.disconnected_conns = False
     elif event.status == "CLOSED" or event.status == "FAILED":
       if event.id not in self.live_guard_conns:
