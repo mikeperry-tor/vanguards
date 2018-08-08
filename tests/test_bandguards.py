@@ -494,12 +494,28 @@ def test_connguard():
   assert state.no_circs_since == None
   assert state.disconnected_circs == False
 
-  # Failure then quiet does:
+  # Failure then quiet doesn't, when no circs:
   ev = failed_circ(31)
   ev.arrived_at = last_conn
   state.circ_event(ev)
   assert state.no_circs_since
   assert state.disconnected_circs == False
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.disconnected_circs == False
+
+  # Failure then quiet does, when no circs:
+  ev = extended_circ(333, "HS_VANGUARDS")
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
+  state.bw_event(ev)
+  assert state.no_circs_since == None
+  assert state.disconnected_circs == False
+  ev = failed_circ(31)
+  ev.arrived_at = last_conn
+  state.circ_event(ev)
+  assert state.no_circs_since
   ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
   state.bw_event(ev)
   assert state.disconnected_circs == True

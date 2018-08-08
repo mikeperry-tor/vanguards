@@ -211,6 +211,12 @@ class BandwidthStats:
     plog("INFO", "The connection to guard "+guardfp+" was closed with "+\
          "circuit "+event.id+" on it.")
 
+  def any_circuits_pending(self):
+    for c in self.circs.values():
+      if not c.in_use:
+        return True
+    return False # All circuits in use
+
   def circ_event(self, event):
     # Failed circuits mean the network could be down:
     if event.status == stem.CircStatus.FAILED and \
@@ -358,7 +364,8 @@ class BandwidthStats:
       disconnected_secs = int(now - self.no_circs_since)
 
       if CIRC_MAX_DISCONNECTED_SECS > 0 and \
-         disconnected_secs >= CIRC_MAX_DISCONNECTED_SECS:
+         disconnected_secs >= CIRC_MAX_DISCONNECTED_SECS and \
+         self.any_circuits_pending():
         if not self.disconnected_circs or \
           disconnected_secs % CIRC_MAX_DISCONNECTED_SECS == 0:
           plog("WARN", "Tor has been failing all circuits for %d seconds!"
