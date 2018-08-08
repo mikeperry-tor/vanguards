@@ -355,10 +355,10 @@ UseBridges 1
 Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
 ```
 
-The story deepens, however. When you do this, ***your onion service uptime will
+The story deepens, however. When you do this, **your onion service uptime will
 be strongly correlated to your relay uptime, and both are now very
 easily observable by adversaries that aren't local, global, or even
-in-network***.
+in-network**.
 
 OnionBalance is one way to address this (ie: running several Tor
 relays on different machines, each with their own OnionBalance Backend
