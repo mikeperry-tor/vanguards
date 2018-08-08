@@ -49,14 +49,22 @@ def main():
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
 
   reconnects = 0
+  last_connected_at = None
   connected = False
   while options.retry_limit == None or reconnects < options.retry_limit:
     ret = control_loop(state)
+    if not last_connected_at:
+      last_connected_at = time.time()
+
     if ret == "closed":
       connected = True
     # Try once per second but only tell the user every 10 seconds
     if ret == "closed" or reconnects % 10 == 0:
-      plog("NOTICE", "Tor connection "+ret+". Trying again...")
+      if time.time() - last_connected_at > \
+        bandguards.CONN_MAX_DISCONNECTED_SECS:
+        plog("WARN", "Tor daemon connection "+ret+". Trying again...")
+      else:
+        plog("NOTICE", "Tor daemon connection "+ret+". Trying again...")
     reconnects += 1
     time.sleep(1)
 
