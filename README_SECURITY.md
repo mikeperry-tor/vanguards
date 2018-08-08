@@ -15,10 +15,11 @@ adversaries.
 # Adversaries
 
 Adversaries can be roughly categorized as having one or more of three
-positions: "Network", "Local", or "Global". Adversaries can have more than one
-position at the same time, and each of these positions can be either "active",
-or "passive". They may also have additional information that can help them
-mount their attacks.
+positions: "Network", "Local", or "Global".
+
+Adversaries can have more than one position at the same time, and each of
+these positions can be either "active", or "passive". They may also have
+additional information that can help them mount their attacks.
 
 ## Adversaries: Network
 
@@ -51,21 +52,21 @@ adversary class.
 
 For statistics on how long the first attack takes, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
 
-If you are using their guard relay, the network adversary can determine that
-you are running an onion service that is using this addon through [circuit
-fingerprinting attacks](https://www.usenix.org/node/190967). All of your onion
-service circuits (which are recognizable via the techniques from that paper)
-will be made to a small set of layer2 guard relays. Normal onion services
-(which are also recognizable at the guard relay via these same techniques)
-will make circuits to the entire set of relays in the Tor network. This
-discrepancy allows a malicious guard to determine that you are using this
+If you are using a guard relay run by the network adversary, they can
+determine that you are running an onion service that is using this addon
+through [circuit fingerprinting attacks](https://www.usenix.org/node/190967).
+All of your onion service circuits (which are recognizable via the techniques
+from that paper) will be made to a small set of layer2 guard relays. Normal
+onion services (which are also recognizable at the guard relay via these same
+techniques) will make circuits to the entire set of relays in the Tor network.
+This discrepancy allows a malicious guard to determine that you are using this
 addon.
 
-The network adversary can determine that a specific onion service is running
-this addon by observing how that onion service behaves. In particular, it can
-attempt one of the attacks that this addon defends against, and see if the
-onion service closes circuits in response. In these cases, log lines will be
-emitted by this addon at NOTICE level or above.
+The network adversary can determine that a specific onion service (yours or
+not) is running this addon by observing how that onion service behaves. In
+particular, it can attempt one of the attacks that this addon defends against,
+and see if the onion service closes circuits in response. In these cases, log
+lines will be emitted by this addon at NOTICE level or above.
 
 The network adversary may be able to guess that you are using a particular
 guard by attacking that guard. If that guard goes down or becomes slower, they
@@ -289,7 +290,7 @@ These backend instances will then still monitor and react to bandwidth side
 channel attacks and Rendezvous Point overuse, without changing your layer2 or
 layer3 guards.
 
-## Monitor Your Reachability
+## Monitor Your Service
 
 As we discussed above, confirmation attacks can be performed by local and
 global adversaries that block your access to Tor (or kill your Tor
@@ -308,9 +309,11 @@ the specific backend instances.
 If you use bridges, you should monitor their uptime as well, and replace them
 if they go down.
 
-We are also [investigating adding heuristics to detect suspicious connection
-activity](https://github.com/mikeperry-tor/vanguards/issues/23) in
-this addon's bandguards component. Patches and testing are welcome.
+The vanguards addon also emits warnings when it detects that you have lost
+connectivity to the Tor network, or when you still have connectivity to the Tor
+network, but you are unable to build circuits. You should add the output
+of the vanguards addon to your monitoring infrastructure for this reason (in
+addition to watching for any evidence of attack).
 
 ## Consider Running Tor Relays Or Bridges (BUT DO IT RIGHT!)
 
@@ -355,7 +358,9 @@ Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
 The story deepens, however. When you do this, ***your onion service uptime will
 be strongly correlated to your relay uptime, and both are now very
 easily observable by adversaries that aren't local, global, or even
-in-network***. OnionBalance is one way to address this (ie: running several Tor
+in-network***.
+
+OnionBalance is one way to address this (ie: running several Tor
 relays on different machines, each with their own OnionBalance Backend
 Instance), but again, if the adversary is able to determine that you are using
 OnionBalance, they can try to determine if your individual Backend Instances
