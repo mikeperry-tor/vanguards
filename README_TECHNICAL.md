@@ -95,6 +95,24 @@ help them mount guard discovery and other attacks.
 This subsystem emits warnings and optionally closes the circuit when a
 rendezvous point is chosen too often compared to its consensus weight.
 
+We assign an aggregate weight of **rend_use_max_consensus_weight_churn** for
+relays that are not in our current consensus that are used as rendezvous
+points. It is valid to use relays that are not in the consensus as rendezvous
+points, and this can happen naturally when a client's consensus is from a
+different time period as the service's consensus. To prevent arbitrary
+computers from being used as rendezvous points, we set this bound on the
+maximum amount of consensus churn, and use that to limit all rendezvous
+requests that are not present in the service's consensus.
+
+When rendezvous points are overused and blocked by the addon, the effect is
+that clients get connection refused responses when they attempt to use
+rendezvous points that are already overused. Since the adversary gets to pick
+their rendezvous point, then can trigger these limits at will, and cause
+popular rendezvous points to be blocked by your service. If this happens, you
+can set **rend_use_close_circuits_on_overuse** to false in your configuration
+file. If you do this, rendezvous overuse messages will appear at WARN level,
+but circuits will not be closed.
+
 ## The Bandguards Subsystem
 
 The bandguards subsystem performs accounting to watch for signs of bandwidth
