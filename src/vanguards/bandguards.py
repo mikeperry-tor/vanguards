@@ -212,16 +212,16 @@ class BandwidthStats:
     plog("INFO", "The connection to guard "+guardfp+" was closed with "+\
          "circuit "+event.id+" on it.")
 
-  def any_circuits_pending(self):
+  def any_circuits_pending(self, except_id=None):
     for c in self.circs.values():
-      if not c.built:
+      if not c.built and c.circ_id != except_id:
         return True
     return False # All circuits in use
 
   def circ_event(self, event):
     # Failed circuits mean the network could be down:
     if event.status == stem.CircStatus.FAILED and \
-      not self.no_circs_since:
+      not self.no_circs_since and self.any_circuits_pending(event.id):
       self.no_circs_since = event.arrived_at
 
     # Sometimes circuits get multiple FAILED+CLOSED events,

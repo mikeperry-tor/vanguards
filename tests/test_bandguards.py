@@ -498,7 +498,7 @@ def test_connguard():
   ev = failed_circ(31)
   ev.arrived_at = last_conn
   state.circ_event(ev)
-  assert state.no_circs_since
+  assert state.no_circs_since == None
   assert state.disconnected_circs == False
   ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
   state.bw_event(ev)
