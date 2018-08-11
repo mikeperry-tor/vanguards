@@ -27,7 +27,7 @@ This will run python2.7, python3.5, and pypy tests, **as well as check your
 system-installed packages for known vulnerabilities against
 https://pyup.io/safety**.
 
-To just the tests in the bare source tree against the git checkout in
+To run just the tests in the bare source tree against the git checkout in
 combination with system-wide packages, with no installation or known
 vulnerability checks, run:
 
