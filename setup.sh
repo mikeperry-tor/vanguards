@@ -30,7 +30,7 @@ fi
 # 2. Initialize virtualenv
 if [ ! -f ${DEST}/bin/activate ]
 then
-  virtualenv -p $SYS_PYTHON $DEST
+  virtualenv --never-download -p $SYS_PYTHON $DEST
 fi
 source ${DEST}/bin/activate
 

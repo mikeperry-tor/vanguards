@@ -44,6 +44,9 @@ Note that **./src/vanguards.py** has several other options under **--help**.
 
 ## Using VirtualEnv
 
+**This option tells virtualenv not to download packages, and only downloads
+pip packages with --require-hashes. It should be safe.**
+
 To install Stem and Vanguards into their own python virtualenv, run:
 
 ```
@@ -52,17 +55,13 @@ source vanguardenv/bin/activate
 vanguards
 ```
 
-**Note that while the setup.sh script tells pip to require hashes on all
-downloads, virtualenv itself may still download some packages without
-verification if they are not present on your system**.
-
 If you do not want your environment to be in the vanguardenv subdirectory, you
 can specify a different directory as an argument to **setup.sh**.
 
 ## Pip
 
 This project is also listed on the Python Package Index. To install the
-latest release via pip without any verification, do:
+latest release via pip **without any verification**, do:
 
 ```
 torsocks pip install vanguards
