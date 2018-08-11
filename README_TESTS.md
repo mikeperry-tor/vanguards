@@ -1,7 +1,7 @@
 # How to run the tests
 
 This repository is configured to run unit tests on every commit in a pinned
-virtual environment via [Travis CI](/usr/lib/pypy/dist-packages).
+virtual environment via [Travis CI](https://travis-ci.org/mikeperry-tor/vanguards/).
 
 You can run the tests yourself with the python-tox and python-pytest packages,
 simply by running 'tox' in the root directory of this source tree. This will
