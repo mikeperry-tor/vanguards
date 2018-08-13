@@ -8,15 +8,19 @@
 - Don't write to torrc by default. #18
 - Keep attempting to reconnect if the control port dies. #19
 - Support tighter bounds on dropped data to defend against DropMark,
-  and change circ_max_dropped_bytes_percent to circ_max_dropped_cells. #20.
+  and change circ_max_dropped_bytes_percent to circ_max_dropped_cells.
+  However, leave these at NOTICE pending Tor patch #25573. #20.
 - Limit rend requests from relays that are not in our consensus. #22.
-- Added connectivity accounting: Warn if we're disconnected or can't build
-  circuits for more than 'max_disconnected_secs'. Emit a notice if a
-  connection dies while there are live circuits on it. #23
+- Added connectivity accounting: WARN if we're disconnected or can't build
+  circuits for more than 'conn_max_disconnected_secs' and
+  'circ_max_disconnected_secs'. Also emit a NOTICE if a connection dies while 
+  there are live circuits on it. #23
 - Fix several false positive cases in rendguard. More may remain, so demote
   logline to NOTICE for now. #24
 - Change rendguard params to lower the false positive rate. If you use a
   conf file, be sure to update the values there, if specified. #24.
+- Standardize using WARN for messages that we're confident represent
+  serious issues, and use NOTICE for heuristics that may need more tuning.
 
 0.1.1
 -----
