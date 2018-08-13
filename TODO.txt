@@ -1,14 +1,13 @@
 TODO items that should maybe go into the bug tracker
 
+* RP weight over multiple consensuses. Moving avg?
 * Make deb and fedora packages
+* py2exe packages
 * Test with https://github.com/hiromipaw/onionperf-docker
   * (2-3-8,2-4-8) x (service-only, service+client) 
 * Provide per-layer Include/Exclude sets (requires Tor patches :/)
 
 Tor Patch/Control Port Wishlist:
-* Tor patch to track expected SENDMEs+ENDs along with their stream ids
-  and don't count them as dropped.
-  (https://trac.torproject.org/projects/tor/ticket/25573)
 * CIRC_MINOR event with desired RP before we try to extend to it (maybe..
   depends on if clients will retry faster if we close the circuit than if
   we just don't answer).
