@@ -2,6 +2,7 @@
 
 import io
 import os
+import sys
 
 from setuptools import find_packages
 from setuptools import setup
@@ -18,6 +19,27 @@ init_path = os.path.join(os.path.dirname(__file__), "src", 'vanguards',
 with open(init_path) as init_file:
     exec(init_file.read(), module_info)
 
+
+import sys
+
+from setuptools.command.test import test as TestCommand
+
+
+class PyTest(TestCommand):
+    user_options = [("pytest-args=", "a", "Arguments to pass to pytest")]
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+        self.pytest_args = "tests"
+
+    def run_tests(self):
+        import shlex
+
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+
+        errno = pytest.main(shlex.split(self.pytest_args))
+        sys.exit(errno)
 
 def read(*names, **kwargs):
     return io.open(
@@ -42,10 +64,11 @@ setup(
     url=module_info.get('__url__'),
     license=module_info.get('__license__'),
     tests_require=['pytest'],
+    cmdclass={"test": PyTest},
     keywords='tor',
     install_requires=[
         'setuptools',
-        'ipaddress>=1.0.22 ; python_version<"3"',
+        'ipaddress>=1.0.17 ; python_version<"3"',
         'stem==1.5.4',
         ],
     classifiers=[
