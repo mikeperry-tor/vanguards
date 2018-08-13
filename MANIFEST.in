@@ -1,7 +1,10 @@
 include *.conf
 include *.sh
 include *.txt
+include *.md
 include LICENSE
+include CHANGES.rst
+include vanguards.1
 include tox.ini
 include .travis.yml
 recursive-include src *.py
