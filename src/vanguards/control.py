@@ -4,6 +4,8 @@ import getpass
 
 from .logger import plog
 
+from . import __version__
+
 def authenticate_any(controller, passwd=""):
   try:
     controller.authenticate()
@@ -20,7 +22,8 @@ def authenticate_any(controller, passwd=""):
     print("Unable to authenticate: %s" % exc)
     sys.exit(1)
 
-  plog("NOTICE", "Connected to Tor version %s" % controller.get_version())
+  plog("NOTICE", "Vanguards %s connected to Tor %s using stem %s",
+       __version__, controller.get_version(), stem.__version__)
 
 def get_consensus_weights(consensus_filename):
   parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,

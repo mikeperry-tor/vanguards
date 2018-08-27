@@ -1,6 +1,7 @@
 0.2.2
 -----
 - Catch control+c and exit cleanly. #30.
+- Print out relevant versions at startup.
 
 0.2.1
 -----
