@@ -19,6 +19,12 @@ _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.4-rc")
 
 def main():
   try:
+    run_main()
+  except KeyboardInterrupt as e:
+    plog("NOTICE", "Got CTRL+C. Exiting.")
+
+def run_main():
+  try:
     config.apply_config(config._CONFIG_FILE)
   except:
     pass # Default config can be absent.
