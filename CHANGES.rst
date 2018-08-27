@@ -1,5 +1,7 @@
 0.2.2
 -----
+- Fix exception when a connection to a guard is closed with more than one
+  live circuit. #29
 - Catch control+c and exit cleanly. #30.
 - Print out relevant versions at startup.
 

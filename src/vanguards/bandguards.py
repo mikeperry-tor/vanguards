@@ -110,6 +110,7 @@ class BwGuardStat:
   def __init__(self, guard_fp):
     self.to_guard = guard_fp
     self.killed_conns = 0
+    self.killed_conn_at = 0
     self.killed_conn_pending = False
     self.conns_made = 0
     self.close_reasons = {} # key=reason val=count
@@ -203,9 +204,9 @@ class BandwidthStats:
     guardfp = event.path[0][0]
     if event.arrived_at - self.guards[guardfp].killed_conn_at \
         <= _MAX_CIRC_DESTROY_LAG_SECS:
-      self.guards[guardfp].killed_conn_at = None
+      self.guards[guardfp].killed_conn_at = 0
       self.guards[guardfp].killed_conns += 1
-      # FIXME: Limit to warn after?
+      # FIXME: Limit to warn after N killed connections?
       plog("NOTICE", "The connection to guard "+guardfp+" was closed with "+\
            "a live circuit.")
 
