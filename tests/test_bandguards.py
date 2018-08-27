@@ -49,10 +49,16 @@ class MockController:
       return "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED\n"+\
              "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed LAUNCHED\n"+\
              "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED"
+    if key == "network-liveness":
+      return "down"
 
 class MockEvent:
   def __init__(self, arrived_at):
     self.arrived_at = arrived_at
+
+def network_liveness_event(status):
+  s= "650 NETWORK_LIVENESS "+status+"\r\n"
+  return ControlMessage.from_str(s, "EVENT")
 
 def orconn_event(conn_id, guard, status):
   s= "650 ORCONN "+guard+" "+status+" ID="+str(conn_id)+"\r\n"
@@ -519,7 +525,11 @@ def test_connguard():
   ev = failed_circ(31)
   ev.arrived_at = last_conn
   state.circ_event(ev)
+  ev = network_liveness_event("DOWN")
+  ev.arrived_at = last_conn
+  state.network_liveness_event(ev)
   assert state.no_circs_since
+  assert state.network_down_since
   ev.arrived_at = last_conn+CIRC_MAX_DISCONNECTED_SECS*2
   state.bw_event(ev)
   assert state.disconnected_circs == True
@@ -528,7 +538,11 @@ def test_connguard():
   ev = built_general_circ(32)
   ev.arrived_at = last_conn
   state.circ_event(ev)
+  ev = network_liveness_event("UP")
+  ev.arrived_at = last_conn
+  state.network_liveness_event(ev)
   assert state.no_circs_since == None
+  assert state.network_down_since == None
   state.bw_event(ev)
   assert state.disconnected_circs == False
 

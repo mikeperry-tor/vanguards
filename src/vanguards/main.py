@@ -127,6 +127,10 @@ def control_loop(state):
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.orconn_event, bandwidths),
                                   stem.control.EventType.ORCONN)
+    controller.add_event_listener(
+                 functools.partial(bandguards.BandwidthStats.network_liveness_event,
+                                   bandwidths),
+                                  stem.control.EventType.NETWORK_LIVENESS)
 
     if controller.get_version() >= _MIN_TOR_VERSION_FOR_BW:
       controller.add_event_listener(

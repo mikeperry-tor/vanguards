@@ -3,6 +3,7 @@
 - Fix exception when a connection to a guard is closed with more than one
   live circuit. #29
 - Catch control+c and exit cleanly. #30.
+- Use Tor's network liveness events to double-check connectivity.
 - Print out relevant versions at startup.
 
 0.2.1

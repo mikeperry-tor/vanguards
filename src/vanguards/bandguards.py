@@ -122,12 +122,18 @@ class BandwidthStats:
     self.live_guard_conns = {} # key=connid val=BwGuardStat
     self.guards = {} # key=guardfp val=BwGuardStat
     self.circs_destroyed_total = 0
-    self.no_conns_since = time.time()
+    self.no_conns_since = int(time.time())
     self.no_circs_since = None
+    self.network_down_since = None
     self.max_fake_id = -1
     self.disconnected_circs = False
     self.disconnected_conns = False
     self._orconn_init(controller)
+    self._network_liveness_init(controller)
+
+  def _network_liveness_init(self, controller):
+    if controller.get_info("network-liveness") != "up":
+      self.network_down_since = int(time.time())
 
   # Load in our current orconns. orconn-status does not
   # tell us IDs, so we have to fake it and keep track of fakes :/
@@ -375,9 +381,22 @@ class BandwidthStats:
          self.any_circuits_pending():
         if not self.disconnected_circs or \
           disconnected_secs % CIRC_MAX_DISCONNECTED_SECS == 0:
-          plog("WARN", "Tor has been failing all circuits for %d seconds!"
-               % disconnected_secs)
+          if self.network_down_since:
+            plog("WARN", "Tor has been disconnected for %d seconds, "+\
+                 "and failing all circuits for %d seconds!",
+                  now - self.network_down_since,
+                  disconnected_secs)
+          else:
+            plog("NOTICE", "Tor has been failing all circuits for %d seconds!"
+                 % disconnected_secs)
         self.disconnected_circs = True
+
+  def network_liveness_event(self, event):
+    plog("DEBUG", event.raw_content())
+    if event.status == "UP":
+      self.network_down_since = None
+    elif event.status == "DOWN":
+      self.network_down_since = event.arrived_at
 
   def check_circ_ages(self, now):
     if CIRC_MAX_AGE_HOURS <= 0:
