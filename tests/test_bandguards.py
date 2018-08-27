@@ -323,23 +323,27 @@ def test_connguard():
   assert "1" not in state.live_guard_conns
   assert state.live_guard_conns["2"].to_guard == "3E53D3979DB07EFD736661C934A1DED14127B684"
 
-  # Test HS_INTRO close
+  # Test HS_INTRO close with an extra circ on it.
   assert state.circs_destroyed_total == 0
   state.orconn_event(
          orconn_event(11,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
   state.circ_event(built_circ(23, "HS_SERVICE_INTRO",
                               "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
+  state.circ_event(built_circ(24, "HS_SERVICE_INTRO",
+                              "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   state.orconn_event(
          orconn_event(11,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CLOSED"))
-  state.circ_event(destroyed_circ(23,
+  state.circ_event(destroyed_circ(24,
                     "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
+  state.circ_event(destroyed_circ(23,
+                   "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 1
-  assert state.circs_destroyed_total == 1
+  assert state.circs_destroyed_total == 2
 
   # Test cannibalized close
-  assert state.circs_destroyed_total == 1
+  assert state.circs_destroyed_total == 2
   state.orconn_event(
          orconn_event(12,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
@@ -353,10 +357,10 @@ def test_connguard():
   state.circ_event(destroyed_circ(24,
                     "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
-  assert state.circs_destroyed_total == 2
+  assert state.circs_destroyed_total == 3
 
   # Test cannibalized close on pre-existing conn
-  assert state.circs_destroyed_total == 2
+  assert state.circs_destroyed_total == 3
   state.circ_event(built_circ(2323, "HS_VANGUARDS",
                               "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed"))
   state.circ_minor_event(purpose_changed_circ(2323, "HS_VANGUARDS", "HS_SERVICE_REND",
@@ -371,11 +375,11 @@ def test_connguard():
                     "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
   assert state.guards["3E53D3979DB07EFD736661C934A1DED14127B684"].killed_conns == 1
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
 
   # Tests that should not trigger logs:
   #  * Test HS_VANGUARDS
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
   state.orconn_event(
          orconn_event(13,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
@@ -387,10 +391,10 @@ def test_connguard():
   state.circ_event(destroyed_circ(25,
                     "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
 
   #  * Test general close
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
   state.orconn_event(
          orconn_event(14,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
@@ -402,10 +406,10 @@ def test_connguard():
   state.circ_event(destroyed_circ(26,
                     "$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
 
   #  * Test late close of hs_intro
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
   state.orconn_event(
          orconn_event(15,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
@@ -419,10 +423,10 @@ def test_connguard():
   ev.arrived_at = time.time()+5
   state.circ_event(ev)
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
 
   #  * Different guard for hs_intro
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
   state.orconn_event(
          orconn_event(16,"$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed",
                       "CONNECTED"))
@@ -434,7 +438,7 @@ def test_connguard():
   state.circ_event(destroyed_circ(28,
                     "$6416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"))
   assert state.guards["5416F3E8F80101A133B1970495B04FDBD1C7446B"].killed_conns == 2
-  assert state.circs_destroyed_total == 3
+  assert state.circs_destroyed_total == 4
 
   # Test orconn-status fake_id clearing, esp with launched
   assert len(state.live_guard_conns) == 1
