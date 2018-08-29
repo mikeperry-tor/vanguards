@@ -98,15 +98,22 @@ and then run vanguards.py --control\_port=9099 (or --control\_socket /path/to/so
 It is also possible to use the vanguards addon as a regular Tor client with
 Tor Browser or with Onionshare.
 
-To use it with Tor Browser you should hack the torrc of Tor Browser so that it
-exposes a control port, and then connect to it with vanguards.py. You can do it
-by editing the ./Browser/TorBrowser/Data/Tor/torrc file and adding the Control
-Port directive.
+To use it with Tor Browser, all you have to do is start Tor Browser, and then run:
+```
+  ./src/vanguards.py --control_port 9151
+```
 
 To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards addon to it.
 
-Note that as described above, Tor clients with the bandguards system will emit false positives about the dropped limit being exceeded, due to Tor Browser closing some connections before all data is read. These log messages will be at NOTICE level for this activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573) for more information. Since OnionShare operates as a service, it should not cause these false positives.
+Note that as described in
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md),
+Tor clients with the bandguards system will emit false positives about the
+dropped limit being exceeded, due to Tor Browser closing some connections
+before all data is read. These log messages will be at NOTICE level for this
+activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573)
+for more information. Since OnionShare operates as a service, it should not
+cause these false positives.
 
 ## Performance Tuning
 

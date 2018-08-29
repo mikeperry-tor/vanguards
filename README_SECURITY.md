@@ -77,8 +77,8 @@ spikes in our relay bandwidth statistics at the guard. Setting
 **circ_max_megabytes** to an appropriate value for your service can help you
 detect and mitigate this.
 
-The network adversary is able to perform confirmation attacks via the
-following mechanisms:
+The network adversary is able to perform confirmation attacks to confirm that
+you are or are not using their Guard or middles via the following mechanisms:
 
 1. Inject special types of traffic at specific times towards your onion service (as was done [by CMU with RELAY_EARLY](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack), and [shown in the DropMark attack](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)).
 2. Inject large amounts of traffic towards your onion service, and look for these additional traffic patterns on their relays.
