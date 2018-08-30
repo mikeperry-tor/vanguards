@@ -55,8 +55,10 @@ perform the following anonymity attacks:
 1. **Determine** if a specific onion service is exploitable, and if so, exploit it (possibly learning the IP address).
 2. **Determine** if a specific onion service is also listening on a public IPv4 address.
 3. **Determine** when a specific onion service is down or off the network.
-4. **Determine** that a specific onion service is running the vanguards addon.
-5. **Suspect** that a specific onion service is using [https://github.com/DonnchaC/onionbalance](OnionBalance).
+4. **Determine** if a specific onion service always goes down at the same time as
+a public Tor relay goes down.
+5. **Determine** that a specific onion service is running the vanguards addon.
+6. **Suspect** that a specific onion service is using [https://github.com/DonnchaC/onionbalance](OnionBalance).
 
 The client adversary can **determine** that a specific onion service (yours or
 not) is running this addon by observing how that onion service behaves. In
@@ -73,7 +75,7 @@ descriptors for OnionBalance instances will often contain more introduction
 points than normal, and may even be split across multiple onion service
 descriptors. (The client only **suspects** this because both of these things
 can happen in normal onion service operation as well). To reduce the ability
-of the client adversary to determine this, set **DISTINCT_DESCRIPTORS=False**
+of the client adversary to **suspect** this, set **DISTINCT_DESCRIPTORS=False**
 and **MAX_INTRO_POINTS=7** in your OnionBalance configuration.
 
 ## Adversaries: Network
@@ -343,15 +345,15 @@ layer3 guards.
 
 As we discussed above, confirmation attacks can be performed by local and
 global adversaries that block your access to Tor (or kill your Tor
-connections) to determine if this impacts the reachability of a suspect hidden
-service. This is a good reason to monitor your onion service reachability very
+connections) to **confirm** if this impacts the reachability of a suspect hidden
+service or not. This is a good reason to monitor your onion service reachability very
 closely with something like [Nagios](https://www.nagios.org/),
 [Munin](http://munin-monitoring.org/) or other reliability monitoring
 software.
 
 If you use OnionBalance, you need to monitor the ability of each of your
 Backend Instances to connect to Tor and receive connections to their unique
-backend onion service keys. If the adversary is able to **determine** that you are
+backend onion service keys. If the adversary **suspects** that you are
 using OnionBalance, they can perform reachability confirmation attacks against
 the specific backend instances.
 
@@ -406,8 +408,7 @@ Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
 
 The story deepens, however. When you do this, **your onion service uptime will
 be strongly correlated to your relay uptime, and both are now very
-easily observable by adversaries that aren't local, global, or even
-in-network**.
+easily observable by client adversaries**.
 
 OnionBalance is one way to address this (ie: running several Tor
 relays on different machines, each with their own OnionBalance Backend
