@@ -53,13 +53,12 @@ In addition to nuisances such as DoS attacks, these adversaries can
 perform the following anonymity attacks:
 
 1. **Determine** if a specific onion service is exploitable, and if so, exploit it (possibly learning the IP address).
-2. **Determine** if a specific onion service is also listening on a public IPv4 address.
-3. **Determine** when a specific onion service is down or off the network.
-4. **Determine** if a specific onion service always goes down at the same time as
+2. **Determine** if a specific onion service is also listening on a public IP address, by scanning for it.
+3. **Determine** if a specific onion service always goes down at the same time as
 a public Tor relay goes down.
-5. **Determine** that a specific onion service is running the vanguards addon.
-6. **Suspect** that a specific onion service is using [https://github.com/DonnchaC/onionbalance](OnionBalance).
-7. **Suspect** that your onion service may be using a particular Guard.
+4. **Determine** that a specific onion service is running the vanguards addon.
+5. **Suspect** that a specific onion service is using [OnionBalance](https://github.com/DonnchaC/onionbalance).
+6. **Suspect** that your onion service may be using a particular Guard.
 
 The client adversary can **determine** that a specific onion service (yours or
 not) is running this addon by observing how that onion service behaves. In
@@ -67,10 +66,9 @@ particular, it can attempt one of the attacks that this addon defends against,
 and see if the onion service closes circuits in response. In these cases, log
 lines will be emitted by this addon at NOTICE level or above. If you think
 the vanguards addon should have an option not to close circuits in response to
-attacks, [https://github.com/mikeperry-tor/vanguards/issues/32](please comment on this ticket).
+attacks, [please comment on this ticket](https://github.com/mikeperry-tor/vanguards/issues/32).
 
-Depending on the configuration,
-[https://github.com/DonnchaC/onionbalance](OnionBalance) by a service can also
+Depending on the configuration, [OnionBalance](https://github.com/DonnchaC/onionbalance) by a service can also
 be **suspected** by a Tor client. This is because the onion service
 descriptors for OnionBalance instances will often contain more introduction
 points than normal, and may even be split across multiple onion service
