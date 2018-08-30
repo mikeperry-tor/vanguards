@@ -17,13 +17,13 @@ To use your distribution's packages instead, run:
 or for each python version individually as:
 
 ```
- TOXENV=py27 tox -c tox-systemonly.ini
- TOXENV=py35 tox -c tox-systemonly.ini
+ TOXENV=py2 tox -c tox-systemonly.ini
+ TOXENV=py3 tox -c tox-systemonly.ini
  TOXENV=pypy tox -c tox-systemonly.ini
 ```
 
 
-This will run python2.7, python3.5, and pypy tests, **as well as check your
+This will run python2, python3, and pypy tests, **as well as check your
 system-installed packages for known vulnerabilities against
 https://pyup.io/safety**.
 
