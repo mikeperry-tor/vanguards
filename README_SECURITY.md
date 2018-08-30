@@ -14,8 +14,8 @@ adversaries.
 
 # Adversaries
 
-Adversaries can be roughly categorized as having one or more of three
-positions: "Network", "Local", or "Global".
+Adversaries can be roughly categorized as having one or more of four
+positions: "Client", "Network", "Local", or "Global".
 
 Adversaries can have more than one position at the same time, and each of
 these positions can be either "active", or "passive". They may also have
@@ -44,11 +44,43 @@ typically useful, unless there is also an attack that allows the adversary to
 away are thus more useful to the adversary than attacks that merely allow them
 to **suspect** information.
 
+## Adversaries: Client
+
+Client adversaries are those that attack your onion service using nothing more
+than a Tor client and normal internet access. 
+
+In addition to nuisances such as DoS attacks, these adversaries can
+perform the following anonymity attacks:
+
+1. **Determine** if a specific onion service is exploitable, and if so, exploit it (possibly learning the IP address).
+2. **Determine** if a specific onion service is also listening on a public IPv4 address.
+3. **Determine** when a specific onion service is down or off the network.
+4. **Determine** that a specific onion service is running the vanguards addon.
+5. **Suspect** that a specific onion service is using [https://github.com/DonnchaC/onionbalance](OnionBalance).
+
+The client adversary can **determine** that a specific onion service (yours or
+not) is running this addon by observing how that onion service behaves. In
+particular, it can attempt one of the attacks that this addon defends against,
+and see if the onion service closes circuits in response. In these cases, log
+lines will be emitted by this addon at NOTICE level or above. If you think
+the vanguards addon should have an option not to close circuits in response to
+attacks, [https://github.com/mikeperry-tor/vanguards/issues/32](please comment on this ticket).
+
+Depending on the configuration,
+[https://github.com/DonnchaC/onionbalance](OnionBalance) by a service can also
+be **suspected** by a Tor client. This is because the onion service
+descriptors for OnionBalance instances will often contain more introduction
+points than normal, and may even be split across multiple onion service
+descriptors. (The client only **suspects** this because both of these things
+can happen in normal onion service operation as well). To reduce the ability
+of the client adversary to determine this, set **DISTINCT_DESCRIPTORS=False**
+and **MAX_INTRO_POINTS=7** in your OnionBalance configuration.
+
 ## Adversaries: Network
 
 Network adversaries are those that run relays in the Tor network, and/or that
-compromise Tor relays. They can also use the network to inject traffic of
-their choice (especially against onion services).
+compromise Tor relays. They can also use the network (or a Tor client) to
+inject traffic of their choice (especially against onion services).
 
 The vanguards addon is designed to protect against network adversaries.
 Setting aside the attacks that this addon defends against (which are
@@ -59,11 +91,10 @@ network adversaries can still perform the following attacks:
 1. **Determine** your Guard relays, if they run one of your Layer2 middles.
 2. **Determine** that you are running an onion service that is using this
    addon, if they run one of your Guard relays.
-3. **Determine** that a specific onion service is running this addon.
-4. **Suspect** that your onion service may be using a particular Guard.
-5. **Confirm** that a specific onion service is using their Guard or Layer2 middle
+3. **Suspect** that your onion service may be using a particular Guard.
+4. **Confirm** that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
-6. **Confirm** that a specific onion service is not using their Guard or Layer2
+5. **Confirm** that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
 
 The vanguards addon is designed to make these attacks as difficult and unlikely as
@@ -84,12 +115,6 @@ onion services (which are also recognizable at the guard relay via these same
 techniques) will make circuits to the entire set of relays in the Tor network.
 This discrepancy allows a malicious guard to determine that you are using this
 addon.
-
-The network adversary can **determine** that a specific onion service (yours or
-not) is running this addon by observing how that onion service behaves. In
-particular, it can attempt one of the attacks that this addon defends against,
-and see if the onion service closes circuits in response. In these cases, log
-lines will be emitted by this addon at NOTICE level or above.
 
 The network adversary may be able to **suspect** that you are using a particular
 guard by attacking that guard. If that guard goes down or becomes slower, they
