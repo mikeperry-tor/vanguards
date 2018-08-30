@@ -59,6 +59,7 @@ perform the following anonymity attacks:
 a public Tor relay goes down.
 5. **Determine** that a specific onion service is running the vanguards addon.
 6. **Suspect** that a specific onion service is using [https://github.com/DonnchaC/onionbalance](OnionBalance).
+7. **Suspect** that your onion service may be using a particular Guard.
 
 The client adversary can **determine** that a specific onion service (yours or
 not) is running this addon by observing how that onion service behaves. In
@@ -78,6 +79,15 @@ can happen in normal onion service operation as well). To reduce the ability
 of the client adversary to **suspect** this, set **DISTINCT_DESCRIPTORS=False**
 and **MAX_INTRO_POINTS=7** in your OnionBalance configuration.
 
+The client adversary may be able to **suspect** that you are using a particular
+guard by attacking that guard. If that guard goes down or becomes slower, they
+may notice the effect on your onion service. This is one of the reasons why
+the vanguards addon uses two guards in a balanced way by default.
+Additionally, they may be able to flood your onion service with data to notice
+spikes in our public relay bandwidth statistics at the guard. Setting
+**circ_max_megabytes** to an appropriate value for your service can help you
+detect and mitigate this.
+
 ## Adversaries: Network
 
 Network adversaries are those that run relays in the Tor network, and/or that
@@ -93,10 +103,9 @@ network adversaries can still perform the following attacks:
 1. **Determine** your Guard relays, if they run one of your Layer2 middles.
 2. **Determine** that you are running an onion service that is using this
    addon, if they run one of your Guard relays.
-3. **Suspect** that your onion service may be using a particular Guard.
-4. **Confirm** that a specific onion service is using their Guard or Layer2 middle
+3. **Confirm** that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
-5. **Confirm** that a specific onion service is not using their Guard or Layer2
+4. **Confirm** that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
 
 The vanguards addon is designed to make these attacks as difficult and unlikely as
@@ -117,15 +126,6 @@ onion services (which are also recognizable at the guard relay via these same
 techniques) will make circuits to the entire set of relays in the Tor network.
 This discrepancy allows a malicious guard to determine that you are using this
 addon.
-
-The network adversary may be able to **suspect** that you are using a particular
-guard by attacking that guard. If that guard goes down or becomes slower, they
-may notice the effect on your onion service. This is one of the reasons why
-the vanguards addon uses two guards in a balanced way by default.
-Additionally, they may be able to flood your onion service with data to notice
-spikes in our relay bandwidth statistics at the guard. Setting
-**circ_max_megabytes** to an appropriate value for your service can help you
-detect and mitigate this.
 
 The network adversary is able to perform confirmation attacks to **confirm** that
 you are or are not using their Guard or middles via the following mechanisms:
