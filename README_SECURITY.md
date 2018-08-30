@@ -22,24 +22,27 @@ these positions can be either "active", or "passive". They may also have
 additional information that can help them mount their attacks.
 
 We further break down each adversary's capabilities using the following
-attack terms:
+attack actions:
 
- 1. **Guess** - When we say **"Guess"** with respect to an attack type, that
+ 1. **Suspect** - When we say **"suspect"** with respect to an attack, that
 means that the adversary can perform an attack to obtain this information, but
-they will not have high certainty that they are correct. In many instances,
-this can result in them guessing incorrectly that a lot of unrelated Tor
-clients have the property that they are trying to learn about.
- 2. **Confirm** - When we say **"Confirm"** with respect to an attack type,
-that means that the adversary is able to use an attack to confirm a prior
-suspicion, outside information, or guess with extremely high certainty.
- 3. **Determine** - When we say **"Determine"** with respect to an attack type, that
+they will not have high certainty that they are correct. Depending on the
+attack, they may end up suspecting a lot of unrelated Tor clients as a result
+of their attack. These attacks may also fail to suspect the client that is
+actually of interest to them.
+ 2. **Confirm** - When we say **"confirm"** with respect to an attack type,
+that means that the adversary is able to use an attack to confirm outside
+information, prior suspicion, or speculation with extremely high certainty.
+ 3. **Determine** - When we say **"determine"** with respect to an attack type, that
 means that the adversary can perform an attack to obtain the described
 information with extremely high certainty in a relatively short amount of
 time, if the conditions for the attack are met.
 
-Generally, **"Guess"** attacks are less useful to the adversary than
-**"Confirm"** attacks, and **"Confirm"** attacks are less useful than
-**"Determine"** attacks.
+Attacks that merely allow the adversary to **suspect** information are not
+typically useful, unless there is also an attack that allows the adversary to
+**confirm** that information. Attacks that **determine** information right
+away are thus more useful to the adversary than attacks that merely allow them
+to **suspect** information.
 
 ## Adversaries: Network
 
@@ -57,7 +60,7 @@ network adversaries can still perform the following attacks:
 2. **Determine** that you are running an onion service that is using this
    addon, if they run one of your Guard relays.
 3. **Determine** that a specific onion service is running this addon.
-4. **Guess** that your onion service may be using a particular Guard.
+4. **Suspect** that your onion service may be using a particular Guard.
 5. **Confirm** that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
 6. **Confirm** that a specific onion service is not using their Guard or Layer2
@@ -88,7 +91,7 @@ particular, it can attempt one of the attacks that this addon defends against,
 and see if the onion service closes circuits in response. In these cases, log
 lines will be emitted by this addon at NOTICE level or above.
 
-The network adversary may be able to **guess** that you are using a particular
+The network adversary may be able to **suspect** that you are using a particular
 guard by attacking that guard. If that guard goes down or becomes slower, they
 may notice the effect on your onion service. This is one of the reasons why
 the vanguards addon uses two guards in a balanced way by default.
@@ -124,8 +127,8 @@ related attacks that are possible from a guard relay.
 However, local adversaries can do the following things:
 
 1. **Determine** that you are using the public Tor network.
-2. **Guess** that your Tor client might be running an unknown onion service.
-3. **Guess** that your Tor client might be running the vanguards addon (soon to be
+2. **Suspect** that your Tor client might be running an unknown onion service.
+3. **Suspect** that your Tor client might be running the vanguards addon (soon to be
    fixed).
 4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
@@ -134,14 +137,14 @@ Local adversaries can **determine** that you are running Tor because the list of
 relays is public, and connections to them are obvious. (Unless you use bridges,
 of course, which is one of our later recommendations).
 
-Local adversaries can **guess** that your Tor client might be an unknown onion
+Local adversaries might **suspect** that your Tor client could be an unknown onion
 service because it exhibits traffic patterns that are unlike most other Tor
 clients. Your connections will stay open all of the time, and you will
 regularly transmit data while other nearby humans are asleep, as well as while
 they are awake. Your traffic will also be asymmetrical. While most Tor clients
 download, you will likely be doing a lot of uploading.
 
-Local adversaries can also **guess** that you might be using the vanguards addon,
+Local adversaries might also **suspect** that you could be using the vanguards addon,
 at least until [Proposal
 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt)
 is turned on. This is because you will be using two Guards in a balanced way,
@@ -150,11 +153,12 @@ today). Proposal 291 is a consensus parameter change. The rest of the Tor
 Project just has to agree that it is a good idea. Agreement can take a while,
 but once we decide, the change will be immediate.
 
-With this information, the local adversary may have a **guess** that
-you are running an onion service, and maybe even one that wants high security,
-but they will not know which one it is. If they are interested in specific
-onion services, they can attempt to **confirm** that you are running one of them
-via a few different mechanisms:
+With this information, the local adversary may have a **suspect** that
+you could be running an onion service, and maybe even one that wants high security,
+but they will not know which one it is.
+
+If they are interested in specific onion services, they can attempt to
+**confirm** that you are running one of them via a few different mechanisms:
 
 1. Block your connection to Tor to see if any onion services they care about go down.
 2. Kill your TCP connections to see if any of their connections to that onion service close.
@@ -174,16 +178,16 @@ The global adversary can perform all of the attacks that the local adversary
 can, but everywhere. This means that they can:
 
 1. **Determine** a list of most/all IPs that connect to the public Tor network.
-2. **Guess** which of these IPs might be running onion services.
-3. **Guess** which of these IPs might be using this addon (soon to be fixed).
-4. **Guess** that an IP might be running a specific onion service address, if it is
+2. **Suspect** which of these IPs might be running onion services.
+3. **Suspect** which of these IPs might be using this addon (soon to be fixed).
+4. **Suspect** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
 
 This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
 those attacks scale. These limits are also the reason that the global
-confirmation attack has been degraded to a "**guess**" for #4. If there is enough
+confirmation attack has been degraded to "**suspect**" for #4. If there is enough
 other traffic present, or other mitigating factors, they may not always be
 certain, unless they send a large amount of traffic over a long period of
 time, or become active on a global scale in terms of blocking or closing
@@ -322,7 +326,7 @@ software.
 
 If you use OnionBalance, you need to monitor the ability of each of your
 Backend Instances to connect to Tor and receive connections to their unique
-backend onion service keys. If the adversary is able to determine that you are
+backend onion service keys. If the adversary is able to **determine** that you are
 using OnionBalance, they can perform reachability confirmation attacks against
 the specific backend instances.
 
@@ -382,8 +386,8 @@ in-network**.
 
 OnionBalance is one way to address this (ie: running several Tor
 relays on different machines, each with their own OnionBalance Backend
-Instance), but again, if the adversary is able to determine that you are using
-OnionBalance, they can try to determine if your individual Backend Instances
+Instance), but again, if the adversary is able to **determine** that you are using
+OnionBalance, they may **suspect** that your individual Backend Instances
 go up and down in correlation with any Tor relays over time. It is likely
 harder for them to do this accurately than with a single relay and a single
 service, but it may still be possible.
