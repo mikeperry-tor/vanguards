@@ -21,6 +21,26 @@ Adversaries can have more than one position at the same time, and each of
 these positions can be either "active", or "passive". They may also have
 additional information that can help them mount their attacks.
 
+We further break down each adversary's capabilities using the following
+attack terms:
+
+ 1. **Guess** - When we say **"Guess"** with respect to an attack type, that
+means that the adversary can perform an attack to obtain this information, but
+they will not have high certainty that they are correct. In many instances,
+this can result in them guessing incorrectly that a lot of unrelated Tor
+clients have the property that they are trying to learn about.
+ 2. **Confirm** - When we say **"Confirm"** with respect to an attack type,
+that means that the adversary is able to use an attack to confirm a prior
+suspicion, outside information, or guess with extremely high certainty.
+ 3. **Determine** - When we say **"Determine"** with respect to an attack type, that
+means that the adversary can perform an attack to obtain the described
+information with extremely high certainty in a relatively short amount of
+time, if the conditions for the attack are met.
+
+Generally, **"Guess"** attacks are less useful to the adversary than
+**"Confirm"** attacks, and **"Confirm"** attacks are less useful than
+**"Determine"** attacks.
+
 ## Adversaries: Network
 
 Network adversaries are those that run relays in the Tor network, and/or that
@@ -33,14 +53,14 @@ documented in
 [README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md)),
 network adversaries can still perform the following attacks:
 
-1. Determine your Guard relays, if they run one of your Layer2 middles.
-2. Determine that you are running an onion service that is using this
+1. **Determine** your Guard relays, if they run one of your Layer2 middles.
+2. **Determine** that you are running an onion service that is using this
    addon, if they run one of your Guard relays.
-3. Determine that a specific onion service is running this addon.
-4. Guess that your onion service may be using a particular Guard.
-5. Confirm that a specific onion service is using their Guard or Layer2 middle
+3. **Determine** that a specific onion service is running this addon.
+4. **Guess** that your onion service may be using a particular Guard.
+5. **Confirm** that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
-6. Confirm that a specific onion service is not using their Guard or Layer2
+6. **Confirm** that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
 
 The vanguards addon is designed to make these attacks as difficult and unlikely as
@@ -53,7 +73,7 @@ adversary class.
 For statistics on how long the first attack takes, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
 
 If you are using a guard relay run by the network adversary, they can
-determine that you are running an onion service that is using this addon
+**determine** that you are running an onion service that is using this addon
 through [circuit fingerprinting attacks](https://www.usenix.org/node/190967).
 All of your onion service circuits (which are recognizable via the techniques
 from that paper) will be made to a small set of layer2 guard relays. Normal
@@ -62,13 +82,13 @@ techniques) will make circuits to the entire set of relays in the Tor network.
 This discrepancy allows a malicious guard to determine that you are using this
 addon.
 
-The network adversary can determine that a specific onion service (yours or
+The network adversary can **determine** that a specific onion service (yours or
 not) is running this addon by observing how that onion service behaves. In
 particular, it can attempt one of the attacks that this addon defends against,
 and see if the onion service closes circuits in response. In these cases, log
 lines will be emitted by this addon at NOTICE level or above.
 
-The network adversary may be able to guess that you are using a particular
+The network adversary may be able to **guess** that you are using a particular
 guard by attacking that guard. If that guard goes down or becomes slower, they
 may notice the effect on your onion service. This is one of the reasons why
 the vanguards addon uses two guards in a balanced way by default.
@@ -77,7 +97,7 @@ spikes in our relay bandwidth statistics at the guard. Setting
 **circ_max_megabytes** to an appropriate value for your service can help you
 detect and mitigate this.
 
-The network adversary is able to perform confirmation attacks to confirm that
+The network adversary is able to perform confirmation attacks to **confirm** that
 you are or are not using their Guard or middles via the following mechanisms:
 
 1. Inject special types of traffic at specific times towards your onion service (as was done [by CMU with RELAY_EARLY](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack), and [shown in the DropMark attack](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)).
@@ -103,25 +123,25 @@ related attacks that are possible from a guard relay.
 
 However, local adversaries can do the following things:
 
-1. Determine that you are using the public Tor network.
-2. Guess that your Tor client might be running an unknown onion service.
-3. Guess that your Tor client might be running the vanguards addon (soon to be
+1. **Determine** that you are using the public Tor network.
+2. **Guess** that your Tor client might be running an unknown onion service.
+3. **Guess** that your Tor client might be running the vanguards addon (soon to be
    fixed).
-4. Confirm that you are running a specific onion service address, if you are
+4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
 
-Local adversaries can determine that you are running Tor because the list of
+Local adversaries can **determine** that you are running Tor because the list of
 relays is public, and connections to them are obvious. (Unless you use bridges,
 of course, which is one of our later recommendations).
 
-Local adversaries can guess that your Tor client might be an unknown onion
+Local adversaries can **guess** that your Tor client might be an unknown onion
 service because it exhibits traffic patterns that are unlike most other Tor
 clients. Your connections will stay open all of the time, and you will
 regularly transmit data while other nearby humans are asleep, as well as while
 they are awake. Your traffic will also be asymmetrical. While most Tor clients
 download, you will likely be doing a lot of uploading.
 
-Local adversaries can also guess that you might be using the vanguards addon,
+Local adversaries can also **guess** that you might be using the vanguards addon,
 at least until [Proposal
 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt)
 is turned on. This is because you will be using two Guards in a balanced way,
@@ -130,11 +150,11 @@ today). Proposal 291 is a consensus parameter change. The rest of the Tor
 Project just has to agree that it is a good idea. Agreement can take a while,
 but once we decide, the change will be immediate.
 
-With this information, the local adversary may suspect that you are running
-an onion service, and maybe even one that wants high security, but they will
-not know which one it is. If they are interested in specific onion services,
-they can attempt to confirm that you are running one of them via a few
-different mechanisms:
+With this information, the local adversary may have a **guess** that
+you are running an onion service, and maybe even one that wants high security,
+but they will not know which one it is. If they are interested in specific
+onion services, they can attempt to **confirm** that you are running one of them
+via a few different mechanisms:
 
 1. Block your connection to Tor to see if any onion services they care about go down.
 2. Kill your TCP connections to see if any of their connections to that onion service close.
@@ -153,17 +173,17 @@ Russia or China) is also in this class.
 The global adversary can perform all of the attacks that the local adversary
 can, but everywhere. This means that they can:
 
-1. Get a list of most/all IPs that connect to the public Tor network.
-2. Guess which of these IPs might be running onion services.
-3. Guess which of these IPs might be using this addon (soon to be fixed).
-4. Guess that an IP might be running a specific onion service address, if it is
+1. **Determine** a list of most/all IPs that connect to the public Tor network.
+2. **Guess** which of these IPs might be running onion services.
+3. **Guess** which of these IPs might be using this addon (soon to be fixed).
+4. **Guess** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
 
 This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
 those attacks scale. These limits are also the reason that the global
-confirmation attack has been degraded to a "guess" for #4. If there is enough
+confirmation attack has been degraded to a "**guess**" for #4. If there is enough
 other traffic present, or other mitigating factors, they may not always be
 certain, unless they send a large amount of traffic over a long period of
 time, or become active on a global scale in terms of blocking or closing
