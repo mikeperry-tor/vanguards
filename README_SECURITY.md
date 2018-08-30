@@ -21,19 +21,23 @@ Adversaries can have more than one position at the same time, and each of
 these positions can be either "active", or "passive". They may also have
 additional information that can help them mount their attacks.
 
-We further break down each adversary's capabilities using the following
-attack actions:
+Each of the adversary subsections below starts with a list of capabilities
+that the adversary has, and this list is followed by additional paragraphs
+that describe the specific attacks that provide those capabilities.
 
- 1. **Suspect** - When we say **"suspect"** with respect to an attack, that
+We classify each adversary capability using the following action verbs that
+describe the scope of that capability:
+
+ 1. **Suspect** - When we say **"suspect"** with respect to a capability, that
 means that the adversary can perform an attack to obtain this information, but
 they will not have high certainty that they are correct. Depending on the
 attack, they may end up suspecting a lot of unrelated Tor clients as a result
 of their attack. These attacks may also fail to suspect the client that is
 actually of interest to them.
- 2. **Confirm** - When we say **"confirm"** with respect to an attack type,
+ 2. **Confirm** - When we say **"confirm"** with respect to a capability,
 that means that the adversary is able to use an attack to confirm outside
 information, prior suspicion, or speculation with extremely high certainty.
- 3. **Determine** - When we say **"determine"** with respect to an attack type, that
+ 3. **Determine** - When we say **"determine"** with respect to a capability, that
 means that the adversary can perform an attack to obtain the described
 information with extremely high certainty in a relatively short amount of
 time, if the conditions for the attack are met.
