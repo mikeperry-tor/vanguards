@@ -62,7 +62,7 @@ perform the following anonymity attacks:
 a public Tor relay goes down.
 4. **Determine** that a specific onion service is running the vanguards addon.
 5. **Suspect** that a specific onion service is using [OnionBalance](https://github.com/DonnchaC/onionbalance).
-6. **Suspect** that your onion service may be using a particular Guard.
+6. **Suspect** that a specific onion service may be using a particular Guard.
 
 The client adversary can **determine** that a specific onion service (yours or
 not) is running this addon by observing how that onion service behaves. In
@@ -81,14 +81,14 @@ can happen in normal onion service operation as well). To reduce the ability
 of the client adversary to **suspect** this, set **DISTINCT_DESCRIPTORS=False**
 and **MAX_INTRO_POINTS=7** in your OnionBalance configuration.
 
-The client adversary may be able to **suspect** that you are using a particular
-guard by attacking that guard. If that guard goes down or becomes slower, they
-may notice the effect on your onion service. This is one of the reasons why
-the vanguards addon uses two guards in a balanced way by default.
-Additionally, they may be able to flood your onion service with data to notice
-spikes in our public relay bandwidth statistics at the guard. Setting
-**circ_max_megabytes** to an appropriate value for your service can help you
-detect and mitigate this.
+The client adversary may be able to **suspect** that a specific onion service
+is using a particular guard by attacking that guard. If that guard goes down
+or becomes slower, they may notice the effect on that onion service. This is
+one of the reasons why the vanguards addon uses two guards in a balanced way
+by default. Additionally, they may be able to flood an onion service with
+data to notice spikes in our public relay bandwidth statistics at the guard.
+Setting **circ_max_megabytes** to an appropriate value for your service can
+help you detect and mitigate this.
 
 ## Adversaries: Network
 
