@@ -1,3 +1,7 @@
+0.2.3
+-----
+- Add tests/default.conf to sdist/pip tarball. #27
+
 0.2.2
 -----
 - Fix exception when a connection to a guard is closed with more than one

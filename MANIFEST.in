@@ -9,5 +9,6 @@ include tox.ini
 include .travis.yml
 recursive-include src *.py
 recursive-include tests *.mock
+recursive-include tests *.conf
 recursive-include tests *.py
 recursive-include tests cached-microdesc-consensus
