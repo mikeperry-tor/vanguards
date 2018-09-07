@@ -228,6 +228,14 @@ very many connections (which is very expensive, noisy, and noticeable).
 Quite a few things. Using the vanguards addon is a good start, but it is not
 the whole picture.
 
+There are four classes of things you can do to improve your position against
+various attacks:
+
+1. [Have Good Opsec](#have-good-opsec)
+2. [Use Bridges or Run a Relay or Bridge](#use-bridges-or-run-a-relay-or-bridge)
+3. [Configure OnionBalance Correctly](#using-onionbalance)
+4. [Monitor Your Service](#monitor-your-service)
+
 ## Have Good Opsec
 
 Before worrying about any of these advanced attacks on the Tor network, you
@@ -236,11 +244,21 @@ application layer, or by allowing connections outside of Tor.
 
 For information about how to do this, you should have a look at the [Riseup Onion Services Best Practices document](https://riseup.net/en/security/network-security/tor/onionservices-best-practices).
 
-## Consider Using Bridges
+## Use Bridges or Run a Relay or Bridge
+
+Tor has only basic defenses against traffic analysis at the moment. We are
+working on more, but in the meantime, using a bridge or running a relay or
+bridge can provide some additional protection against traffic analysis
+performed by local and global adversaries.
 
 Bridges can help conceal the fact that you are connecting to the Tor network.
 If you use a bridge address that is not known to the adversary, both the local
 and global adversaries will have a harder time performing their attacks.
+
+Running a relay or bridge with your service can help the traffic patterns of
+your service blend in with the rest of the Tor network, but this is tricky to
+set up correctly, and you must take additional steps to decorrelate your
+service uptime from your relay uptime.
 
 ### The Best Way To Use Bridges
 
@@ -248,12 +266,6 @@ Right now, the best bridge protocol to use is obfs4, because it has additional
 traffic analysis obfuscation techniques that make it harder for the local and
 global adversaries to use bandwidth side channels and other traffic
 characteristics.
-
-[Snowflake](https://trac.torproject.org/projects/tor/wiki/doc/Snowflake) is a
-close second, because its connections cannot be closed by simple TCP reset
-attacks. This makes confirmation attacks more expensive. However, snowflake is
-not in wide deployment at the moment. Snowflake also does not offer the
-traffic analysis obfuscation protections that obfs4 does.
 
 To use obfs4, obtain two bridges from
 [bridges.torproject.org](https://bridges.torproject.org/bridges?transport=obfs4)
@@ -275,9 +287,52 @@ bridge itself does not need to have the same setting.
 You can get that obfs4proxy binary as a debian package, or from a recent Tor
 Browser version, or [build it from source](https://gitweb.torproject.org/pluggable-transports/obfs4.git/).
 
-## If You OnionBalance, OnionBalance Carefully
+### The Best Way to Run Tor Relays Or Bridges With Your Service
 
-If you use it correctly,
+Instead of using bridges, another alternative is to use the Tor network itself
+as cover traffic for your service by running a relay or bridge. If your relay
+or bridge is used enough (especially by other onion service client and service
+traffic), this will help obscure your service's traffic.
+
+The seemingly obvious approach would be to use the same Tor process for your
+relay as you use for your onion service. This will accomplish the traffic
+blending on the same TLS connections as relayed Tor traffic. Unfortunately,
+because Tor is single threaded, your onion service activity can still cause
+stalls in the overall network activity of your relay. See
+[Ticket #16585](https://trac.torproject.org/projects/tor/ticket/16585) for the gory
+details. Worse still, if it is the same process, your Tor relay will report
+your onion service history in its read/write statistics, which result in a
+[noticeable asymmetry in these
+statistcis](https://trac.torproject.org/projects/tor/ticket/8742).
+
+However, if you run your Tor relay as a separate process on the same machine
+as your onion service Tor process, but **also** use that relay locally as a
+bridge, your onion service activity will not directly block the relay
+activity, but will still share all of its outbound TLS connections to other
+relays. For this, you would add something like the following to your onion
+service torrc:
+
+```
+UseBridges 1
+Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
+```
+
+The story deepens, however. When you do this, **your onion service uptime will
+be strongly correlated to your relay uptime, and both are now very
+easily observable by client adversaries**.
+
+[OnionBalance](#using-onionbalance) is one way to address this (ie: running
+several Tor relays on different machines, each with their own OnionBalance
+Backend Instance).
+
+To look as much like a normal onion service as possible, you should use two
+Tor relays, and each on different machines in different data centers. In this
+way, your traffic will appear as an onion service that is using your two
+guards, and your onion service as a whole won't go down unless both of your
+relays are down.
+
+## Using OnionBalance
+
 [OnionBalance](https://onionbalance.readthedocs.io/en/latest/getting-started.html#architecture)
 can help protect against some forms of traffic analysis and confirmation
 attacks. It does this at the expense of more exposure to a larger number of
@@ -287,16 +342,13 @@ OnionBalance, they can counteract many of the benefits.
 Despite exposing you to more local adversaries, OnionBalance helps protect
 against local adversaries because they will no longer be able to observe all
 of your onion service traffic, and it is more difficult for them to impact
-your reachability for a reachability confirmation attack. Additionally, when
-OnionBalance is used in combination with the addon's bandguards component
-option **circ_max_megabytes**, this can help protect against bandwidth
-confirmation attacks that send high volumes of traffic to interesting onion
-services and watch for any evidence of results on a local internet connection.
+your reachability for a reachability confirmation attack.
 
-OnionBalance helps protect against a global adversary for similar reasons. If
-your OnionService is very popular, instead of all of the traffic exiting the
-Tor network on one or two very loud connections to a single IP address, it will
-be spread across multiple Backend Instances.
+Additionally, when OnionBalance is used in combination with the addon's
+bandguards component option **circ_max_megabytes**, this can help protect
+against bandwidth confirmation attacks that send high volumes of traffic to
+interesting onion services and watch for any evidence of results on a local
+internet connection.
 
 However, OnionBalance needs some tweaks to avoid giving an advantage to the
 network adversary. Because multiple instances of this addon do not communicate
@@ -368,64 +420,3 @@ connectivity to the Tor network, or when you still have connectivity to the Tor
 network, but you are unable to build circuits. You should add the output
 of the vanguards addon to your monitoring infrastructure for this reason (in
 addition to watching for any evidence of attack).
-
-## Consider Running Tor Relays Or Bridges (BUT DO IT RIGHT!)
-
-All of the attacks performed by local and global adversaries, as well as some
-of the confirmation attacks performed by network adversaries, are much harder if
-there is additional traffic for your onion service to blend in with.
-
-One way to accomplish this is to run a Tor relay or Tor Bridge with your onion
-service. If the relay or bridge is used enough (especially by other onion
-service client and service traffic), this will help obscure your service's
-traffic.
-
-For this to work, you have to be careful about how you set it up. Simply
-running an additional Tor daemon on the same machine is not enough -- your
-onion service will make separate (and distinguishable) TLS connections to other
-relays, and thus you will get no benefit from the additional traffic against
-an adversary that understands how Tor works.
-
-The seemingly obvious approach would be to use the same Tor process for your
-relay as you use for your onion service. This will accomplish the traffic
-blending on the same TLS connections. Unfortunately, because Tor is single
-threaded, your onion service activity can still cause stalls in the overall
-network activity of your relay. See [Ticket #16585](https://trac.torproject.org/projects/tor/ticket/16585) for the gory details. Worse still, if it is the same process, your Tor relay will report
-your onion service history in its read/write statistics, which result in a
-[noticeable asymmetry in these statistcis](https://trac.torproject.org/projects/tor/ticket/8742).
-
-
-### The Best Way to Run a Relay or Bridge with Your Service
-
-The way through this minefield is to run your Tor relay as a separate process
-on the same machine as your onion service Tor process, but **also** use that
-relay locally as a bridge. In this way, your onion service activity will not
-directly block the relay activity, but will still share all of its outbound
-TLS connections to other relays. For this, you would add something like the
-following to your onion service torrc:
-
-```
-UseBridges 1
-Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
-```
-
-The story deepens, however. When you do this, **your onion service uptime will
-be strongly correlated to your relay uptime, and both are now very
-easily observable by client adversaries**.
-
-OnionBalance is one way to address this (ie: running several Tor
-relays on different machines, each with their own OnionBalance Backend
-Instance), but again, if the adversary is able to **determine** that you are using
-OnionBalance, they may **suspect** that your individual Backend Instances
-go up and down in correlation with any Tor relays over time. It is likely
-harder for them to do this accurately than with a single relay and a single
-service, but it may still be possible.
-
-To look as much like a normal onion service as possible, you should use two
-OnionBalance Backend Instances, one for each relay, and each on different
-machines in different data centers. In this way, your traffic will appear as an
-onion service that is using your two guards, and your onion service as a whole
-won't go down unless both of your relays are down.
-
-Again, this whole setup should be vigilantly monitored for any downtime of any
-components, as any extended downtime will leak information.
