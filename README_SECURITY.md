@@ -15,10 +15,11 @@ adversaries.
 # Adversaries
 
 Adversaries can be roughly categorized as having one or more of four
-positions: "Client", "Network", "Local", or "Global".
+positions: "[Client](#adversaries-client)", "[Network](#adversaries-network)",
+"[Local](#adversaries-local)", or "[Global](#adversaries-global)".
 
 Adversaries can have more than one position at the same time, and each of
-these positions can be either "active", or "passive". They may also have
+these positions can be either "**active**", or "**passive**". They may also have
 additional information that can help them mount their attacks.
 
 Each of the adversary subsections below starts with a list of capabilities
