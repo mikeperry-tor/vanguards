@@ -81,7 +81,7 @@ file specified in that variable.
 
 ## Onion service use
 
-This addon is primarily intended for onion service operators. To do use it,
+This addon is primarily intended for onion service operators. To use it,
 set up your onion service to expose a control port listener using the
 ControlPort or ControlSocket torrc directives:
 
@@ -91,7 +91,11 @@ CookieAuthentication 1
 DataDirectory /path/to/tor/datadir
 ```
 
-and then run vanguards.py --control\_port=9099 (or --control\_socket /path/to/socket).
+and then run:
+
+```
+vanguards --control\_port=9099     # (or --control\_socket /path/to/socket).
+```
 
 ## Client use
 
