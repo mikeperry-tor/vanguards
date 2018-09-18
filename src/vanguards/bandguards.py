@@ -11,8 +11,10 @@ from .logger import plog
 # Kill a circuit if more than this many received cells are considered
 # invalid by Tor. This prevents an adversary from inserting cells
 # that are silently dropped into a circuit, to use as a timing side
-# channel.... To prevent dropmark attacks, a limit of 0 cells is used
-# until the first application data appears on a circuit.
+# channel.
+#
+# For Tor 0.3.5.1-alpha and above, this value is ignored, and 0 is used
+# instead. This parameter will soon be deprecated.
 CIRC_MAX_DROPPED_CELLS = 30
 
 # Kill a circuit if this many read+write bytes have been exceeded.
