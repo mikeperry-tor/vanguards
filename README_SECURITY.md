@@ -15,8 +15,8 @@ adversaries.
 # Adversaries
 
 Adversaries can be roughly categorized as having one or more of four
-positions: "[Client](#adversaries-client)", "[Network](#adversaries-network)",
-"[Local](#adversaries-local)", or "[Global](#adversaries-global)".
+positions: [Client](#adversaries-client), [Network](#adversaries-network),
+[Local](#adversaries-local), or [Global](#adversaries-global).
 
 Adversaries can have more than one position at the same time, and each of
 these positions can be either "**active**", or "**passive**". They may also have
@@ -90,7 +90,8 @@ by default. Additionally, they may be able to flood an onion service with
 data to notice spikes in our public relay bandwidth statistics at the guard.
 Setting **circ_max_megabytes** in
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
-to an appropriate value for your service can help you detect and mitigate this.
+to an appropriate value for your service can help you detect and mitigate this
+attack.
 
 ## Adversaries: Network
 
@@ -175,7 +176,8 @@ regularly transmit data while other nearby humans are asleep, as well as while
 they are awake. Your traffic will also be asymmetrical. While most Tor clients
 download, you will likely be doing a lot of uploading. [Running a bridge or
 Tor Relay](#the-best-way-to-run-tor-relays-or-bridges-with-your-service) with
-your Onion Service can help conceal these traffic patterns.
+your Onion Service can help conceal these traffic patterns, especially when
+[used in combination with OnionBalance](#using-onionbalance).
 
 Local adversaries might also **suspect** that you could be using the vanguards addon,
 at least until [Proposal
@@ -199,10 +201,14 @@ If they are interested in specific onion services, they can attempt to
 4. If you weren't using vanguards, they can confirm an onion service even
    easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
-These confirmation attacks can be mitigated by [using OnionBalance](#using-onionbalance),
+These **confirmation** attacks can be mitigated by [using OnionBalance](#using-onionbalance),
 and by setting **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service.
+
+Additionally, [monitoring your service closely](#monitor-your-service) for
+connectivity loss can help you detect attempts by the adversary to **confirm**
+your service location by closing or blocking suspect connections.
 
 ## Adversaries: Global
 
@@ -210,7 +216,7 @@ A global adversary is an adversary that can observe large portions of the
 internet. [The Five Eyes](https://en.wikipedia.org/wiki/Five_Eyes) and its
 extended versions are the canonical example of this adversary. However, any
 adversary that can compromise a large number of internet routers (such as
-Russia or China) is also in this class.
+[Russia](https://nakedsecurity.sophos.com/2018/04/18/russias-grizzly-steppe-gunning-for-vulnerable-routers/) or [China](https://spectrum.ieee.org/tech-talk/computing/hardware/us-suspicions-of-chinas-huawei-based-partly-on-nsas-own-spy-tricks)) is also in this class.
 
 The global adversary can perform all of the attacks that the local adversary
 can, but everywhere. This means that they can:
@@ -418,14 +424,14 @@ software.
 
 If you use OnionBalance, you need to monitor the ability of each of your
 Backend Instances to connect to Tor and receive connections to their unique
-backend onion service keys. If the adversary **suspects** that you are
+backend onion service addresses. If the adversary **suspects** that you are
 using OnionBalance, they can perform reachability confirmation attacks against
 the specific backend instances.
 
-If you use bridges, you should monitor their uptime as well, and replace them
-if they go down.
+If you use bridges or run relays, you should monitor their uptime as well, and
+replace them immediately if they go down.
 
-The vanguards addon also emits warnings when it detects that you have lost
+The vanguards addon also emits WARN messages when it detects that you have lost
 connectivity to the Tor network, or when you still have connectivity to the Tor
 network, but you are unable to build circuits. You should add the output
 of the vanguards addon to your monitoring infrastructure for this reason (in
