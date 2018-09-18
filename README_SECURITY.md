@@ -19,12 +19,17 @@ positions: [Client](#adversaries-client), [Network](#adversaries-network),
 [Local](#adversaries-local), or [Global](#adversaries-global).
 
 Adversaries can have more than one position at the same time, and each of
-these positions can be either "**active**", or "**passive**". They may also have
-additional information that can help them mount their attacks.
+these positions can be either "**active**", or "**passive**". For brevity, we
+do not make heavy use of the **active/passive** distinction in this document.
+
+The adversary may also have additional outside information or suspicions that
+can help them mount their attacks.
 
 Each of the adversary subsections below starts with a list of capabilities
 that the adversary has, and this list is followed by additional paragraphs
-that describe the specific attacks that provide those capabilities.
+that describe the specific attacks that provide those capabilities. When
+relevant, we link to our specific mitigation recommendations from each attack
+description paragraph.
 
 We classify each adversary capability using the following action verbs that
 describe the scope of that capability:
@@ -45,9 +50,16 @@ time, if the conditions for the attack are met.
 
 Attacks that merely allow the adversary to **suspect** information are not
 typically useful, unless there is also an attack that allows the adversary to
-**confirm** that information. Attacks that **determine** information right
-away are thus more useful to the adversary than attacks that merely allow them
-to **suspect** information.
+**confirm** that information.
+
+Attacks that allow an adversary to **confirm** information are not useful
+unless the adversary has some prior information or suspicion.
+
+Attacks that **determine** information right away are thus more powerful
+than attacks that **confirm** information, because they do not require any
+prior information or suspicion. They are also more useful to the adversary
+than attacks that allow them to **suspect** information, because they provide
+a very high degree of certainty.
 
 ## Adversaries: Client
 
@@ -87,7 +99,7 @@ is using a particular guard by attacking that guard. If that guard goes down
 or becomes slower, they may notice the effect on that onion service. This is
 one of the reasons why the vanguards addon uses two guards in a balanced way
 by default. Additionally, they may be able to flood an onion service with
-data to notice spikes in our public relay bandwidth statistics at the guard.
+traffic to notice spikes in our public relay bandwidth statistics at the guard.
 Setting **circ_max_megabytes** in
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service can help you detect and mitigate this
@@ -105,7 +117,7 @@ documented in
 [README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md)),
 network adversaries can still perform the following attacks:
 
-1. **Determine** your Guard relays, if they run one of your Layer2 middles.
+1. **Determine** your Guard relays, if they run one of your Layer2 middle relays.
 2. **Determine** that you are running an onion service that is using this
    addon, if they run one of your Guard relays.
 3. **Confirm** that a specific onion service is using their Guard or Layer2 middle
@@ -126,14 +138,14 @@ If you are using a guard relay run by the network adversary, they can
 **determine** that you are running an onion service that is using this addon
 through [circuit fingerprinting attacks](https://www.usenix.org/node/190967).
 All of your onion service circuits (which are recognizable via the techniques
-from that paper) will be made to a small set of layer2 guard relays. Normal
+from that paper) will be made to a small set of layer2 vanguard relays. Normal
 onion services (which are also recognizable at the guard relay via these same
 techniques) will make circuits to the entire set of relays in the Tor network.
 This discrepancy allows a malicious guard to determine that you are using this
 addon.
 
-The network adversary is able to perform confirmation attacks to **confirm** that
-you are or are not using their Guard or middles via the following mechanisms:
+The network adversary is able to perform **confirmation** attacks to **confirm** that
+you are or are not using their Guard or middle relays via the following mechanisms:
 
 1. Inject special types of traffic at specific times towards your onion service (as was done [by CMU with RELAY_EARLY](https://blog.torproject.org/tor-security-advisory-relay-early-traffic-confirmation-attack), and [shown in the DropMark attack](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)).
 2. Inject large amounts of traffic towards your onion service, and look for these additional traffic patterns on their relays.
@@ -154,7 +166,7 @@ your path to the Tor network.
 The local adversary has less surveillance resolution than the network
 adversary, because it cannot tell which of your packets belong to which Tor
 circuit. This means that it cannot perform most of the fingerprinting and
-related attacks that are possible from a guard relay.
+related attacks that are possible from a guard relay by the network adversary.
 
 However, local adversaries can do the following things:
 
@@ -193,7 +205,8 @@ you could be running an onion service, and maybe even one that wants high securi
 but they will not know which one it is.
 
 If they are interested in specific onion services, they can attempt to
-**confirm** that you are running one of them via a few different mechanisms:
+**confirm** that you are running one of these specific services via a few
+different mechanisms:
 
 1. Block your connection to Tor to see if any onion services they care about go down.
 2. Kill your TCP connections to see if any of their connections to that onion service close.
@@ -208,7 +221,10 @@ to an appropriate value for your service.
 
 Additionally, [monitoring your service closely](#monitor-your-service) for
 connectivity loss can help you detect attempts by the adversary to **confirm**
-your service location by closing or blocking suspect connections.
+your service location. When the adversary closes connections or temporarily
+blocks access to the public Tor network and any bridge addresses that they
+know about, the vanguards addon will emit NOTICE and WARN messages related to
+this connectivity loss, and your service will become unreachable.
 
 ## Adversaries: Global
 
@@ -380,26 +396,29 @@ lowers your security a bit.
 To attempt to conceal the fact that you are using OnionBalance, you want your
 OnionBalance service to produce descriptors with similar numbers of
 introduction points as normal services. Normal services typically have between
-3 and 7 introduction points. This means you should set the
-**MAX_INTRO_POINTS** OnionBalance setting to 7, and also set
-**DISTINCT_DESCRIPTORS=False**, to prevent it from generating multiple
-descriptors.
+3 and 7 introduction points. This means you should set the OnionBalance
+setting **MAX_INTRO_POINTS=7**, and also set **DISTINCT_DESCRIPTORS=False**,
+to prevent it from generating multiple descriptors.
 
-To keep your layer2 and layer3 vanguards in sync, copy the vanguards state
-file from your OnionBalance Management Server to each of your Backend
-Instances, via tor+scp or some other secure mechanism. This should be done
-once per hour (crontab is a good way to do this).
+To keep your layer2 and layer3 vanguards in sync between your OnionBalance
+Management Server and the backend instances, first run vanguards on your
+Management Server.
 
-When they get this statefile (let's call it **mgmt-vanguards.state**), each of
-your Backend Instances should run
+Then, once per hour, copy the vanguards state file from your OnionBalance
+Management Server to each of your Backend Instances, via tor+scp or some other
+secure mechanism. (The UNIX crontab program is a good way to do this copy
+hourly).
+
+When each Backend Instance gets this copied statefile (let's call it
+**mgmt-vanguards.state**), it should run
 ```
   ./src/vanguards.py --one_shot_vanguards --state mgmt-vanguards.state
 ```
 
 This will cause the Backend Instance to update its tor settings with the same
-layer2 and layer3 guard information as on the management side. It does not matter if your
-Backend Instances cannot write to their torrc files. The settings will still
-be updated.
+layer2 and layer3 guard information as on the management side. It does not
+matter if your Backend Instances cannot write to their torrc files. The
+settings will still be updated.
 
 Then, to benefit from the other defenses, each Backend Instance should run a
 separate vanguards process with a different state file, but with vanguards
@@ -409,8 +428,8 @@ itself disabled. This is done with something like:
 ```
 
 These backend instances will then still monitor and react to bandwidth side
-channel attacks and Rendezvous Point overuse, without changing your layer2 or
-layer3 guards.
+channel attacks and Rendezvous Point overuse, while still using the same
+layer2 and layer3 guards as your Management Server.
 
 ## Monitor Your Service
 
@@ -418,21 +437,23 @@ As we discussed above, confirmation attacks can be performed by local and
 global adversaries that block your access to Tor (or kill your Tor
 connections) to **confirm** if this impacts the reachability of a suspect hidden
 service or not. This is a good reason to monitor your onion service reachability very
-closely with something like [Nagios](https://www.nagios.org/),
-[Munin](http://munin-monitoring.org/) or other reliability monitoring
-software.
+closely with monitoring software like [Nagios](https://www.nagios.org/),
+[Munin](http://munin-monitoring.org/).
 
 If you use OnionBalance, you need to monitor the ability of each of your
 Backend Instances to connect to Tor and receive connections to their unique
 backend onion service addresses. If the adversary **suspects** that you are
 using OnionBalance, they can perform reachability confirmation attacks against
-the specific backend instances.
+the specific backend instances, so monitoring their uptime is a wise move.
 
 If you use bridges or run relays, you should monitor their uptime as well, and
 replace them immediately if they go down.
 
 The vanguards addon also emits WARN messages when it detects that you have lost
 connectivity to the Tor network, or when you still have connectivity to the Tor
-network, but you are unable to build circuits. You should add the output
-of the vanguards addon to your monitoring infrastructure for this reason (in
-addition to watching for any evidence of attack).
+network, but you are unable to build circuits. It also emits NOTICE messages
+if any connections were forcibly closed while they had active circuits on them.
+
+You should add the output of the vanguards addon to your monitoring
+infrastructure for this reason (in addition to watching for evidence of
+the other attacks the addon detects).
