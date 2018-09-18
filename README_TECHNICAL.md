@@ -141,7 +141,7 @@ the quantity of traffic that Tor decides to drop from a circuit, to protect agai
 [DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
 attacks.
 
-For Tor clients running 0.3.5.1-alpha and newer, the allowed dropped cell
+   For Tor clients running 0.3.5.1-alpha and newer, the allowed dropped cell
 count is 0, and cannot be configured. For older Tor clients, we allow up to 2
 dropped cells before application data, and 30 dropped cells after.
 
