@@ -137,24 +137,13 @@ These limits (along with a reason for checking them) are as follows:
 
    The component uses [new control port
 features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
-the quantity of traffic that Tor decides to drop from a circuit. We believe we
-have tuned these new features such that the normal rate of dropped traffic is
-no more than 30 cells after application data has started. To protect against
-[DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf),
-no dropped cells are allowed before application data has started. If either
-quantity is exceeded, then the bandguards subsystem will close the circuit and
-issue a log message. (At WARN level for early dropped cells, and NOTICE level
-for the rest).
+the quantity of traffic that Tor decides to drop from a circuit, to protect against
+[DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
+attacks.
 
-   Note that in normal operation, Tor onion service clients may still trigger
-this mechanism. This is because [clients can and do close connections before
-reading all of the data from
-them](https://trac.torproject.org/projects/tor/ticket/25573). On the service
-side, the issue is not as bad, but it can happen with SENDME and END cells.
-Hence we still allow 30 dropped cells on a circuit after application data has
-started. Once that patch is merged, however, we should be able to set the allowed
-dropped cell count to 0 for both clients and servers, and raise the NOTICE
-message to WARN.
+For Tor clients running 0.3.5.1-alpha and newer, the allowed dropped cell
+count is 0, and cannot be configured. For older Tor clients, we allow up to 2
+dropped cells before application data, and 30 dropped cells after.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 

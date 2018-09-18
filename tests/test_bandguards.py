@@ -311,6 +311,14 @@ def test_bwstats():
                       1000, CIRC_MAX_DROPPED_CELLS+1)
   assert controller.closed_circ == str(circ_id)
 
+  # Test that with #25573, only 1 dropped cell is allowed
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
   # - Non-HS circs ignored:
   circ_id += 1
   state.circ_event(built_general_circ(circ_id))

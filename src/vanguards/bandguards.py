@@ -128,6 +128,7 @@ class BandwidthStats:
     self.max_fake_id = -1
     self.disconnected_circs = False
     self.disconnected_conns = False
+    self.tor_has_25573 = False
     self._orconn_init(controller)
     self._network_liveness_init(controller)
 
@@ -424,8 +425,14 @@ class BandwidthStats:
   def check_circuit_limits(self, circ):
     if not circ.is_hs: return
 
-    # DropMark hack. No dropped cells before app data.
-    if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
+    # If Tor has 25573 merged, any dropped cell is bad.
+    if self.tor_has_25573:
+      if circ.dropped_read_cells() > 0:
+        plog("WARN", "Possible attack! Got a dropped cell "+\
+              "on circ %s. Closing circ.", circ.circ_id)
+        control.try_close_circuit(self.controller, circ.circ_id)
+    # Best effort for pre-25573: No dropped cells before app data.
+    elif circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
       # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
       if circ.dropped_read_cells() > circ.path_bias_cells:
         plog("NOTICE",

@@ -14,7 +14,7 @@ THROW_SOCKET = False
 THROW_AUTH = False
 DATA_DIR = "tests"
 NO_HSLAYER = False
-TOR_VERSION = stem.version.Version("0.3.4.4-rc")
+TOR_VERSION = stem.version.Version("0.3.5.1-alpha")
 DEFAULT_CONFIG=os.path.join("tests", "default.conf")
 GOT_SAVE_CONF = False
 FAIL_SAVE_CONF = False
@@ -208,6 +208,16 @@ def test_failures():
     assert False
   except SystemExit:
     assert True
+
+  # Cover partially unsupported Tor versions
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main" ]
+  TOR_VERSION=stem.version.Version("0.3.4.4-rc")
+  try:
+    vanguards.main.main()
+    assert True
+  except SystemExit:
+    assert False
 
   # Cover partially unsupported Tor versions
   vanguards.config.apply_config(DEFAULT_CONFIG)

@@ -106,15 +106,6 @@ To use it with Tor Browser, all you have to do is start Tor Browser, and then ru
 To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards addon to it.
 
-Note that as described in
-[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md),
-Tor clients with the bandguards system will emit false positives about the
-dropped limit being exceeded, due to Tor Browser closing some connections
-before all data is read. These log messages will be at NOTICE level for this
-activity as a result. See [Ticket #25573](https://trac.torproject.org/projects/tor/ticket/25573)
-for more information. Since OnionShare operates as a service, it should not
-cause these false positives.
-
 ## Performance Tuning
 
 For very high traffic onion services, we recommend using
@@ -164,6 +155,8 @@ or an actual attack.
 Tor a GeoIP file, we WARN.
 4. If you disable killing circuits in the rendguard component, we WARN when
 use counts for rends are exceeded.
+5. If you are using a Tor with [#25573](https://trac.torproject.org/projects/tor/ticket/25573) merged
+(currently Tor 0.3.5.1+), we WARN upon receipt of any dropped/ignored cell.
 
 Events that are detected by heuristics that still need tuning are at NOTICE
 level. They may be a bug, a false positive, or an actual attack. If in doubt,

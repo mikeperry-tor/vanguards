@@ -16,6 +16,7 @@ from . import config
 from .logger import plog
 
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.4-rc")
+_MIN_TOR_VERSION_FOR_25573_IN_035 = stem.version.Version("0.3.5.1-alpha")
 
 def main():
   try:
@@ -133,6 +134,13 @@ def control_loop(state):
                                   stem.control.EventType.NETWORK_LIVENESS)
 
     if controller.get_version() >= _MIN_TOR_VERSION_FOR_BW:
+      if controller.get_version() >= _MIN_TOR_VERSION_FOR_25573_IN_035:
+        bandguards.tor_has_25573 = True
+      else:
+        plog("NOTICE", "To eliminate false positives in dropped cell counts, you "
+                       "must use Tor 0.3.5.1-alpha or newer, or wait for "
+                       "Tor bug #25573 to backport to 0.3.4.x.")
+
       controller.add_event_listener(
                    functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
                                     stem.control.EventType.CIRC_BW)
@@ -142,6 +150,7 @@ def control_loop(state):
     else:
       plog("NOTICE", "In order for bandwidth-based protections to be "+
                       "enabled, you must use Tor 0.3.4.4-rc or newer.")
+
 
   if config.ENABLE_CBTVERIFY:
     timeouts = cbtverify.TimeoutStats()
