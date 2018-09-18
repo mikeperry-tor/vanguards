@@ -78,10 +78,10 @@ a public Tor relay goes down.
 6. **Suspect** that a specific onion service may be using a particular Guard.
 
 The client adversary can **determine** that a specific onion service (yours or
-not) is running this addon by observing how that onion service behaves. In
-particular, it can attempt one of the attacks that this addon defends against,
+not) is running the vanguards addon by observing how that onion service behaves. In
+particular, it can attempt one of the attacks that the vanguards addon defends against,
 and see if the onion service closes circuits in response. In these cases, log
-lines will be emitted by this addon at NOTICE level or above. If you think
+lines will be emitted by the vanguards addon at NOTICE level or above. If you think
 the vanguards addon should have an option not to close circuits in response to
 attacks, [please comment on this ticket](https://github.com/mikeperry-tor/vanguards/issues/32).
 
@@ -112,13 +112,13 @@ compromise Tor relays. They can also use the network (or a Tor client) to
 inject traffic of their choice (especially against onion services).
 
 The vanguards addon is designed to protect against network adversaries.
-Setting aside the attacks that this addon defends against (which are
+Setting aside the attacks that the vanguards addon defends against (which are
 documented in
 [README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md)),
 network adversaries can still perform the following attacks:
 
 1. **Determine** your Guard relays, if they run one of your Layer2 middle relays.
-2. **Determine** that you are running an onion service that is using this
+2. **Determine** that you are running an onion service that is using the vanguards
    addon, if they run one of your Guard relays.
 3. **Confirm** that a specific onion service is using their Guard or Layer2 middle
    relays, if it is.
@@ -129,20 +129,20 @@ The vanguards addon is designed to make these attacks as difficult and unlikely 
 possible, and to take as long as possible, but they can still succeed if you
 get unlucky. Tor takes these attacks seriously, and they are topics of [active
 research](https://blog.torproject.org/tors-open-research-topics-2018-edition),
-but for now, this addon is the best way we have to defend against this
+but for now, the vanguards addon is the best way we have to defend against this
 adversary class.
 
 For statistics on how long the first attack takes, please see [our analysis of our parameter choices](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
 
 If you are using a guard relay run by the network adversary, they can
-**determine** that you are running an onion service that is using this addon
-through [circuit fingerprinting attacks](https://www.usenix.org/node/190967).
+**determine** that you are running an onion service that is using the
+vanguards addon through [circuit fingerprinting attacks](https://www.usenix.org/node/190967).
 All of your onion service circuits (which are recognizable via the techniques
 from that paper) will be made to a small set of layer2 vanguard relays. Normal
 onion services (which are also recognizable at the guard relay via these same
 techniques) will make circuits to the entire set of relays in the Tor network.
-This discrepancy allows a malicious guard to determine that you are using this
-addon.
+This discrepancy allows a malicious guard to determine that you are using the
+vanguards addon.
 
 The network adversary is able to perform **confirmation** attacks to **confirm** that
 you are or are not using their Guard or middle relays via the following mechanisms:
@@ -158,10 +158,10 @@ The vanguards addon has additional checks to detect activity related to these at
 
 ## Adversaries: Local
 
-Local adversaries include your WiFi router administrator, your ISP, hosting
-provider, or VPN, as well as the ISP or hosting provider of the entry relays
-you use to connect to the Tor network, and any other ISPs and routers along
-your path to the Tor network.
+Local adversaries include your WiFi [router
+administrator](https://nakedsecurity.sophos.com/2018/04/18/russias-grizzly-steppe-gunning-for-vulnerable-routers/), your ISP, hosting provider, or VPN, as well as the ISP or hosting provider of
+the entry relays you use to connect to the Tor network, and any other ISPs and
+[routers](https://spectrum.ieee.org/tech-talk/computing/hardware/us-suspicions-of-chinas-huawei-based-partly-on-nsas-own-spy-tricks) along your path to the Tor network.
 
 The local adversary has less surveillance resolution than the network
 adversary, because it cannot tell which of your packets belong to which Tor
@@ -179,7 +179,8 @@ However, local adversaries can do the following things:
 
 Local adversaries can **determine** that you are running Tor because the list of
 relays is public, and connections to them are obvious. [Using a Bridge with
-your Onion service](#the-best-way-to-use-bridges) can help mitigate this.
+your Onion service](#the-best-way-to-use-bridges) can help mitigate this
+attack.
 
 Local adversaries might **suspect** that your Tor client could be an unknown onion
 service because it exhibits traffic patterns that are unlike most other Tor
@@ -200,9 +201,9 @@ today). Proposal 291 is a consensus parameter change. The rest of the Tor
 Project just has to agree that it is a good idea. Agreement can take a while,
 but once we decide, the change will be immediate.
 
-With this information, the local adversary may have a **suspect** that
-you could be running an onion service, and maybe even one that wants high security,
-but they will not know which one it is.
+With this information, the local adversary may **suspect** that you could be running
+an onion service, and maybe even one that wants high security, but they will not
+know which one it is.
 
 If they are interested in specific onion services, they can attempt to
 **confirm** that you are running one of these specific services via a few
@@ -239,7 +240,7 @@ can, but everywhere. This means that they can:
 
 1. **Determine** a list of most/all IPs that connect to the public Tor network.
 2. **Suspect** which of these IPs might be running onion services.
-3. **Suspect** which of these IPs might be using this addon (soon to be fixed).
+3. **Suspect** which of these IPs might be using the vanguards addon (soon to be fixed).
 4. **Suspect** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
 
@@ -311,7 +312,7 @@ Bridge obfs4 38.229.1.78:80 C8CBDB2464FC9804A69531437BCF2BE31FDD2EE4 cert=Hmyfd2
 ClientTransportPlugin obfs2,obfs3,obfs4,scramblesuit exec /usr/bin/obfs4proxy
 ```
 
-Note the use of the iat-mode=2 parameter. Setting this (as opposed to
+Note the use of the iat-mode=2 parameter. Setting iat-mode=2 (as opposed to
 iat-mode=0 or 1) causes obfs4 to inject traffic timing changes into your
 outgoing traffic, which is exactly the direction you want as a service. The
 bridge itself does not need to have the same setting.
@@ -383,13 +384,13 @@ interesting onion services and watch for any evidence of results on a local
 internet connection.
 
 However, OnionBalance needs some tweaks to avoid giving an advantage to the
-network adversary. Because multiple instances of this addon do not communicate
-through OnionBalance, each additional instance of this addon will choose
-different layer2 and layer3 guards. These additional layer2 and layer3 guards
-increase the overall exposure to guard discovery attacks. In cases where it is
-just as bad for the adversary to discover any of your onion service instances
-as it is to discover all of them, then obviously each additional instance
-lowers your security a bit.
+network adversary. Because multiple instances of the vanguards addon do not
+communicate through OnionBalance, each additional instance of the vanguards
+addon will choose different layer2 and layer3 guards. These additional layer2
+and layer3 guards increase the overall exposure to guard discovery attacks. In
+cases where it is just as bad for the adversary to discover any of your onion
+service instances as it is to discover all of them, then obviously each
+additional instance lowers your security a bit.
 
 ### How to OnionBalance
 
@@ -404,7 +405,7 @@ To keep your layer2 and layer3 vanguards in sync between your OnionBalance
 Management Server and the backend instances, first run vanguards on your
 Management Server.
 
-Then, once per hour, copy the vanguards state file from your OnionBalance
+Then, once per hour, copy the **vanguards.state** file from your OnionBalance
 Management Server to each of your Backend Instances, via tor+scp or some other
 secure mechanism. (The UNIX crontab program is a good way to do this copy
 hourly).
