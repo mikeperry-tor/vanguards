@@ -2,6 +2,8 @@
 -----
 - Add tests/default.conf to sdist/pip tarball. #27
 - Do not allow any dropped cells if Tor 0.3.5.1-alpha+ is being used. #25 and #3.
+- Reorganized README_SECURITY to link to specific mitigation sections for each
+  adversary attack.
 
 0.2.2
 -----
