@@ -95,7 +95,10 @@ def control_loop(state):
   # is "disabled", because we also have to parse the consensus to
   # update rendguard counts
   if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
-    state.new_consensus_event(controller, None)
+    try:
+      state.new_consensus_event(controller, None)
+    except stem.DescriptorUnavailable as e:
+      return "closed"
 
   if config.ONE_SHOT_VANGUARDS:
     try:
