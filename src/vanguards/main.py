@@ -98,6 +98,8 @@ def control_loop(state):
     try:
       state.new_consensus_event(controller, None)
     except stem.DescriptorUnavailable as e:
+      controller.close()
+      plog("NOTICE", "Tor needs descriptors: "+str(e)+". Trying again...")
       return "closed"
 
   if config.ONE_SHOT_VANGUARDS:

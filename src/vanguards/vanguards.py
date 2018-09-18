@@ -217,8 +217,7 @@ class VanguardState:
     try:
       weights = control.get_consensus_weights(consensus_file)
     except IOError as e:
-      plog("ERROR", "Cannot read "+consensus_file+": "+str(e))
-      sys.exit(1)
+      raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
 
     self.consensus_update(routers, weights, exclude_nodes)
 
