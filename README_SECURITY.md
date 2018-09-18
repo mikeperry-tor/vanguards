@@ -88,8 +88,9 @@ or becomes slower, they may notice the effect on that onion service. This is
 one of the reasons why the vanguards addon uses two guards in a balanced way
 by default. Additionally, they may be able to flood an onion service with
 data to notice spikes in our public relay bandwidth statistics at the guard.
-Setting **circ_max_megabytes** to an appropriate value for your service can
-help you detect and mitigate this.
+Setting **circ_max_megabytes** in
+[vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
+to an appropriate value for your service can help you detect and mitigate this.
 
 ## Adversaries: Network
 
@@ -164,15 +165,17 @@ However, local adversaries can do the following things:
    running a specific service that is of interest to them.
 
 Local adversaries can **determine** that you are running Tor because the list of
-relays is public, and connections to them are obvious. (Unless you use bridges,
-of course, which is one of our later recommendations).
+relays is public, and connections to them are obvious. [Using a Bridge with
+your Onion service](#the-best-way-to-use-bridges) can help mitigate this.
 
 Local adversaries might **suspect** that your Tor client could be an unknown onion
 service because it exhibits traffic patterns that are unlike most other Tor
 clients. Your connections will stay open all of the time, and you will
 regularly transmit data while other nearby humans are asleep, as well as while
 they are awake. Your traffic will also be asymmetrical. While most Tor clients
-download, you will likely be doing a lot of uploading.
+download, you will likely be doing a lot of uploading. [Running a bridge or
+Tor Relay](#the-best-way-to-run-tor-relays-or-bridges-with-your-service) with
+your Onion Service can help conceal these traffic patterns.
 
 Local adversaries might also **suspect** that you could be using the vanguards addon,
 at least until [Proposal
@@ -196,6 +199,11 @@ If they are interested in specific onion services, they can attempt to
 4. If you weren't using vanguards, they can confirm an onion service even
    easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
+These confirmation attacks can be mitigated by [using OnionBalance](#using-onionbalance),
+and by setting **circ_max_megabytes** in your
+[vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
+to an appropriate value for your service.
+
 ## Adversaries: Global
 
 A global adversary is an adversary that can observe large portions of the
@@ -212,6 +220,8 @@ can, but everywhere. This means that they can:
 3. **Suspect** which of these IPs might be using this addon (soon to be fixed).
 4. **Suspect** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
+
+The mitigations for these attacks are the same as for the local adversary.
 
 This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
