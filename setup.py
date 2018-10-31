@@ -69,7 +69,7 @@ setup(
     install_requires=[
         'setuptools',
         'ipaddress>=1.0.17 ; python_version<"3"',
-        'stem==1.5.4',
+        'stem==1.7.0',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',
