@@ -85,6 +85,9 @@ class MockController:
       return True
     return False
 
+  def close(self):
+    return
+
 stem.control.Controller = MockController
 vanguards.config.ENABLE_CBTVERIFY = True
 vanguards.config.STATE_FILE = "tests/state.mock.test"

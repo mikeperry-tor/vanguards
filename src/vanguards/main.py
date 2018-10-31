@@ -100,7 +100,7 @@ def control_loop(state):
     except stem.DescriptorUnavailable as e:
       controller.close()
       plog("NOTICE", "Tor needs descriptors: "+str(e)+". Trying again...")
-      return "closed"
+      return "failed: "+str(e)
 
   if config.ONE_SHOT_VANGUARDS:
     try:
