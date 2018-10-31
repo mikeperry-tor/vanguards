@@ -4,9 +4,9 @@ dist: trusty
 matrix:
  include:
   - python: 2.7
-    env: TOXENV=py27
+    env: TOXENV=py2
   - python: 3.5
-    env: TOXENV=py35
+    env: TOXENV=py3
 #before_install:
   # Install tor and chutney if doing functional tests
   #- if [[ $TEST == 'functional' ]]; then ./test/scripts/install-tor.sh; fi
