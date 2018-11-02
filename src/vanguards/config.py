@@ -151,8 +151,11 @@ def setup_options():
 # Avoid a big messy dict of defaults. We already have them.
 def get_option(config, section, option, default):
   try:
-    ret = type(default)(config.get(section, option))
-  except Error:
+    if type(default) == bool:
+      ret = config.get(section, option) == "True"
+    else:
+      ret = type(default)(config.get(section, option))
+  except Error as e:
     return default
   return ret
 

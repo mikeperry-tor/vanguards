@@ -1,5 +1,6 @@
 0.2.3
 -----
+- Fix config parsing of boolean values. #36.
 - Add tests/default.conf to sdist/pip tarball. #27
 - Do not allow any dropped cells if Tor 0.3.5.1-alpha+ is being used. #25 and #3.
 - Retry Tor connection if Tor is missing descriptors at startup. #35.
