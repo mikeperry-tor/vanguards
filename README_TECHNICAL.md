@@ -190,6 +190,12 @@ won't necessarily know which guard node each circuit traversed. This should
 increase the quantity of data they must inject in order to successfully mount
 this attack (and by more than just a factor of two, because of this uncertainty).
 
+   Long-term, this feature is meant to be deployed in combination with
+[conflux traffic
+splitting](https://www.cypherpunks.ca/~iang/pubs/conflux-pets.pdf) so that we
+can tear down one path of a circuit after over-use without loss of
+connectivity, and reconnect the remaining portion to a new circuit.
+
    If you wish to enable this defense, change the value of
 **circ_max_megabytes** in the [configuration file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf).
 
