@@ -431,7 +431,7 @@ class BandwidthStats:
     if self.tor_has_25573:
       if circ.dropped_read_cells() > 0:
         plog("WARN", "Possible attack! Got a dropped cell "+\
-              "on circ %s. Closing circ.", circ.circ_id)
+              "on circ %s.", circ.circ_id)
         control.try_close_circuit(self.controller, circ.circ_id)
     # Best effort for pre-25573: No dropped cells before app data.
     elif circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
@@ -439,7 +439,7 @@ class BandwidthStats:
       if circ.dropped_read_cells() > circ.path_bias_cells:
         plog("NOTICE",
              "Possible DropMark attack? Got an early dropped cell "+\
-             "before application data on circ %s. Closing circ.",
+             "before application data on circ %s.",
              circ.circ_id)
         control.try_close_circuit(self.controller, circ.circ_id)
     elif circ.dropped_read_cells() > CIRC_MAX_DROPPED_CELLS:

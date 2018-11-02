@@ -81,9 +81,11 @@ The client adversary can **determine** that a specific onion service (yours or
 not) is running the vanguards addon by observing how that onion service behaves. In
 particular, it can attempt one of the attacks that the vanguards addon defends against,
 and see if the onion service closes circuits in response. In these cases, log
-lines will be emitted by the vanguards addon at NOTICE level or above. If you think
-the vanguards addon should have an option not to close circuits in response to
-attacks, [please comment on this ticket](https://github.com/mikeperry-tor/vanguards/issues/32).
+lines will be emitted by the vanguards addon at NOTICE level or above. If you
+do not want client adversaries to be able to easily detect this addon, you can
+set **close_circuits=False** in
+[vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf). However, note that a network adversary who runs your Guard node can still
+determine your use of this addon (see the [network adversary section](#adversaries-network) for details).
 
 Depending on the configuration, [OnionBalance](https://github.com/DonnchaC/onionbalance) by a service can also
 be **suspected** by a Tor client. This is because the onion service

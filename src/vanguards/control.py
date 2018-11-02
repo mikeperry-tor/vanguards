@@ -6,6 +6,8 @@ from .logger import plog
 
 from . import __version__
 
+_CLOSE_CIRCUITS = True
+
 def authenticate_any(controller, passwd=""):
   try:
     controller.authenticate()
@@ -34,9 +36,9 @@ def get_consensus_weights(consensus_filename):
   return parsed_consensus.bandwidth_weights
 
 def try_close_circuit(controller, circ_id):
-  try:
-    controller.close_circuit(circ_id)
-    plog("NOTICE", "We force-closed circuit "+str(circ_id))
-  except stem.InvalidRequest as e:
-    plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))
-
+  if _CLOSE_CIRCUITS:
+    try:
+      controller.close_circuit(circ_id)
+      plog("NOTICE", "We force-closed circuit "+str(circ_id))
+    except stem.InvalidRequest as e:
+      plog("INFO", "Failed to close circuit "+str(circ_id)+": "+str(e.message))

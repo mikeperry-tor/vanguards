@@ -43,6 +43,8 @@ LOGFILE = ""
 # If true, write/update vanguards to torrc and then exit
 ONE_SHOT_VANGUARDS = False
 
+CLOSE_CIRCUITS = True
+
 CONTROL_IP = "127.0.0.1"
 CONTROL_PORT = 9051
 CONTROL_SOCKET = ""
@@ -191,3 +193,7 @@ def apply_config(config_file):
   get_options_for_module(config, vanguards, "Vanguards")
   get_options_for_module(config, bandguards, "Bandguards")
   get_options_for_module(config, rendguard, "Rendguard")
+
+  # Special cased CLOSE_CIRCUITS option has to be transfered
+  # to the control.py module
+  setattr(control, "_CLOSE_CIRCUITS", CLOSE_CIRCUITS)

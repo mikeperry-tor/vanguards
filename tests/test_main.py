@@ -117,9 +117,11 @@ def test_configs():
   assert GOT_SOCKET == "arg.sock"
 
   vanguards.config.apply_config(DEFAULT_CONFIG)
+  assert vanguards.control._CLOSE_CIRCUITS == True
   sys.argv = ["test_main", "--config", "tests/conf.mock"]
   vanguards.main.main()
   assert GOT_SOCKET == "conf.sock"
+  assert vanguards.control._CLOSE_CIRCUITS == False
 
   vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--control_socket", "arg.sock", "--config", "tests/conf.mock" ]
