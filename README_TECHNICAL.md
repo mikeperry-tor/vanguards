@@ -32,7 +32,8 @@ To defend against these attacks, this addon has three defense subsystems:
 Vanguards, Rendguard, and Bandguards.
 
 All three subsystems apply to both service-side and client-side onion service
-activity, but **NOT** to any client traffic that exits the Tor network to the
+activity. With Tor v0.3.5.1 and Vanguards v0.3.0 and above, the Bandguards
+subsystem also applies to client traffic that exits the Tor network to the
 normal Internet.
 
 ## The Vanguards Subsystem
@@ -119,11 +120,12 @@ but circuits will not be closed.
 ## The Bandguards Subsystem
 
 The bandguards subsystem performs accounting to watch for signs of bandwidth
-sidechannel attacks on individual onion service circuits. It then closes
-circuits that exceed these limits and emits log messages. While we expect the
-default values to be set properly, these limits can be tuned through
-configuration as well. See the [configuration
-file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf) for more details.
+sidechannel attacks on individual onion service circuits as well as exit
+circuits. It then closes circuits that exceed these limits and emits log
+messages. While we expect the default values to be set properly, these limits
+can be tuned through configuration as well. See the [configuration
+file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
+for more details.
 
 These limits (along with a reason for checking them) are as follows:
 

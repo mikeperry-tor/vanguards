@@ -7,7 +7,6 @@ from . import control
 from .logger import plog
 
 ############ BandGuard Options #################
-
 # Kill a circuit if more than this many received cells are considered
 # invalid by Tor. This prevents an adversary from inserting cells
 # that are silently dropped into a circuit, to use as a timing side
@@ -257,25 +256,24 @@ class BandwidthStats:
       return
 
     if event.id not in self.circs:
-      if event.hs_state or event.purpose[0:2] == "HS":
-        self.circs[event.id] = BwCircuitStat(event.id, 1)
+      self.circs[event.id] = BwCircuitStat(event.id,
+                        event.hs_state or event.purpose[0:2] == "HS")
 
-        # Handle direct build purpose settings
-        if event.purpose[0:9] == "HS_CLIENT":
-          self.circs[event.id].is_service = 0
-        elif event.purpose[0:10] == "HS_SERVICE":
-          self.circs[event.id].is_service = 1
-        if event.purpose == "HS_CLIENT_HSDIR" or \
-           event.purpose == "HS_SERVICE_HSDIR":
-          self.circs[event.id].is_hsdir = 1
-        plog("DEBUG", "Added hs circ for "+event.raw_content())
+      # Handle direct build purpose settings
+      if event.purpose[0:9] == "HS_CLIENT":
+        self.circs[event.id].is_service = 0
+      elif event.purpose[0:10] == "HS_SERVICE":
+        self.circs[event.id].is_service = 1
+      if event.purpose == "HS_CLIENT_HSDIR" or \
+         event.purpose == "HS_SERVICE_HSDIR":
+        self.circs[event.id].is_hsdir = 1
+      plog("DEBUG", "Added circ for "+event.raw_content())
 
     # Consider all BUILT circs that have a specific HS purpose
     # to be "in_use".
     if event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT":
-      if event.purpose[0:2] == "HS":
-        self.circs[event.id].built = 1
+      self.circs[event.id].built = 1
 
       if self.disconnected_circs:
         disconnected_secs = event.arrived_at - self.no_circs_since
@@ -425,8 +423,6 @@ class BandwidthStats:
     self.check_circ_ages(now)
 
   def check_circuit_limits(self, circ):
-    if not circ.is_hs: return
-
     # If Tor has 25573 merged, any dropped cell is bad.
     if self.tor_has_25573:
       if circ.dropped_read_cells() > 0:
@@ -434,24 +430,26 @@ class BandwidthStats:
               "on circ %s.", circ.circ_id)
         control.try_close_circuit(self.controller, circ.circ_id)
     # Best effort for pre-25573: No dropped cells before app data.
-    elif circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
-      # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
-      if circ.dropped_read_cells() > circ.path_bias_cells:
-        plog("NOTICE",
-             "Possible DropMark attack? Got an early dropped cell "+\
-             "before application data on circ %s.",
-             circ.circ_id)
+    # Also only apply to hs circs because false positives :/
+    elif circ.is_hs:
+      if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
+        # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
+        if circ.dropped_read_cells() > circ.path_bias_cells:
+          plog("NOTICE",
+               "Possible DropMark attack? Got an early dropped cell "+\
+               "before application data on circ %s.",
+               circ.circ_id)
+          control.try_close_circuit(self.controller, circ.circ_id)
+      elif circ.dropped_read_cells() > CIRC_MAX_DROPPED_CELLS:
+        # XXX: Until Tor ticket #25573 is merged, this must be notice.
+        loglevel = "NOTICE"
+        self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_CELLS",
+                            circ.circ_id,
+                            circ.dropped_read_cells(),
+                            CIRC_MAX_DROPPED_CELLS,
+                            "Total bytes: "+str(circ.read_bytes)+\
+                            "; All dropped: "+str(circ.dropped_read_cells()))
         control.try_close_circuit(self.controller, circ.circ_id)
-    elif circ.dropped_read_cells() > CIRC_MAX_DROPPED_CELLS:
-      # XXX: Until Tor ticket #25573 is merged, this must be notice.
-      loglevel = "NOTICE"
-      self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_CELLS",
-                          circ.circ_id,
-                          circ.dropped_read_cells(),
-                          CIRC_MAX_DROPPED_CELLS,
-                          "Total bytes: "+str(circ.read_bytes)+\
-                          "; All dropped: "+str(circ.dropped_read_cells()))
-      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
       self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",

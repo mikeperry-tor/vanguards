@@ -1,3 +1,7 @@
+0.3.0
+-----
+- Apply bandguards limits to non-HS circuits too. #34.
+
 0.2.3
 -----
 - Global option to disable circuit killing. #32.

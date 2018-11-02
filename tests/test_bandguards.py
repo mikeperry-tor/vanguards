@@ -311,7 +311,14 @@ def test_bwstats():
                       1000, CIRC_MAX_DROPPED_CELLS+1)
   assert controller.closed_circ == str(circ_id)
 
-  # Test that with #25573, only 1 dropped cell is allowed
+  # - Non-HS circs ignored without 25573
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_general_circ(circ_id))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+
+  # Test that with #25573, no dropped cell is allowed
   circ_id += 1
   controller.closed_circ = None
   state.tor_has_25573 = True
@@ -319,10 +326,14 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # - Non-HS circs ignored:
+  # Test that with #25573, no dropped cell is allowed
   circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
   state.circ_event(built_general_circ(circ_id))
-  assert str(circ_id) not in state.circs
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
 
 def test_connguard():
   controller = MockController()
