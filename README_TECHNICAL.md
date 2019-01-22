@@ -143,7 +143,7 @@ the quantity of traffic that Tor decides to drop from a circuit, to protect agai
 [DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
 attacks.
 
-  The allowed dropped cell count is 0, and cannot be configured.
+   The allowed dropped cell count is 0, and cannot be configured.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 
