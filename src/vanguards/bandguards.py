@@ -7,14 +7,6 @@ from . import control
 from .logger import plog
 
 ############ BandGuard Options #################
-# Kill a circuit if more than this many received cells are considered
-# invalid by Tor. This prevents an adversary from inserting cells
-# that are silently dropped into a circuit, to use as a timing side
-# channel.
-#
-# For Tor 0.3.5.1-alpha and above, this value is ignored, and 0 is used
-# instead. This parameter will soon be deprecated.
-CIRC_MAX_DROPPED_CELLS = 30
 
 # Kill a circuit if this many read+write bytes have been exceeded.
 # Very loud application circuits could be used to introduce timing
@@ -46,14 +38,6 @@ _CELL_PAYLOAD_SIZE = 509
 _RELAY_HEADER_SIZE = 11
 _RELAY_PAYLOAD_SIZE = _CELL_PAYLOAD_SIZE - _RELAY_HEADER_SIZE
 _CELL_DATA_RATE = (float(_RELAY_PAYLOAD_SIZE)/_CELL_PAYLOAD_SIZE)
-_RELAY_CELL_RATE = (float(_CELL_PAYLOAD_SIZE)/_RELAY_PAYLOAD_SIZE)
-
-# Constants from connection_edge_consider_sending_sendme(). These govern the
-# max SENDMEs can be expected to be in-flight (we use circ window because
-# there can be multiple streams on one circ).
-_STREAM_SENDME_INCREMENT = 50
-_STREAM_SENDME_WINDOW = 500
-_CIRC_SENDME_WINDOW = 1000
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
@@ -64,23 +48,6 @@ _BYTES_PER_MB = 1024*_BYTES_PER_KB
 # give it until the next couple in case there is a scheduled events hiccup
 _MAX_CIRC_DESTROY_LAG_SECS = 2
 
-# At least 150 bytes must be "delievered" to the application before
-# we allow any drops. This helps protect against DropMark even if
-# CIRC_MAX_DROPPED_CELLS is set.
-# WARN before this, NOTICE after
-_MIN_BYTES_UNTIL_DROPS = 150
-
-# Without #25573, optimistic data can cause us to send a bunch of
-# begins with optimistic data, and the service could send us
-# a whole stream window full of cells in response.
-_MAX_PATH_BIAS_CELLS_CLIENT = _STREAM_SENDME_WINDOW
-
-# Without #25573, the service situation is better. Path bias
-# exempts most service side circs because the rend is adversary
-# chosen, and the ones it doesn't only allow 1 cell through, then
-# the probe.
-_MAX_PATH_BIAS_CELLS_SERVICE = 2
-
 class BwCircuitStat:
   def __init__(self, circ_id, is_hs):
     self.circ_id = circ_id
@@ -89,7 +56,6 @@ class BwCircuitStat:
     self.is_hsdir = 0
     self.in_use = 0
     self.built = 0
-    self.path_bias_cells = 0
     self.created_at = time.time()
     self.read_bytes = 0
     self.sent_bytes = 0
@@ -129,7 +95,6 @@ class BandwidthStats:
     self.max_fake_id = -1
     self.disconnected_circs = False
     self.disconnected_conns = False
-    self.tor_has_25573 = False
     self._orconn_init(controller)
     self._network_liveness_init(controller)
 
@@ -319,13 +284,6 @@ class BandwidthStats:
         self.circs[event.id].guard_fp = event.path[0][0]
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
-      # XXX: We need to give path bias circs one extra cell during
-      # the DropMark check until #25573 is merged :/
-      if event.purpose == "PATH_BIAS_TESTING":
-        if self.circs[event.id].is_service:
-          self.circs[event.id].path_bias_cells = _MAX_PATH_BIAS_CELLS_SERVICE
-        else:
-          self.circs[event.id].path_bias_cells = _MAX_PATH_BIAS_CELLS_CLIENT
 
     plog("DEBUG", event.raw_content())
 
@@ -423,33 +381,11 @@ class BandwidthStats:
     self.check_circ_ages(now)
 
   def check_circuit_limits(self, circ):
-    # If Tor has 25573 merged, any dropped cell is bad.
-    if self.tor_has_25573:
-      if circ.dropped_read_cells() > 0:
-        plog("WARN", "Possible attack! Got a dropped cell "+\
-              "on circ %s.", circ.circ_id)
-        control.try_close_circuit(self.controller, circ.circ_id)
-    # Best effort for pre-25573: No dropped cells before app data.
-    # Also only apply to hs circs because false positives :/
-    elif circ.is_hs:
-      if circ.delivered_read_bytes < _MIN_BYTES_UNTIL_DROPS:
-        # XXX: Until #25573 is merged, PATH_BIAS circs need a free cell
-        if circ.dropped_read_cells() > circ.path_bias_cells:
-          plog("NOTICE",
-               "Possible DropMark attack? Got an early dropped cell "+\
-               "before application data on circ %s.",
-               circ.circ_id)
-          control.try_close_circuit(self.controller, circ.circ_id)
-      elif circ.dropped_read_cells() > CIRC_MAX_DROPPED_CELLS:
-        # XXX: Until Tor ticket #25573 is merged, this must be notice.
-        loglevel = "NOTICE"
-        self.limit_exceeded(loglevel, "CIRC_MAX_DROPPED_CELLS",
-                            circ.circ_id,
-                            circ.dropped_read_cells(),
-                            CIRC_MAX_DROPPED_CELLS,
-                            "Total bytes: "+str(circ.read_bytes)+\
-                            "; All dropped: "+str(circ.dropped_read_cells()))
-        control.try_close_circuit(self.controller, circ.circ_id)
+    # Now that all supported tors have #25573, any dropped cell is bad.
+    if circ.dropped_read_cells() > 0:
+      plog("WARN",
+           "Possible attack! Got a dropped cell on circ %s.", circ.circ_id)
+      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
       self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",
