@@ -159,8 +159,7 @@ or an actual attack.
 Tor a GeoIP file, we WARN.
 4. If you disable killing circuits in the rendguard component, we WARN when
 use counts for rends are exceeded.
-5. If you are using a Tor with [#25573](https://trac.torproject.org/projects/tor/ticket/25573) merged
-(currently Tor 0.3.5.1+), we WARN upon receipt of any dropped/ignored cell.
+5. With Tor 0.3.4.10 and above, we WARN upon receipt of any dropped/ignored cell.
 
 Events that are detected by heuristics that still need tuning are at NOTICE
 level. They may be a bug, a false positive, or an actual attack. If in doubt,

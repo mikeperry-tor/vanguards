@@ -133,17 +133,15 @@ These limits (along with a reason for checking them) are as follows:
 
    This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
-   These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone, instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough or other conditions are right, [it may still be possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
+   These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone. Instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough or other conditions are right, [it may still be possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
 
-   The component uses [new control port
-features](https://trac.torproject.org/projects/tor/ticket/25903) to measure
+   The component uses
+[new control port features](https://trac.torproject.org/projects/tor/ticket/25903) and [improved connection tracking in Tor](https://trac.torproject.org/projects/tor/ticket/25573) to measure
 the quantity of traffic that Tor decides to drop from a circuit, to protect against
 [DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
 attacks.
 
-   For Tor clients running 0.3.5.1-alpha and newer, the allowed dropped cell
-count is 0, and cannot be configured. For older Tor clients, we allow up to 2
-dropped cells before application data, and 30 dropped cells after.
+  The allowed dropped cell count is 0, and cannot be configured.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 
