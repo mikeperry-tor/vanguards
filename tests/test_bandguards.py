@@ -296,12 +296,12 @@ def test_bwstats():
                       1000, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # - Non-HS circs ignored without 25573
+  # Test Non-HS circs closed with dropped cells.
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_general_circ(circ_id))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
+  assert controller.closed_circ == str(circ_id)
 
   # Test that with #25573, no dropped cell is allowed
   circ_id += 1
