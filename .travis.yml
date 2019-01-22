@@ -5,7 +5,7 @@ matrix:
  include:
   - python: 2.7
     env: TOXENV=py2
-  - python: 3.5
+  - python: 3.7
     env: TOXENV=py3
 #before_install:
   # Install tor and chutney if doing functional tests
