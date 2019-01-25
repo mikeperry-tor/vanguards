@@ -1,7 +1,8 @@
 # What other attacks are there against Onion Services?
 
-In addition to the attacks that this addon mitigates (which are documented in
-[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md),
+In addition to the attacks that the vanguards addon mitigates (which are
+documented in
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md)),
 there are many other attacks on onion services. Most of these attacks are
 theoretical and have not been observed in the wild, but that does not make
 them impossible. The attacks that you are at risk for depends upon who is
@@ -196,7 +197,7 @@ However, local adversaries still have the following capabilities:
 
 For capability #1, local adversaries can **determine** that you are running Tor
 because the list of Tor relays is public, and connections to them are obvious.
-[Using a Bridge with your Onion service](#the-best-way-to-use-bridges) can
+[Using a bridge with your onion service](#the-best-way-to-use-bridges) can
 help mitigate this attack.
 
 For capability #2, local adversaries might **suspect** that your Tor client could
@@ -206,7 +207,7 @@ time, and you will regularly transmit data while other nearby humans are
 asleep, as well as while they are awake. Your traffic will also be
 asymmetrical. While most Tor clients download, you will likely be doing a lot
 of uploading. [Using or running a bridge or Tor
-Relay](#Use-Bridges-or-Run-a-Relay-or-Bridge) with your
+relay](#Use-Bridges-or-Run-a-Relay-or-Bridge) with your
 Onion Service can help conceal these traffic patterns, especially when [used
 in combination with OnionBalance](#using-onionbalance).
 
@@ -288,8 +289,9 @@ confirmation attack has been degraded to "**suspect**" for #4.
 For capability #4, the global adversary becomes more certain in their
 suspicion if they are able to induce the onion service to transmit
 significantly more traffic than its baseline for a long period of time. Again,
-the mitigations for this are to use [OnionBalance](#using-onionbalance), run a
-[bridge or Tor Relay](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
+the mitigations for this are to use [OnionBalance](#using-onionbalance), use
+or run
+[a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service.
