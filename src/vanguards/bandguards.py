@@ -54,6 +54,11 @@ class BwCircuitStat:
     self.is_hs = is_hs
     self.is_service = 1
     self.is_hsdir = 0
+    self.dropped_cells_allowed = 0
+    self.purpose = None
+    self.hs_state = None
+    self.old_purpose = None
+    self.old_hs_state = None
     self.in_use = 0
     self.built = 0
     self.created_at = time.time()
@@ -234,6 +239,19 @@ class BandwidthStats:
         self.circs[event.id].is_hsdir = 1
       plog("DEBUG", "Added circ for "+event.raw_content())
 
+    # Debugging
+    self.circs[event.id].purpose = event.purpose
+    self.circs[event.id].hs_state = event.hs_state
+
+    # Workaround for Tor bug #29700 (see also
+    # https://github.com/mikeperry-tor/vanguards/issues/37).
+    # Class 3: Service rend circs can sometimes fail ntor handshake on extend
+    if event.purpose == "HS_SERVICE_REND":
+      if event.hs_state == "HSSR_CONNECTING":
+        self.circs[event.id].dropped_cells_allowed = 1
+      else:
+        self.circs[event.id].dropped_cells_allowed = 0
+
     # Consider all BUILT circs that have a specific HS purpose
     # to be "in_use".
     if event.status == stem.CircStatus.BUILT or \
@@ -253,7 +271,6 @@ class BandwidthStats:
         self.circs[event.id].guard_fp = event.path[0][0]
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
-
     # Extending a circuit means the network is OK
     elif event.status == "EXTENDED":
       if self.disconnected_circs:
@@ -268,6 +285,11 @@ class BandwidthStats:
   def circ_minor_event(self, event):
     if event.id not in self.circs:
       return
+
+    self.circs[event.id].purpose = event.purpose
+    self.circs[event.id].hs_state = event.hs_state
+    self.circs[event.id].old_purpose = event.old_purpose
+    self.circs[event.id].old_hs_state = event.old_hs_state
 
     if event.purpose[0:9] == "HS_CLIENT":
       self.circs[event.id].is_service = 0
@@ -284,6 +306,24 @@ class BandwidthStats:
         self.circs[event.id].guard_fp = event.path[0][0]
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
+
+      # Tor Bug #29786 workaround (see also
+      # https://github.com/mikeperry-tor/vanguards/issues/37)
+      if event.purpose == "PATH_BIAS_TESTING":
+        # If purpose changes to PATH_BIAS_TESTING, then check for known cases
+        # of dropped cells:
+        # 1a. Path bias: pending RELAY_COMMAND_INTRO_ESTABLISHED cell
+        if event.old_purpose == "HS_SERVICE_INTRO" \
+           and event.old_hs_state == "HSSI_CONNECTING":
+          self.circs[event.id].dropped_cells_allowed = 1
+        # 1b. Path bias: pending RELAY_COMMAND_RENDEZVOUS_ESTABLISHED cell
+        if event.old_purpose == "HS_SERVICE_REND" \
+           and event.old_hs_state == "HSSR_CONNECTING":
+          self.circs[event.id].dropped_cells_allowed = 1
+        # 1c. Path bias: pending RELAY_COMMAND_INTRODUCE_ACK cell
+        if event.old_purpose == "HS_CLIENT_INTRO" \
+           and event.old_hs_state != "HSCI_DONE":
+          self.circs[event.id].dropped_cells_allowed = 1
 
     plog("DEBUG", event.raw_content())
 
@@ -381,10 +421,24 @@ class BandwidthStats:
     self.check_circ_ages(now)
 
   def check_circuit_limits(self, circ):
-    # Now that all supported tors have #25573, any dropped cell is bad.
-    if circ.dropped_read_cells() > 0:
-      plog("WARN",
-           "Possible attack! Got a dropped cell on circ %s.", circ.circ_id)
+    if circ.dropped_read_cells() > circ.dropped_cells_allowed:
+      # Workaround for Tor bug #29699 (see also
+      # https://github.com/mikeperry-tor/vanguards/issues/37).
+      # Case 2. Intro circs can get dupped cells on retries while in use.
+      # Demote log to notice, but still close them though, cause fuck it.
+      # They get rebuilt, and side channels are bad, mmmk.
+      if circ.purpose == "HS_SERVICE_INTRO" and \
+         circ.hs_state == "HSSI_ESTABLISHED":
+        plog("NOTICE", "Tor bug #29699: Got a dropped cell on circ %s. "\
+                       +"(in states %s %s %s %s)", circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
+      else:
+        plog("WARN", "Possible Tor bug, or (if frequent) possible attack: "\
+                     +"Got a dropped cell on circ %s. "\
+                     +"(in states %s %s %s %s)", circ.circ_id,
+                     str(circ.purpose), str(circ.hs_state),
+                     str(circ.old_purpose), str(circ.old_hs_state))
       control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:

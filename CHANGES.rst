@@ -1,3 +1,7 @@
+0.3.1:
+- Workaround for dropped cell WARNS due to Tor bugs #29699, #29700,
+  and #29786. #37
+
 0.3.0
 -----
 - Apply bandguards limits to non-HS circuits too. #34.
