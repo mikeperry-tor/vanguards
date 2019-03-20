@@ -429,17 +429,31 @@ class BandwidthStats:
       # They get rebuilt, and side channels are bad, mmmk.
       if circ.purpose == "HS_SERVICE_INTRO" and \
          circ.hs_state == "HSSI_ESTABLISHED":
-        plog("NOTICE", "Tor bug #29699: Got a dropped cell on circ %s. "\
-                       +"(in states %s %s %s %s)", circ.circ_id,
+        plog("NOTICE", "Tor bug #29699: Got a dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).", circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       else:
         plog("WARN", "Possible Tor bug, or (if frequent) possible attack: "\
-                     +"Got a dropped cell on circ %s. "\
-                     +"(in states %s %s %s %s)", circ.circ_id,
+                     +"Got a dropped cell on circ %s "\
+                     +"(in state %s %s; old state %s %s)", circ.circ_id,
                      str(circ.purpose), str(circ.hs_state),
                      str(circ.old_purpose), str(circ.old_hs_state))
       control.try_close_circuit(self.controller, circ.circ_id)
+    elif circ.dropped_read_cells() > 0:
+      # Log workaround drop cell cases for completeness
+      if circ.purpose == "PATH_BIAS_TESTING":
+        plog("INFO", "Tor bug #29786: Got a dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).", circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
+      elif circ.purpose == "HS_SERVICE_REND" and \
+           circ.hs_state == "HSSR_CONNECTING":
+        plog("INFO", "Tor bug #29700: Got a dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).", circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
+
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
       self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",
