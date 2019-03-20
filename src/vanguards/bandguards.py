@@ -325,6 +325,15 @@ class BandwidthStats:
            and event.old_hs_state != "HSCI_DONE":
           self.circs[event.id].dropped_cells_allowed = 1
 
+      # Workaround for Tor bug #29700 (see also
+      # https://github.com/mikeperry-tor/vanguards/issues/37).
+      # Class 3: Service rend circs can sometimes fail ntor handshake on extend
+      if event.purpose == "HS_SERVICE_REND":
+        if event.hs_state == "HSSR_CONNECTING":
+          self.circs[event.id].dropped_cells_allowed = 1
+        else:
+          self.circs[event.id].dropped_cells_allowed = 0
+
     plog("DEBUG", event.raw_content())
 
   def circbw_event(self, event):
@@ -429,14 +438,16 @@ class BandwidthStats:
       # They get rebuilt, and side channels are bad, mmmk.
       if circ.purpose == "HS_SERVICE_INTRO" and \
          circ.hs_state == "HSSI_ESTABLISHED":
-        plog("NOTICE", "Tor bug #29699: Got a dropped cell on circ %s "\
-                       +"(in state %s %s; old state %s %s).", circ.circ_id,
+        plog("NOTICE", "Tor bug #29699: Got %d dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).",
+                       circ.dropped_read_cells(), circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       else:
         plog("WARN", "Possible Tor bug, or (if frequent) possible attack: "\
-                     +"Got a dropped cell on circ %s "\
-                     +"(in state %s %s; old state %s %s)", circ.circ_id,
+                     +"Got %d dropped cell on circ %s "\
+                     +"(in state %s %s; old state %s %s)",
+                     circ.dropped_read_cells(), circ.circ_id,
                      str(circ.purpose), str(circ.hs_state),
                      str(circ.old_purpose), str(circ.old_hs_state))
       control.try_close_circuit(self.controller, circ.circ_id)
