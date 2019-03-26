@@ -317,8 +317,8 @@ class BandwidthStats:
            and event.old_hs_state == "HSSI_CONNECTING":
           self.circs[event.id].dropped_cells_allowed = 1
         # 1b. Path bias: pending RELAY_COMMAND_RENDEZVOUS_ESTABLISHED cell
-        if event.old_purpose == "HS_SERVICE_REND" \
-           and event.old_hs_state == "HSSR_CONNECTING":
+        if event.old_purpose == "HS_CLIENT_REND" \
+           and event.old_hs_state == "HSCR_CONNECTING":
           self.circs[event.id].dropped_cells_allowed = 1
         # 1c. Path bias: pending RELAY_COMMAND_INTRODUCE_ACK cell
         if event.old_purpose == "HS_CLIENT_INTRO" \
