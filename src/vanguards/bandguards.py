@@ -444,7 +444,7 @@ class BandwidthStats:
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       else:
-        plog("WARN", "Possible Tor bug, or (if frequent) possible attack: "\
+        plog("WARN", "Possible Tor bug, or possible attack if very frequent: "\
                      +"Got %d dropped cell on circ %s "\
                      +"(in state %s %s; old state %s %s)",
                      circ.dropped_read_cells(), circ.circ_id,
