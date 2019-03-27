@@ -230,6 +230,10 @@ class VanguardState:
       plog("ERROR", "Cannot write state to "+self.state_file+": "+str(e))
       sys.exit(1)
 
+  def signal_event(self, controller, event):
+    if event.signal == "RELOAD":
+      plog("NOTICE", "Tor got SIGHUP. Reapplying vanguards.")
+      self.configure_tor(controller)
 
   def configure_tor(self, controller):
     if NUM_LAYER1_GUARDS:
