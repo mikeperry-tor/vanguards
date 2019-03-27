@@ -278,6 +278,8 @@ def test_bwstats():
                                              "HS_CLIENT_REND",
                                              "PATH_BIAS_TESTING"))
   check_dropped_bytes(state, controller, circ_id, 0, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test that no dropped cells are allowed on not-built circ.
@@ -301,6 +303,8 @@ def test_bwstats():
   controller.closed_circ = None
   state.circ_event(built_general_circ(circ_id))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test that with #25573, no dropped cell is allowed
@@ -316,6 +320,8 @@ def test_bwstats():
   controller.closed_circ = None
   state.tor_has_25573 = True
   state.circ_event(built_general_circ(circ_id))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
