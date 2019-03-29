@@ -190,6 +190,12 @@ def test_update_vanguards():
   sanity_check(state)
   os.remove("tests/state.mock.test")
 
+  # test signal HUP
+  state.signal_event(controller,
+                     ControlMessage.from_str("650 SIGNAL RELOAD\r\n",
+                                             "EVENT"))
+  sanity_check(state)
+
 def test_excludenodes():
   controller = MockController()
   state = VanguardState("tests/state.mock2")
