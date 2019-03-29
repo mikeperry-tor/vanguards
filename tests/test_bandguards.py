@@ -73,6 +73,11 @@ def purpose_changed_circ(circ_id, old_purpose, new_purpose,
   s = "650 CIRC_MINOR "+str(circ_id)+" PURPOSE_CHANGED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+new_purpose+" OLD_PURPOSE="+old_purpose+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
+def purpose_changed_hs_circ(circ_id, old_purpose, new_purpose, old_state, new_state,
+                            guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
+  s = "650 CIRC_MINOR "+str(circ_id)+" PURPOSE_CHANGED "+guard+",$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$DBD67767640197FF96EC6A87684464FC48F611B6~nocabal,$387B065A38E4DAA16D9D41C2964ECBC4B31D30FF~redjohn1 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+new_purpose+" HS_STATE="+new_state+" OLD_PURPOSE="+old_purpose+" OLD_HS_STATE="+old_state+" TIME_CREATED=2018-05-04T06:09:32.751920\r\n"
+  return ControlMessage.from_str(s, "EVENT")
+
 def cannibalized_circ(circ_id, to_purpose):
   s = "650 CIRC_MINOR "+str(circ_id)+" CANNIBALIZED $FA255D3F828FBBA47FF4848343A92BAEE21B92E7~TorWay1,$6FF440DFB1D0697B942357D747900CC308DD57CC~atlantis,$C86C538EF0A24E010342F30DBCACC2A7EB7CA833~eowyn,$7964E5822260C5129AFDF291853F56D83283A448~lol BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+to_purpose+" HS_STATE=HSSI_CONNECTING TIME_CREATED=2018-05-08T17:02:36.905840 OLD_PURPOSE=HS_VANGUARDS OLD_TIME_CREATED=2018-05-08T17:02:37.943660\r\n"
   return ControlMessage.from_str(s, "EVENT")
@@ -83,6 +88,10 @@ def built_hsdir_circ(circ_id):
 
 def built_general_circ(circ_id, guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
   s = "650 CIRC "+str(circ_id)+" BUILT "+guard+",$8101421BEFCCF4C271D5483C5AABCAAD245BBB9D~rofltor1,$FDAC8BA3ABFCC107D1B1EAC953F195BEEBA7FF54~Viking,$705DB1E61846652FC447E7EC2DDAE0F7D5407D9E~Unnamed BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY PURPOSE=GENERAL TIME_CREATED=2018-05-04T08:24:07.078225\r\n"
+  return ControlMessage.from_str(s, "EVENT")
+
+def built_hs_circ(circ_id, purpose, hs_state, guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
+  s =  "650 CIRC "+str(circ_id)+" BUILT "+guard+",$855BC2DABE24C861CD887DB9B2E950424B49FC34~Logforme,$E8B3796C809853D9C8AF6B8EDE9080B6F2AE8005~BensTorRelay,$EAB114DAF0488F1223FF30778468E272E00EDC32~trnyc3 BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY,NEED_UPTIME PURPOSE="+purpose+" HS_STATE="+hs_state+" REND_QUERY=4u56zw2g4uvyyq7i TIME_CREATED=2018-05-04T05:50:41.751938\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
 def failed_circ(circ_id):
@@ -322,6 +331,140 @@ def test_bwstats():
   state.circ_event(built_general_circ(circ_id))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29700:
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_REND", "HSSR_CONNECTING"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29927:
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_DONE"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_CONNECTING"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29699
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_INTRO", "HSSI_ESTABLISHED"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29786
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_INTRO", "HSSI_ESTABLISHED"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_SERVICE_INTRO",
+                                             "PATH_BIAS_TESTING",
+                                             "HSSI_CONNECTING",
+                                             "None"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_CONNECTING"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_CLIENT_INTRO",
+                                             "PATH_BIAS_TESTING",
+                                             "HSCI_CONNECTING",
+                                             "None"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_REND", "HSCR_CONNECTING"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_CLIENT_REND",
+                                             "PATH_BIAS_TESTING",
+                                             "HSCR_CONNECTING",
+                                             "None"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29700
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_VANGUARDS",
+                                             "HS_SERVICE_REND",
+                                             "None",
+                                             "HSSR_CONNECTING"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  # Test workaround for #29927
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_VANGUARDS",
+                                             "HS_CLIENT_REND",
+                                             "None",
+                                             "HSCR_CONNECTING"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_VANGUARDS",
+                                             "HS_CLIENT_INTRO",
+                                             "None",
+                                             "HSCI_DONE"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == None
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
+  circ_id += 1
+  controller.closed_circ = None
+  state.tor_has_25573 = True
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_VANGUARDS",
+                                             "HS_CLIENT_INTRO",
+                                             "None",
+                                             "HSCI_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
