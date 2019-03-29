@@ -1,6 +1,7 @@
 0.3.1:
 - Workaround for dropped cell WARNS due to Tor bugs #29699, #29700,
-  and #29786. #37
+  #29786, and #29927. These cases are now logged at INFO/NOTICE, with
+  specific Tor bug number for each case. #37
 - Re-apply vanguard config params upon SIGHUP. #40.
 
 0.3.0
