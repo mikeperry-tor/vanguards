@@ -255,7 +255,7 @@ class BandwidthStats:
     # https://github.com/mikeperry-tor/vanguards/issues/37).
     # Class 4: Mysterious client-side cases of dropped cells
     # and protocol errors.
-    elif event.purpose == "HS_CLIENT_REND" or event.purpose == "GENERAL":
+    elif event.purpose == "HS_CLIENT_REND":
       self.circs[event.id].dropped_cells_allowed = 1
     elif event.purpose == "HS_CLIENT_INTRO":
       if event.hs_state == "HSCI_DONE":
@@ -441,7 +441,7 @@ class BandwidthStats:
     for circ in kill_circs:
       self.limit_exceeded("NOTICE", "CIRC_MAX_AGE_HOURS",
                           circ.circ_id,
-                          now - circ.created_at,
+                          (now - circ.created_at)/_SECS_PER_HOUR,
                           CIRC_MAX_AGE_HOURS)
       control.try_close_circuit(self.controller, circ.circ_id)
 
@@ -465,6 +465,12 @@ class BandwidthStats:
                        circ.dropped_read_cells(), circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
+        control.try_close_circuit(self.controller, circ.circ_id)
+      elif not circ.built:
+       plog("INFO", "Tor bug #29927: Got a dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).", circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
       else:
         plog("WARN", "Possible Tor bug, or possible attack if very frequent: "\
                      +"Got %d dropped cell on circ %s "\
@@ -472,7 +478,7 @@ class BandwidthStats:
                      circ.dropped_read_cells(), circ.circ_id,
                      str(circ.purpose), str(circ.hs_state),
                      str(circ.old_purpose), str(circ.old_hs_state))
-      control.try_close_circuit(self.controller, circ.circ_id)
+        control.try_close_circuit(self.controller, circ.circ_id)
     elif circ.dropped_read_cells() > 0:
       # Log workaround drop cell cases for completeness
       if circ.purpose == "PATH_BIAS_TESTING":

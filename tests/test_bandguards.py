@@ -291,11 +291,17 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # Test that no dropped cells are allowed on not-built circ.
+  # Test that dropped cells are allowed on not-built circ.
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(extended_circ(circ_id, "HS_VANGUARDS"))
   check_dropped_bytes(state, controller, circ_id, 0, 1)
+  assert controller.closed_circ == None
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  state.circbw_event(circ_bw(circ_id,
+                    _CELL_PAYLOAD_SIZE, _CELL_PAYLOAD_SIZE,
+                    12, 0,
+                    12, 0))
   assert controller.closed_circ == str(circ_id)
 
   # Test that after app data, no dropped cells allowed,
@@ -303,8 +309,7 @@ def test_bwstats():
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
-  check_dropped_bytes(state, controller, circ_id,
-                      1000, 1)
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test Non-HS circs closed with dropped cells.
@@ -312,32 +317,11 @@ def test_bwstats():
   controller.closed_circ = None
   state.circ_event(built_general_circ(circ_id))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == str(circ_id)
-
-  # Test that with #25573, no dropped cell is allowed
-  circ_id += 1
-  controller.closed_circ = None
-  state.tor_has_25573 = True
-  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == str(circ_id)
-
-  # Test that with #25573, no dropped cell is allowed
-  circ_id += 1
-  controller.closed_circ = None
-  state.tor_has_25573 = True
-  state.circ_event(built_general_circ(circ_id))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test workaround for #29700:
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_REND", "HSSR_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == None
@@ -347,7 +331,6 @@ def test_bwstats():
   # Test workaround for #29927:
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_DONE"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == None
@@ -356,7 +339,6 @@ def test_bwstats():
 
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
@@ -364,7 +346,6 @@ def test_bwstats():
   # Test workaround for #29699
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_INTRO", "HSSI_ESTABLISHED"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
@@ -372,7 +353,6 @@ def test_bwstats():
   # Test workaround for #29786
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_INTRO", "HSSI_ESTABLISHED"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_SERVICE_INTRO",
@@ -386,7 +366,6 @@ def test_bwstats():
 
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_CONNECTING"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_CLIENT_INTRO",
@@ -400,7 +379,6 @@ def test_bwstats():
 
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_REND", "HSCR_CONNECTING"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_CLIENT_REND",
@@ -415,7 +393,6 @@ def test_bwstats():
   # Test workaround for #29700
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_VANGUARDS",
@@ -430,7 +407,6 @@ def test_bwstats():
   # Test workaround for #29927
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_VANGUARDS",
@@ -444,7 +420,6 @@ def test_bwstats():
 
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_VANGUARDS",
@@ -458,7 +433,6 @@ def test_bwstats():
 
   circ_id += 1
   controller.closed_circ = None
-  state.tor_has_25573 = True
   state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
   state.circ_minor_event(purpose_changed_hs_circ(circ_id,
                                              "HS_VANGUARDS",
