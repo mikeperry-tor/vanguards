@@ -94,7 +94,7 @@ DataDirectory /path/to/tor/datadir
 and then run:
 
 ```
-vanguards --control\_port=9099     # (or --control\_socket /path/to/socket).
+vanguards --control_port=9099     # (or --control_socket /path/to/socket).
 ```
 
 ## Client use
@@ -168,3 +168,12 @@ issues](https://github.com/mikeperry-tor/vanguards/issues/) to see if any
 known false positives are related to these lines, and if not, consider filing
 an issue. Please redact any relay fingerprints from the messages before
 posting.
+
+# What else should I read?
+
+For technical details about the defenses that this addon provides, please see
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md).
+
+For additional security information, please see
+[README\_SECURITY.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md).
+
