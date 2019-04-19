@@ -124,7 +124,8 @@ virtualenv.
 To switch to pypy after running **setup.sh**, simply remove the vanguardenv
 directory and run **setup.sh** again.
 
-If you want to use pypy outside of a virtualenv, install Stem on your system (use 1.5.4 or earlier, since Stem 1.6.0 is [incompatible with pypy at the moment](https://trac.torproject.org/projects/tor/ticket/26207), and then run the addon directly from the source tree with:
+If you want to use pypy outside of a virtualenv, install Stem 1.7.0 or later
+on your system, and then run the addon directly from the source tree with:
 
 ```
   pypy ./src/vanguards.py
