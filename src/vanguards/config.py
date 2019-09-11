@@ -132,15 +132,15 @@ def setup_options():
        options.cbtverify_enabled, options.one_shot_vanguards,
        options.vanguards_enabled)
 
+  if options.loglevel != None:
+    LOGLEVEL = options.loglevel
+  logger.set_loglevel(LOGLEVEL)
+
   if options.logfile != None:
     LOGFILE = options.logfile
 
   if LOGFILE != "":
     logger.set_logfile(LOGFILE)
-
-  if options.loglevel != None:
-    LOGLEVEL = options.loglevel
-  logger.set_loglevel(LOGLEVEL)
 
   if options.write_file != None:
     config = generate_config()
