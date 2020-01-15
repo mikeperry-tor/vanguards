@@ -2,7 +2,9 @@
     file code.
 """
 import argparse
+import ipaddress
 import os
+import socket
 import sys
 
 from . import bandguards
@@ -147,6 +149,19 @@ def setup_options():
     config.write(open(options.write_file, "w"))
     plog("NOTICE", "Wrote config to "+options.write_file)
     sys.exit(0)
+
+  # If control_ip is a domain name, try to resolve it.
+  if options.control_ip != None:
+    try:
+      _ = ipaddress.ip_address(options.control_ip)
+    except ValueError:
+      try:
+        # We're fine with AF_INET, stem supports only IPv4 addresses anyway.
+        addr = socket.getaddrinfo(options.control_ip, None, socket.AF_INET, socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        CONTROL_IP = addr[0][4][0]
+      except socket.gaierror:
+        plog("ERROR", "Failed to resolve hostname "+options.control_ip)
+        sys.exit(1)
 
   return options
 
