@@ -1,6 +1,7 @@
 next
 -----
 - Allow --control_ip to be a hostname #49
+- Properly apply loglevel from config file #44
 
 0.3.1
 -----
