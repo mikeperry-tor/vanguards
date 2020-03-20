@@ -1,3 +1,7 @@
+next
+-----
+- Allow --control_ip to be a hostname #49
+
 0.3.1
 -----
 - Workaround for dropped cell WARNS due to Tor bugs #29699, #29700,
