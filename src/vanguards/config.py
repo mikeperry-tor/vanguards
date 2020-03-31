@@ -157,7 +157,7 @@ def setup_options():
     except ValueError:
       try:
         # We're fine with AF_INET, stem supports only IPv4 addresses anyway.
-        addr = socket.getaddrinfo(options.control_ip, None, socket.AF_INET, socket.SOCK_STREAM, proto=socket.IPPROTO_TCP)
+        addr = socket.getaddrinfo(options.control_ip, None, socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
         CONTROL_IP = addr[0][4][0]
       except socket.gaierror:
         plog("ERROR", "Failed to resolve hostname "+options.control_ip)
