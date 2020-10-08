@@ -149,20 +149,36 @@ class VanguardState:
   def set_state_file(self, state_file):
     self.state_file = state_file
 
-  def sort_and_index_routers(self, routers):
+  def sort_and_index_routers(self, routers, descs):
     sorted_r = list(routers)
     dict_r = {}
+    dict_d = {}
+
+    for r in sorted_r:
+      dict_r[r.fingerprint] = r
+
+    for d in descs:
+      dict_d[d.fingerprint] = d
 
     for r in sorted_r:
       if r.measured == None:
         # FIXME: Hrmm...
         r.measured = r.bandwidth
+
+      if r.fingerprint in dict_d:
+        r.obs_bw = max(dict_d[r.fingerprint].observed_bandwidth,1)
+        r.measured = float(1000*r.measured)/r.obs_bw
+      else:
+        print("No r: "+r.fingerprint)
+        r.measured = 0
+        r.obs_bw = 0
+
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
-    for r in sorted_r: dict_r[r.fingerprint] = r
+
     return (sorted_r, dict_r)
 
-  def consensus_update(self, routers, weights, exclude):
-    (sorted_r, dict_r) = self.sort_and_index_routers(routers)
+  def consensus_update(self, routers, weights, exclude, descs):
+    (sorted_r, dict_r) = self.sort_and_index_routers(routers, descs)
     ng = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
                              [FlagsRestriction(["Fast", "Stable", "Valid"],
@@ -190,9 +206,39 @@ class VanguardState:
 
     ng = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
-                             [FlagsRestriction(["Fast", "Valid"],
-                                               ["Authority"])]),
+                             [FlagsRestriction(["Fast", "Valid", "Guard"],
+                                               ["Authority", "Exit"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
+
+    for r in [0,2,4]:
+      s = ng.rstr_routers[r]
+      print("Bridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint)
+
+    print("\nHSLayer2Nodes ", end='')
+    for r in [1,2,3,4,5,6]:
+      s = ng.rstr_routers[r*2+6]
+      print(s.fingerprint+",", end='')
+
+    print("\nHSLayer3Nodes ", end='')
+    for r in [1,2,3,4,5,6,7,8,9]:
+      s = ng.rstr_routers[(r+6)*2]
+      print(s.fingerprint+',', end='')
+
+    for r in [1,3,5]:
+      s = ng.rstr_routers[r]
+      print("\nBridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint, end='')
+
+    print("\nHSLayer2Nodes ", end='')
+    for r in [1,2,3,4,5,6]:
+      s = ng.rstr_routers[r*2+7]
+      print(s.fingerprint+",", end='')
+
+    print("\nHSLayer3Nodes ", end='')
+    for r in [1,2,3,4,5,6,7,8,9]:
+      s = ng.rstr_routers[(r+6)*2+1]
+      print(s.fingerprint+',', end='')
+
+    print("\nEnd")
 
     # Repair Exit-flagged node weights, since they can be chosen
     # sometimes by other clients as RPs (when cannibalized)
@@ -202,6 +248,7 @@ class VanguardState:
 
   def new_consensus_event(self, controller, event):
     routers = controller.get_network_statuses()
+    descs = controller.get_server_descriptors()
 
     exclude_nodes = ExcludeNodes(controller)
 
@@ -219,7 +266,7 @@ class VanguardState:
     except IOError as e:
       raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
 
-    self.consensus_update(routers, weights, exclude_nodes)
+    self.consensus_update(routers, weights, exclude_nodes, descs)
 
     if self.enable_vanguards:
       self.configure_tor(controller)
