@@ -2,6 +2,7 @@ next
 -----
 - Allow --control_ip to be a hostname #49
 - Properly apply loglevel from config file #44
+- Ignore circuits and timeouts between CBT RESET and COMPUTED #58
 
 0.3.1
 -----

@@ -9,6 +9,10 @@ class CircuitStat:
 class TimeoutStats:
   def __init__(self):
     self.circuits = {}
+    self.zero_fields()
+    self.record_timeouts = True
+
+  def zero_fields(self):
     self.all_launched = 0
     self.all_built = 0
     self.all_timeout = 0
@@ -23,6 +27,11 @@ class TimeoutStats:
       self.circuits[event.id].is_hs != is_hs:
       plog("ERROR", "Circuit "+event.id+" just changed from non-HS to HS: "\
                    +event.raw_content())
+
+    # Do not record circuits built while we have no timeout
+    # (ie: after reset but before computed)
+    if not self.record_timeouts:
+      return
 
     # Stages of circuits:
     # LAUNCHED -> BUILT
@@ -50,7 +59,15 @@ class TimeoutStats:
   def cbt_event(self, event):
     # TODO: Check if this is too high...
     plog("INFO", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(self.timeout_rate_all())+"; Hidden service timeout rate: "+str(self.timeout_rate_hs()))
-    plog("DEBUG", event.raw_content())
+    plog("INFO", event.raw_content())
+    if event.set_type == "COMPUTED":
+      plog("INFO", "CBT Timeout computed: "+event.raw_content)
+      self.record_timeouts = True
+    if event.set_type == "RESET":
+      plog("INFO", "CBT Timeout reset")
+      self.record_timeouts = False
+      self.zero_fields()
+
 
   def add_circuit(self, circ_id, is_hs):
     if circ_id in self.circuits:
