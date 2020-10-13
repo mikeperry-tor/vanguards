@@ -164,14 +164,30 @@ class VanguardState:
       if r.measured == None:
         # FIXME: Hrmm...
         r.measured = r.bandwidth
+        r.old_measured = r.measured
 
-      if r.fingerprint in dict_d:
+      if r.fingerprint in dict_d and dict_d[r.fingerprint].observed_bandwidth:
         r.obs_bw = max(dict_d[r.fingerprint].observed_bandwidth,1)
+        r.old_measured = r.measured
         r.measured = float(1000*r.measured)/r.obs_bw
       else:
-        print("No r: "+r.fingerprint)
+        #print("No r: "+r.fingerprint)
         r.measured = 0
+        r.old_measured = r.measured
         r.obs_bw = 0
+
+    print("\n")
+    if "A69221A7EC7498D2F88A0FB795261013FA36CAAE" in dict_r:
+      s = dict_r["A69221A7EC7498D2F88A0FB795261013FA36CAAE"]
+      print("# dgoulet guard: "+str(1000*s.old_measured)+"/"+str(s.obs_bw)+" = "+str(s.measured))
+
+    if "303509AB910EF207B7438C27435C4A2FD579F1B1" in dict_r:
+      s = dict_r["303509AB910EF207B7438C27435C4A2FD579F1B1"]
+      print("# ahf guard1: "+str(1000*s.old_measured)+"/"+str(s.obs_bw)+" = "+str(s.measured))
+
+    if "56927E61B51E6F363FB55498150A6DDFCF7077F2" in dict_r:
+      s = dict_r["56927E61B51E6F363FB55498150A6DDFCF7077F2"]
+      print("# ahf guard2: "+str(1000*s.old_measured)+"/"+str(s.obs_bw)+" = "+str(s.measured))
 
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
 
@@ -210,9 +226,11 @@ class VanguardState:
                                                ["Authority", "Exit"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
 
+    print("\n# Client Side torrc entries:")
+
     for r in [0,2,4]:
       s = ng.rstr_routers[r]
-      print("Bridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint)
+      print("Bridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured))
 
     print("\nHSLayer2Nodes ", end='')
     for r in [1,2,3,4,5,6]:
@@ -224,9 +242,10 @@ class VanguardState:
       s = ng.rstr_routers[(r+6)*2]
       print(s.fingerprint+',', end='')
 
+    print("\n\n# Service Side torrc entries:", end='')
     for r in [1,3,5]:
       s = ng.rstr_routers[r]
-      print("\nBridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint, end='')
+      print("\nBridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured), end='')
 
     print("\nHSLayer2Nodes ", end='')
     for r in [1,2,3,4,5,6]:
