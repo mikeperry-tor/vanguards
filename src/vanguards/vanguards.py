@@ -155,17 +155,27 @@ class VanguardState:
     dict_d = {}
 
     for r in sorted_r:
+      if r.measured == None:
+        # FIXME: Hrmm...
+        r.measured = r.bandwidth
+        r.old_measured = r.measured
+
+    # Only take guard relays; No exits
+    sorted_r = list(filter(lambda r: "Guard" in r.flags, sorted_r))
+    sorted_r = list(filter(lambda r: not "Exit" in r.flags, sorted_r))
+
+    sorted_r.sort(key = lambda x: x.measured, reverse = True)
+
+    # Take top 500 of those relays, overall
+    sorted_r = sorted_r[0:500]
+
+    for r in sorted_r:
       dict_r[r.fingerprint] = r
 
     for d in descs:
       dict_d[d.fingerprint] = d
 
     for r in sorted_r:
-      if r.measured == None:
-        # FIXME: Hrmm...
-        r.measured = r.bandwidth
-        r.old_measured = r.measured
-
       if r.fingerprint in dict_d and dict_d[r.fingerprint].observed_bandwidth:
         r.obs_bw = max(dict_d[r.fingerprint].observed_bandwidth,1)
         r.old_measured = r.measured
@@ -222,8 +232,8 @@ class VanguardState:
 
     ng = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
-                             [FlagsRestriction(["Fast", "Valid", "Guard"],
-                                               ["Authority", "Exit"])]),
+                             [FlagsRestriction(["Fast", "Valid"], #, "Guard"],
+                                               ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
 
     print("\n# Client Side torrc entries:")
