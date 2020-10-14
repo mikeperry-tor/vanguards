@@ -237,40 +237,40 @@ class VanguardState:
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
 
     NUM_GUARDS=5
-    NUM_LAYER2=20
-    NUM_LAYER3=20
+    NUM_LAYER2=5
+    NUM_LAYER3=5
 
     print("\n# Client Side torrc entries:")
 
-    for r in range(1,NUM_GUARDS):
+    for r in range(1,NUM_GUARDS+1):
       s = ng.rstr_routers[r*2-1]
       print("Bridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured))
 
     layer2="HSLAYER2Nodes "
-    for r in range(1,NUM_LAYER2):
+    for r in range(1,NUM_LAYER2+1):
       s = ng.rstr_routers[r*2+NUM_GUARDS*2-1]
       layer2 += s.fingerprint+","
     print("\n"+layer2[:-1])
 
-    layer3="HSLAYER2Nodes "
-    for r in range(1,NUM_LAYER3):
+    layer3="HSLAYER3Nodes "
+    for r in range(1,NUM_LAYER3+1):
       s = ng.rstr_routers[r*2+NUM_GUARDS*2+NUM_LAYER2*2-1]
       layer3 += s.fingerprint+","
     print("\n"+layer3[:-1])
 
     print("\n\n# Service Side torrc entries:", end='')
-    for r in range(1,NUM_GUARDS):
+    for r in range(1,NUM_GUARDS+1):
       s = ng.rstr_routers[r*2]
       print("\nBridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured), end='')
 
     layer2="HSLAYER2Nodes "
-    for r in range(1,NUM_LAYER2):
+    for r in range(1,NUM_LAYER2+1):
       s = ng.rstr_routers[r*2+NUM_GUARDS*2]
       layer2 += s.fingerprint+","
     print("\n"+layer2[:-1])
 
-    layer3="HSLAYER2Nodes "
-    for r in range(1,NUM_LAYER3):
+    layer3="HSLAYER3Nodes "
+    for r in range(1,NUM_LAYER3+1):
       s = ng.rstr_routers[r*2+NUM_GUARDS*2+NUM_LAYER2*2]
       layer3 += s.fingerprint+","
     print("\n"+layer3[:-1])
