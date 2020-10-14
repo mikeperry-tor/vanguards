@@ -166,8 +166,8 @@ class VanguardState:
 
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
 
-    # Take top 500 of those relays, overall
-    sorted_r = sorted_r[0:500]
+    # Take top 300 of those relays, for sparta
+    sorted_r = sorted_r[0:300]
 
     for r in sorted_r:
       dict_r[r.fingerprint] = r
@@ -236,38 +236,47 @@ class VanguardState:
                                                ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
 
+    NUM_GUARDS=5
+    NUM_LAYER2=20
+    NUM_LAYER3=20
+
     print("\n# Client Side torrc entries:")
 
-    for r in [0,2,4]:
-      s = ng.rstr_routers[r]
+    for r in range(1,NUM_GUARDS):
+      s = ng.rstr_routers[r*2-1]
       print("Bridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured))
 
-    print("\nHSLayer2Nodes ", end='')
-    for r in [1,2,3,4,5,6]:
-      s = ng.rstr_routers[r*2+6]
-      print(s.fingerprint+",", end='')
+    layer2="HSLAYER2Nodes "
+    for r in range(1,NUM_LAYER2):
+      s = ng.rstr_routers[r*2+NUM_GUARDS*2-1]
+      layer2 += s.fingerprint+","
+    print("\n"+layer2[:-1])
 
-    print("\nHSLayer3Nodes ", end='')
-    for r in [1,2,3,4,5,6,7,8,9]:
-      s = ng.rstr_routers[(r+6)*2]
-      print(s.fingerprint+',', end='')
+    layer3="HSLAYER2Nodes "
+    for r in range(1,NUM_LAYER3):
+      s = ng.rstr_routers[r*2+NUM_GUARDS*2+NUM_LAYER2*2-1]
+      layer3 += s.fingerprint+","
+    print("\n"+layer3[:-1])
 
     print("\n\n# Service Side torrc entries:", end='')
-    for r in [1,3,5]:
-      s = ng.rstr_routers[r]
+    for r in range(1,NUM_GUARDS):
+      s = ng.rstr_routers[r*2]
       print("\nBridge "+s.address+":"+str(s.or_port)+" "+s.fingerprint+" # ratio="+str(s.measured), end='')
 
-    print("\nHSLayer2Nodes ", end='')
-    for r in [1,2,3,4,5,6]:
-      s = ng.rstr_routers[r*2+7]
-      print(s.fingerprint+",", end='')
+    layer2="HSLAYER2Nodes "
+    for r in range(1,NUM_LAYER2):
+      s = ng.rstr_routers[r*2+NUM_GUARDS*2]
+      layer2 += s.fingerprint+","
+    print("\n"+layer2[:-1])
 
-    print("\nHSLayer3Nodes ", end='')
-    for r in [1,2,3,4,5,6,7,8,9]:
-      s = ng.rstr_routers[(r+6)*2+1]
-      print(s.fingerprint+',', end='')
+    layer3="HSLAYER2Nodes "
+    for r in range(1,NUM_LAYER3):
+      s = ng.rstr_routers[r*2+NUM_GUARDS*2+NUM_LAYER2*2]
+      layer3 += s.fingerprint+","
+    print("\n"+layer3[:-1])
 
     print("\nEnd")
+    sys.exit(0)
 
     # Repair Exit-flagged node weights, since they can be chosen
     # sometimes by other clients as RPs (when cannibalized)
