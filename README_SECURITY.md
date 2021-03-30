@@ -113,11 +113,13 @@ to flood an onion service with traffic to notice spikes in our public relay
 bandwidth statistics at the guard. Setting **circ_max_megabytes** in
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service can help you detect and mitigate this
-attack. Should this limit get hit (XXX: log?), or high load or DoS attacks
-happen, consider monitoring your Guard's bandwidth history for visible
-traffic increases in the [public metrics portal](https://metrics.torproject.org/rs.html#search/flag:Guard),
+attack. Should this limit get hit (it is a NOTICE message), or high load or DoS
+attacks happen against your service, consider monitoring your Guard's bandwidth
+history for visible traffic increases in the [public metrics portal](https://metrics.torproject.org/rs.html#search/flag:Guard),
 as any visible spikes there will be visible to the aversary too, and can aid in Guard
 discovery. See also the section on [Monitoring Your Service](#monitor-your-service).
+If you see any such spikes, it means Tor's metrics are too detailed. Consider
+contacting someone at the Tor Project, or [filing a bug](https://gitlab.torproject.org/tpo/core/tor/-/issues/).
 
 ## Adversaries: Network
 
@@ -255,7 +257,7 @@ The third vector can be mitigated by using the
 pluggable transport. Snowflake uses UDP WebRTC connections, which are not
 vulnerable to TCP RST injections to close them. Additionally, Snowflake will
 automatically fetch new Snowflake bridges using domain fronting, and resume
-already circuits, should it experience connectivity loss for more than ~30
+any opened circuits, should it experience connectivity loss for more than ~30
 seconds. This should keep your service connected in the event that Tor or even
 individual SnowFlakes become blocked. It should also keep existing connections
 live, even in the event of said blocks, which goes a long way against
@@ -348,10 +350,32 @@ service uptime from your relay uptime.
 
 ### The Best Way To Use Bridges
 
-Right now, the best bridge protocol to use is obfs4, because it has additional
-traffic analysis obfuscation techniques that make it harder for the local and
-global adversaries to use bandwidth side channels and other traffic
-characteristics.
+Right now, there is a two-way tie between best obfuscation protocols to use,
+between obfs4 and Snowflake.
+
+As described in previous sections, because Snowflake is not vulnerable to TCP
+RST injection, and will resume circuits via other Snowflake bridges even if
+blocked from its current ones mid-connection, this makes it an ideal solution
+to confirmation attacks where an aversary tries to block access to Tor and
+then see if your service goes down. Unfortunately, Snowflake does not have
+traffic analysis defenses like obfs4,
+[nor do you get any benefit](https://lists.torproject.org/pipermail/tor-dev/2020-January/014127.html) from running
+a Snowflake bridge concurrent with your service.
+
+On the other hand, obfs4 is nice because it has additional traffic analysis
+obfuscation techniques that make it harder for the local and global
+adversaries to use bandwidth side channels and other traffic characteristics.
+obfs4 can also be deployed as a bridge by your service, for additional cover
+traffic from bridge use (though this may be of limited use; see next section).
+Connection resumption is also [being investigated for
+obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519)
+(this is called TurboTunnel), but it is not yet deployed.
+
+XXX: snowflake instructions from here, plus TBB bin location on Linux
+https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake
+
+XXX: Bridge lines and UseBridges for Snowflake? not present in doc. what happens
+if other bridges entered?
 
 To use obfs4, obtain two bridges from
 [bridges.torproject.org](https://bridges.torproject.org/bridges?transport=obfs4)
@@ -517,9 +541,10 @@ the other attacks the addon detects).
 You should also monitor the bandwidth history of your vanguards relays, using
 [Metrics Portal](https://metrics.torproject.org/rs.html#search/flag:Guard%20),
 especially if you are under DoS or if [BandGuards alert
-logs](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md#the-bandguards-subsystem)]
+logs](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md#the-bandguards-subsystem)
 are present. If an adversary is able to flood or DoS your service so much that
 it corresponds to a noticable bump in the public relay bandwidth history data,
 they may be able to determine your Guards this way. If you notice this effect,
-please find some way to alert the Tor Project, as it indicates that our
-relay bandwidth metrics are too detailed.
+please find some way to alert the Tor Project or
+[file a bug](https://gitlab.torproject.org/tpo/core/tor/-/issues/), as it
+indicates that our relay bandwidth metrics are too detailed.
