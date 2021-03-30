@@ -137,8 +137,7 @@ These limits (along with a reason for checking them) are as follows:
 
    These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone. Instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough or other conditions are right, [it may still be possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
 
-   The component uses
-[new control port features](https://trac.torproject.org/projects/tor/ticket/25903) and [improved connection tracking in Tor](https://trac.torproject.org/projects/tor/ticket/25573) to measure
+   The component uses [new control port features](https://gitlab.torproject.org/tpo/core/tor/-/issues/25903) and [improved connection tracking in Tor](https://gitlab.torproject.org/tpo/core/tor/-/issues/25573) to measure
 the quantity of traffic that Tor decides to drop from a circuit, to protect against
 [DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
 attacks.
@@ -203,7 +202,7 @@ connectivity, and reconnect the remaining portion to a new circuit.
 
    Since Tor currently rotates to new TLS connections every week, if a circuit stays open longer than this period, then it will cause its old TLS connection to be held open. After a while, the circuit will be one of the few things using that TLS connection. This lack of multiplexing makes traffic analysis easier.
 
-   For an example of an attack that makes use of this type of side channel, see [TorScan](https://eprint.iacr.org/2012/432.pdf). For additional discussion, see Tor Ticket [#22728](https://trac.torproject.org/projects/tor/ticket/22728) and [#23980](https://trac.torproject.org/projects/tor/ticket/23980).
+   For an example of an attack that makes use of this type of side channel, see [TorScan](https://eprint.iacr.org/2012/432.pdf). For additional discussion, see Tor Ticket [#22728](https://gitlab.torproject.org/tpo/core/tor/-/issues/22728) and [#23980](https://gitlab.torproject.org/tpo/core/tor/-/issues/23980).
 
    For this reason, if your onion service does not require long-lived circuits, it is wise to close any that hang around for long enough to approach this rotation time.
 

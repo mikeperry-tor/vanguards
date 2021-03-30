@@ -418,11 +418,10 @@ relay as you use for your onion service. This will accomplish the traffic
 blending on the same TLS connections as relayed Tor traffic. Unfortunately,
 because Tor is single threaded, your onion service activity can still cause
 stalls in the overall network activity of your relay. See
-[Ticket #16585](https://trac.torproject.org/projects/tor/ticket/16585) for the gory
+[Ticket #16585](https://gitlab.torproject.org/tpo/core/tor/-/issues/16585) for the gory
 details. Worse still, if it is the same process, your Tor relay will report
 your onion service history in its read/write statistics, which result in a
-[noticeable asymmetry in these
-statistcis](https://trac.torproject.org/projects/tor/ticket/8742).
+[noticeable asymmetry in these statistcis](https://gitlab.torproject.org/tpo/core/tor/-/issues/8742).
 
 However, if you run your Tor relay as a separate process on the same machine
 as your onion service Tor process, but **also** use that relay locally as a
