@@ -117,6 +117,11 @@ can set **rend_use_close_circuits_on_overuse** to false in your configuration
 file. If you do this, rendezvous overuse messages will appear at WARN level,
 but circuits will not be closed.
 
+If you experience false positives with this system, also consider raising
+**rend_use_global_start_count** and **rend_use_relay_start_count**. Please
+[file a ticket](https://github.com/mikeperry-tor/vanguards/issues) if you have
+to change any of these options.
+
 ## The Bandguards Subsystem
 
 The bandguards subsystem performs accounting to watch for signs of bandwidth
@@ -135,12 +140,23 @@ These limits (along with a reason for checking them) are as follows:
 
    This side channel was fixed. Unfortunately, there are many other side channels available that allow an adversary to inject traffic that is ignored by a Tor client.
 
-   These remaining side channels are not as severe -- they cannot immediately be recognized by colluding relays using packet information alone. Instead the adversary must rely on packet volume and timing information in order to recognize the signal. However, if the volume of injected traffic is large enough or other conditions are right, [it may still be possible](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf) to use statistical methods to recover a signal.
+   These remaining side channels are not as severe -- they cannot immediately
+be recognized by colluding relays using packet information alone. Instead the
+adversary must rely on packet volume and timing information in order to
+recognize the signal. However, if the volume of injected traffic is large
+enough or the cells are injected when traffic would not otherwise be sent, it
+may still be possible to use statistical methods to recover a signal. This class
+of attack is called [DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf),
+and it likely works in practice.
 
-   The component uses [new control port features](https://gitlab.torproject.org/tpo/core/tor/-/issues/25903) and [improved connection tracking in Tor](https://gitlab.torproject.org/tpo/core/tor/-/issues/25573) to measure
+   In fact, it may even be possible to inject so much dropped cell traffic
+that this causes a change in the public [Guard relay bandwidth history or descriptor
+value](https://metrics.torproject.org/rs.html#search/flag:Guard), which allows
+Guard discovery.
+
+   The Bandguards component uses [new control port features](https://gitlab.torproject.org/tpo/core/tor/-/issues/25903) and [improved connection tracking in Tor](https://gitlab.torproject.org/tpo/core/tor/-/issues/25573) to measure
 the quantity of traffic that Tor decides to drop from a circuit, to protect against
-[DropMark](https://petsymposium.org/2018/files/papers/issue2/popets-2018-0011.pdf)
-attacks.
+all such attacks that rely on dropped cells.
 
    The allowed dropped cell count is 0, and cannot be configured.
 
@@ -161,9 +177,10 @@ file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.c
 
    If an attacker wants to introduce a side channel towards an onion service, they can fetch large quantities of data from that service, or make large HTTP posts towards the service, in order to generate detectable traffic patterns.
 
-   These traffic patterns can be detected in Tor's public relay bandwidth
-statistics, as well as via netflow connection volume records. The Tor Project
-is currently working on various mechanisms to reduce the granularity of these
+   These traffic patterns can be detected in Tor's [public relay bandwidth
+statistics](https://metrics.torproject.org/rs.html#search/flag:Guard), as well
+as via netflow connection volume records. The Tor Project is currently working
+on various mechanisms to reduce the granularity of these
 statistics (and has already reduced them to 24 hours of aggregate data), and
 has also deployed padding mechanisms to limit the resolution of netflow traffic
 logs, but it is not clear that these mechanisms are sufficient to obscure very
@@ -189,14 +206,26 @@ won't necessarily know which guard node each circuit traversed. This should
 increase the quantity of data they must inject in order to successfully mount
 this attack (and by more than just a factor of two, because of this uncertainty).
 
+The traffic splitting done by
+[Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
+and the [TurboTunnel prototype for obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519)
+will also provide some degree of mitigation here.
+
    Long-term, this feature is meant to be deployed in combination with
-[conflux traffic
-splitting](https://www.cypherpunks.ca/~iang/pubs/conflux-pets.pdf) so that we
+[conflux traffic splitting](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/329-traffic-splitting.txt) so that we
 can tear down one path of a circuit after over-use without loss of
 connectivity, and reconnect the remaining portion to a new circuit.
 
    If you wish to enable this defense, change the value of
 **circ_max_megabytes** in the [configuration file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf).
+
+   Additionally, if you notice this defense triggering, or other signs of
+unexpected high load or DoS attack, consider monitoring your Guard relay
+bandwidth in the [public relay bandwidth data]((https://metrics.torproject.org/rs.html#search/flag:Guard)) to check for
+noticable bumps in traffic that correspond to DoS, as this is a Guard
+discovery signal for the aversary. If you notice such bumps, please find
+a way to contact the Tor Project, as this means that our relay bandwidth
+reporting is too detailed.
 
 4. ***Max Circuit Age***
 
@@ -209,6 +238,9 @@ connectivity, and reconnect the remaining portion to a new circuit.
    The current default for maximum circuit age is 24 hours, and can be changed
 via **circ_max_age_hours** in the [configuration
 file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf).
+It does not make much sense to make this value significantly lower (and low
+values such as 1 hour will make you stand out), but set it higher if you need
+long-lived connections to your service.
 
 5. ***Connectivity to the Tor Network***
 
@@ -224,8 +256,15 @@ are disconnected frequently. To disable these checks, change the
 ***circ_max_disconnected_secs*** and ***conn_max_disconnected_secs***
 configuration settings to 0.
 
+   There are additional mitigation tips for this attack vector in
+[README\_SECURITY.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md).
+In particular, the [Snowflake pluggable transport](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake) and
+the [TurboTunnel resumption prototype](https://github.com/net4people/bbs/issues/14#issuecomment-544747519) for obfs4 will
+mitigate the various forms of confirmation attacks of this side channel.
+
 # Security Information
 
-For additional security information, please see
+For additional security information, including the various attack vectors that
+remain against onion services, please see
 [README\_SECURITY.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md).
 

@@ -547,7 +547,7 @@ infrastructure for this reason (in addition to watching for evidence of
 the other attacks the addon detects).
 
 You should also monitor the bandwidth history of your vanguards relays, using
-[Metrics Portal](https://metrics.torproject.org/rs.html#search/flag:Guard%20),
+[Metrics Portal](https://metrics.torproject.org/rs.html#search/flag:Guard),
 especially if you are under DoS or if [BandGuards alert
 logs](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md#the-bandguards-subsystem)
 are present. If an adversary is able to flood or DoS your service so much that
