@@ -360,7 +360,8 @@ to confirmation attacks where an aversary tries to block access to Tor and
 then see if your service goes down. Unfortunately, Snowflake does not have
 traffic analysis defenses like obfs4,
 [nor do you get any benefit](https://lists.torproject.org/pipermail/tor-dev/2020-January/014127.html) from running
-a Snowflake bridge concurrent with your service.
+a Snowflake bridge concurrent with your service. Additionally, Snowflake
+bridges may not be extremely high capacity, and may still be somewhat scarce.
 
 On the other hand, obfs4 is nice because it has additional traffic analysis
 obfuscation techniques that make it harder for the local and global
@@ -371,11 +372,19 @@ Connection resumption is also [being investigated for
 obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519)
 (this is called TurboTunnel), but it is not yet deployed.
 
-XXX: snowflake instructions from here, plus TBB bin location on Linux
-https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake
+To use Snowflake, either
+[compile it from git](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake),
+or get the snowflake-client binary from a Tor Browser Alpha build. Then,
+configure it like so in torrc:
 
-XXX: Bridge lines and UseBridges for Snowflake? not present in doc. what happens
-if other bridges entered?
+'''
+UseBridges 1
+Bridge snowflake 127.0.0.1:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72
+ClientTransportPlugin snowflake exec ./snowflake-client -url https://snowflake-broker.azureedge.net/ -front ajax.aspnetcdn.com -ice stun:stun.l.google.com:19302
+-max 3
+'''
+
+The IP address can be any IP, so long as it is unique from other transports.
 
 To use obfs4, obtain two bridges from
 [bridges.torproject.org](https://bridges.torproject.org/bridges?transport=obfs4)
