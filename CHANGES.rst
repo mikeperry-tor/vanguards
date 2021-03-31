@@ -4,6 +4,8 @@ next
 - Properly apply loglevel from config file #44
 - Ignore circuits and timeouts between CBT RESET and COMPUTED #58
 - Improve options documentation in example conf. #55.
+- Improve documentation for relay/bridge use. #50.
+- Add latest research horizon, re traffic analysis. #60.
 
 0.3.1
 -----
