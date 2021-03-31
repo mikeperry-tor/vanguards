@@ -252,7 +252,8 @@ asymmetrical. While most Tor clients download, you will likely be doing a lot
 of uploading. [Using or running a bridge or Tor
 relay](#Use-Bridges-or-Run-a-Relay-or-Bridge) with your
 Onion Service can help conceal these traffic patterns, especially when [used
-in combination with OnionBalance](#using-onionbalance).
+in combination with OnionBalance](#using-onionbalance), but this comes with
+caveats and new risks and tradeoffs.
 
 For capability #3, local adversaries might also **suspect** that you could be
 using the vanguards addon, at least until [Proposal
@@ -276,19 +277,19 @@ specific onion service addresses, they can attempt to **confirm** that you are
 running one of these specific services on their local network via a few
 different attack vectors:
 
-* Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
 * Send lots of traffic to the onion service to see if you get more traffic on your internet connection.
 * Kill your TCP connections to see if any of their connections to that onion service close.
+* Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
 * If you weren't using vanguards, they can confirm an onion service even
   easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
-The first two vectors of the capability #4 **confirmation** attack can be mitigated by
-[using OnionBalance](#using-onionbalance), and by setting
+The first vector of the capability #4 **confirmation** attack can be mitigated by
+[using OnionBalance](#using-onionbalance), by setting
 **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
-to an appropriate value for your service.
+to an appropriate value for your service, and by [monitoring your service](#monitor-your-service).
 
-The third vector can be mitigated by using the
+The second and third vector can be mitigated by using the
 [Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
 pluggable transport. Snowflake uses UDP WebRTC connections, which are not
 vulnerable to TCP RST injections to close them. Additionally, Snowflake will
@@ -299,17 +300,18 @@ individual SnowFlakes become blocked. It should also keep existing connections
 live, even in the event of said blocks, which goes a long way against
 confirmation attacks.
 
-[Monitoring your service closely](#monitor-your-service) for connectivity loss
-can also help you detect attempts by the adversary to **confirm** your service
-location. The vanguards addon will emit NOTICE and WARN messages related to
-connectivity loss, and your service will become unreachable.
+The third vector can also be mitigated by [monitoring your service
+closely](#monitor-your-service) for connectivity loss can also help you detect
+attempts by the adversary to **confirm** your service location. The vanguards
+addon will emit NOTICE and WARN messages related to connectivity loss, and
+your service will become unreachable.
 
 Capability #5 and #6 are similar to those capabilities of the Network
 adversary, except that because traffic from multiple circuits is multiplexed
 over TLS, if there is large amounts of concurrent activity, the adversary
 [loses accuracy](https://www.freehaven.net/anonbib/cache/websitefingerprinting-pets2016.pdf),
 especially when activity significantly overlaps. The research
-defenses outlined in the Network adversary all apply here, too.
+defenses outlined in the Network adversary also all apply here, too.
 
 ## Adversaries: Global
 
@@ -323,16 +325,20 @@ or
 are also in this class.
 
 The global adversary can perform most of the attacks that the local adversary
-can, but everywhere. (It may be significantly more expensive for the global
+can, but everywhere. It may be significantly more expensive for the global
 adversary to perform **active** attacks than it is for the local adversary to
-do so, but for the most part this degrades their capability only slightly).
+do so, because they tend to operate on the side and get copies of traffic
+rather than in-line, and active attacks come with more detection risk, but
+for the most part this degrades their capability only slightly.
 
 In some cases, versions of this adversary only have access to low-resolution
 traffic information (aka [Netflow logs](https://en.wikipedia.org/wiki/NetFlow)
-from compromised routers). In other cases, especially the Five Eyes and whoever
-compromises *them*, [their capabilities](https://www.openrightsgroup.org/app/uploads/2020/03/01-Part_One_Chapter_One-Passive_Collection.pdf)
-appear to be converging on full take Internet surveillance, especially for limited
-periods of time, and even long periods of archival, for specific targets.
+from compromised routers). In other cases, especially the Five Eyes (and
+whoever compromises *them*), [their
+capabilities](https://www.openrightsgroup.org/app/uploads/2020/03/01-Part_One_Chapter_One-Passive_Collection.pdf)
+appear to be converging on full take Internet surveillance, especially for
+limited periods of time, and even long periods of archival for specific
+targets.
 
 The global adversary has the following capabilities:
 
@@ -352,7 +358,7 @@ deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
 those [attacks scale](https://www.freehaven.net/anonbib/cache/fingerprinting-ndss2016.pdf).
 Additionally, [research is beginning to suggest](https://lists.torproject.org/pipermail/tor-dev/2020-December/014498.html)
-that padding cover traffic that defend against website traffic fingerprinting
+that padding cover traffic that defends against website traffic fingerprinting
 will defend against correlation as well.
 
 These limits are also the reason that the global confirmation attack has been
@@ -425,8 +431,8 @@ As described in previous sections, because Snowflake is not vulnerable to TCP
 RST injection, and will resume circuits via other Snowflake bridges even if
 blocked from its current ones mid-connection, this makes it an ideal solution
 to confirmation attacks where an adversary tries to block access to Tor and
-then see if your service goes down. Unfortunately, Snowflake does not have
-traffic analysis defenses like obfs4,
+then see if your service goes down. While it does do traffic splitting,
+Snowflake does not padding defenses like obfs4,
 [nor do you get any benefit](https://lists.torproject.org/pipermail/tor-dev/2020-January/014127.html) from running
 a Snowflake bridge concurrent with your service. Additionally, Snowflake
 bridges may not be extremely high capacity, and may still be somewhat scarce.
@@ -436,14 +442,14 @@ obfuscation techniques that make it harder for the local and global
 adversaries to use bandwidth side channels and other traffic characteristics.
 obfs4 can also be deployed as a bridge by your service, for additional cover
 traffic from bridge use (though this may be of limited use; see next section).
-Connection resumption is also [being investigated for
+Connection resumption and traffic splitting is also [being investigated for
 obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519)
 (this is called TurboTunnel), but it is not yet deployed.
 
 To use Snowflake, either
 [compile it from git](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake),
-or get the snowflake-client binary from a Tor Browser Alpha build. Then,
-configure it like so in torrc:
+or get the snowflake-client binary from [Tor Browser Alpha](https://www.torproject.org/download/alpha/).
+Then, configure it like so in torrc:
 
 ```
 UseBridges 1
@@ -487,13 +493,13 @@ blending on the same TLS connections as relayed Tor traffic. Unfortunately,
 because Tor is single threaded, your onion service activity can still cause
 stalls in the overall network activity of your relay. See
 [Ticket #16585](https://gitlab.torproject.org/tpo/core/tor/-/issues/16585) for the gory
-details. Worse still, if it is the same process, your Tor relay will report
-your onion service history in its read/write statistics, which result in a
+details. Worse still, if it is a public relay and not a bridge, your Tor relay
+will report your onion service history in its read/write statistics, which result in a
 [noticeable asymmetry in these statistics](https://gitlab.torproject.org/tpo/core/tor/-/issues/8742).
 
-However, if you run your Tor relay as a separate process on the same machine
-as your onion service Tor process, but **also** use that relay locally as a
-bridge, your onion service activity will not directly block the relay
+However, if you run your Tor relay or bridge as a separate process on the same
+machine as your onion service Tor process, but **also** use it locally
+as a bridge, your onion service activity will not directly block the relay
 activity, but will still share all of its outbound TLS connections to other
 relays. For this, you would add something like the following to your onion
 service torrc:
@@ -505,26 +511,33 @@ Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
 
 The story deepens, however. When you do this, **your onion service uptime will
 be strongly correlated to your relay uptime, and both are now very
-easily observable by client adversaries**. Additionally, your onion service
-traffic bytecounts will still show up in your relay's extra-info descriptor
-and [Metrics Portal](https://metrics.torproject.org/rs.html) bandwidth stats,
-and there may still be some noticeable asymmetry there as a result of local use.
-
-[OnionBalance](#using-onionbalance) is one way to address this (ie: running
+easily observable by client adversaries if it is a public relay and not a
+bridge**. [OnionBalance](#using-onionbalance) is one way to address this (ie: running
 several Tor relays on different machines, each with their own OnionBalance
 Backend Instance).
 
-To look as much like a normal onion service as possible, you should use two
-Tor relays, and each on different machines in different data centers. In this
-way, your traffic will appear as an onion service that is using your two
-guards, and your onion service as a whole won't go down unless both of your
-relays are down. Your paths will be shorter, and your layer3 guards will now
-function as your layer2 guards, so you may want to change the vangaurd's
-layer2 rotation and relay count parameters appropriately.
+Additionally, if the relay is public and not itself a bridge, your onion
+service traffic bytecounts will still show up in your relay's extra-info
+descriptor and [Metrics Portal](https://metrics.torproject.org/rs.html)
+bandwidth stats, and there may still be some noticeable asymmetry there as a
+result of local use.
 
-It's unfortunate that it is so messy to use a Tor relay for cover traffic,
-and that it does not come with its own new risks, but that is the reality of
-the situation in all its gory details.
+Obviously, this is beginning to point to it being better to run a bridge than
+a relay, but of course as a bridge, you will have less incoming traffic to
+mix with, and it may not even go to your chosen guards.
+
+Finally, to look as much like a normal onion service as possible, you should
+use two Tor relays (or bridges), and each on different machines in different
+data centers. In this way, your traffic will appear as an onion service that
+is using your two guards, and your onion service as a whole won't go down
+unless both of your relays are down. Your paths will be shorter, and your
+layer3 guards will now function as your layer2 guards, so you may want to
+change the vangaurd's layer2 rotation and relay count parameters
+appropriately.
+
+It's unfortunate that it is so messy to use a Tor relay or bridge for cover
+traffic, and that it does not come with its own new risks, but that is the
+reality of the situation in all its gory details.
 
 ## Using OnionBalance
 
@@ -539,11 +552,11 @@ against local adversaries because they will no longer be able to observe all
 of your onion service traffic, and it is more difficult for them to impact
 your reachability for a reachability confirmation attack.
 
-Additionally, when OnionBalance is used in combination with the addon's
-bandguards component option **circ_max_megabytes**, this can help protect
-against bandwidth confirmation attacks that send high volumes of traffic to
-interesting onion services and watch for any evidence of results on a local
-internet connection.
+Additionally, when OnionBalance is used in combination with the vanguards
+addon's bandguards component option **circ_max_megabytes**, this can help
+protect against bandwidth confirmation attacks that send high volumes of
+traffic to interesting onion services and watch for any evidence of results on
+a local internet connection.
 
 However, OnionBalance needs some tweaks to avoid giving an advantage to the
 network adversary. Because multiple instances of the vanguards addon do not
@@ -625,7 +638,7 @@ the other attacks the addon detects).
 
 You should also monitor the bandwidth history of your vanguards relays, using
 [Metrics Portal](https://metrics.torproject.org/rs.html#search/flag:Guard),
-especially if you are under DoS or if [BandGuards alert
+especially if you are under DoS or if [BandGuards NOTICE
 logs](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md#the-bandguards-subsystem)
 are present. If an adversary is able to flood or DoS your service so much that
 it corresponds to a noticeable bump in the public relay bandwidth history data,
