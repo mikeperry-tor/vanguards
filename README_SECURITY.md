@@ -141,6 +141,10 @@ capabilities:
    relays, if it is.
 4. **Confirm** that a specific onion service is not using their Guard or Layer2
    middle relays, if it is not.
+5. **Suspect** when your client accesses a particular service, if they run one
+   of your guard relays.
+6. **Suspect** that run a particular service, if they run one of your guard
+   relays.
 
 The vanguards addon is designed to make the network adversary's attacks as
 difficult and unlikely as possible, and to take as long as possible, but they
@@ -180,6 +184,40 @@ The vanguards addon has additional checks to detect activity related to these at
 [Monitoring your service closely](#monitor-your-service) for these attacks can
 help you detect attempts by the adversary to perform these attacks.
 
+For capability #5 and #6, if the adversary runs your Guard relay, they can
+perform circuit packet timing analysis to determine if a circuit is in use or
+not, and then perform further analysis on that circuit to attempt to classify
+the traffic using deep learning. This [multi-stage
+approach](https://www.freehaven.net/anonbib/cache/fingerprinting-wpes17.pdf)
+allows the aversary to focus on inspecting only what is likely to be onion
+service traffic.
+
+We have deployed a defense to obscure basic aspects of onion service circuit setup
+fingerprinting for clients (described in [Section 3 of padding-spec.txt](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/padding-spec.txt#L283)),
+but further research is [currently investigating shortcomings and improvements](https://arxiv.org/abs/2103.03831).
+
+Research is also progressing in [defending against traffic
+fingerprinting](https://arxiv.org/abs/2011.13471) using [Tor's circuit padding
+framework](https://github.com/torproject/tor/blob/master/doc/HACKING/CircuitPaddingDevelopment.md)
+using [Tor's Circuit Padding
+Framework](https://github.com/torproject/tor/blob/master/doc/HACKING/CircuitPaddingDevelopment.md), as
+well as [traffic
+splitting](https://www.comsys.rwth-aachen.de/fileadmin/papers/2020/2020-delacadena-trafficsliver.pdf)
+using
+[Conflux](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/329-traffic-splitting.txt)[,
+all of which should soon be deployable on the Tor network, to address the risk of
+capability #5. Traffic splitting is already performed by the
+[Snowflake pluggable transport](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake),
+and is [being investigated for obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519).
+
+Capability #6 is the most difficult to defend fully against, because onion
+service traffic patterns are the reverse of those by clients. One promising
+option is to use [application-layer traffic
+shaping](https://www.freehaven.net/anonbib/cache/applicationlayer-pets2017.pdf)
+to shape service-side traffic into a client-like traffic distribution, so that
+client-side padding can be applied there, too. Circuit setup traffic patterns
+on the service side still needs research to defend against, though.
+
 ## Adversaries: Local
 
 Local adversaries include your WiFi [router
@@ -201,6 +239,9 @@ However, local adversaries still have the following capabilities:
    fixed).
 4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
+5. **Suspect** that run a particular service, if access is infrequent.
+6. **Suspect** when your client accesses a particular service, if other client
+   activity is low.
 
 For capability #1, local adversaries can **determine** that you are running Tor
 because the list of Tor relays is public, and connections to them are obvious.
@@ -240,13 +281,13 @@ specific onion service addresses, they can attempt to **confirm** that you are
 running one of these specific services on their local network via a few
 different attack vectors:
 
-1. Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
-2. Send lots of traffic to the onion service to see if you get more traffic on your internet connection.
-3. Kill your TCP connections to see if any of their connections to that onion service close.
-4. If you weren't using vanguards, they can confirm an onion service even
+A. Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
+B. Send lots of traffic to the onion service to see if you get more traffic on your internet connection.
+C. Kill your TCP connections to see if any of their connections to that onion service close.
+D. If you weren't using vanguards, they can confirm an onion service even
    easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
-The first two vectors of this **confirmation** attack can be mitigated by
+The first two vectors of Capability #4 **confirmation** attack can be mitigated by
 [using OnionBalance](#using-onionbalance), and by setting
 **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
@@ -268,6 +309,13 @@ can also help you detect attempts by the adversary to **confirm** your service
 location. The vanguards addon will emit NOTICE and WARN messages related to
 connectivity loss, and your service will become unreachable.
 
+Capability #5 and #6 are similar to those capabilities of the Network
+adversary, except that because traffic from multiple circuits is multiplexed
+over TLS, if there is large amounts of concurrent activity, the adversary
+[loses accuracy](https://www.freehaven.net/anonbib/cache/websitefingerprinting-pets2016.pdf),
+especially when activity significantly overlaps. The research
+defenses outlined in the Network adversary all apply here, too.
+
 ## Adversaries: Global
 
 A global adversary is an adversary that can observe large portions of the
@@ -284,6 +332,13 @@ can, but everywhere. (It may be significantly more expensive for the global
 adversary to perform **active** attacks than it is for the local adversary to
 do so, but for the most part this degrades their capability only slightly).
 
+In some cases, versions of this adversary only have access to low-resolution
+traffic information (aka [Netflow logs](https://en.wikipedia.org/wiki/NetFlow)
+from compromised routers). In other cases, especially the Five Eyes and whoever
+compromises *them*, [their capabilities](https://www.openrightsgroup.org/app/uploads/2020/03/01-Part_One_Chapter_One-Passive_Collection.pdf)
+appear to be converging on full take Internet surveillance, especially for limited
+periods of time, and even long periods of archival, for specific targets.
+
 The global adversary has the following capabilities:
 
 1. **Determine** a list of most/all IPs that connect to the public Tor network.
@@ -291,25 +346,43 @@ The global adversary has the following capabilities:
 3. **Suspect** which of these IPs might be using the vanguards addon (soon to be fixed).
 4. **Suspect** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
+5. **Suspect** that an IP might be connecting to a specific onion service
+   address as a client, if it is of interest to them and other client activity
+   is low.
 
 The mitigations for these are the same as they are for the local adversary.
 
 This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
-those attacks scale. These limits are also the reason that the global
-confirmation attack has been degraded to "**suspect**" for #4.
+those [attacks scale](https://www.freehaven.net/anonbib/cache/fingerprinting-ndss2016.pdf].
+Additionally, [research is beginning to suggest](https://lists.torproject.org/pipermail/tor-dev/2020-December/014498.html)
+that padding cover traffic that defend against website traffic fingerprinting
+will defend against correlation as well.
 
-For capability #4, the global adversary becomes more certain in their
+These limits are also the reason that the global confirmation attack has been
+degraded to "**suspect**" for Capability #4, and combined with traffic
+fingerprinting of services.
+
+For capability #4, the global adversary does become more certain in their
 suspicion if they are able to induce the onion service to transmit
 significantly more traffic than its baseline for a long period of time. Again,
 the mitigations for this are to use [OnionBalance](#using-onionbalance), use
-or run
-[a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
+or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
-to an appropriate value for your service.
+to an appropriate value for your service. And [#monitor-your-service](monitor
+your service) for evidence of any unexpected spikes in traffic volume.
 
+Additionally, since quantum computing is rapidly improving, it is worth noting
+that this adversary's ability to store large quantities of traffic for later
+quantum decryption is becoming a real risk. The Tor Project has preliminary
+proposals for [post-quantum circuit
+handshakes](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/270-newhope-hybrid-handshake.txt),
+but it is likely that [post-quantum TLS efforts](https://csrc.nist.gov/projects/post-quantum-cryptography) will happen first,
+independently. We will deploy post-quantum TLS as soon as it is standardized,
+and that work will inform our circuit handshake algorithm choice (with a
+healthy dose of skepticism of the NIST process).
 
 # What can I do to be safer?
 
