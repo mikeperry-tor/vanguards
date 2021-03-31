@@ -5,7 +5,9 @@ next
 - Ignore circuits and timeouts between CBT RESET and COMPUTED #58
 - Improve options documentation in example conf. #55.
 - Improve documentation for relay/bridge use. #50.
-- Add latest research horizon, re traffic analysis. #60.
+- Document current traffic analysis research horizon. #60.
+- Document that vanguards disables path restrictions. #53.
+- Document that CookieAuthentication is automatic by default. #48.
 
 0.3.1
 -----
