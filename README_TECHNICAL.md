@@ -66,6 +66,15 @@ Here is how our current vanguard 2-3-8 topology looks like:
 
 ![Vanguard Layer Topology](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustrations/illustrations/vanguard_system.jpg)
 
+Due to the risk of long-term information disclosure of interior guard layers,
+path restrictions have been disabled for onion service circuits built when
+vanguards are in use. This means that vanguards can be chosen
+from the same /16 subnet and node family as earlier hops in the circuit.
+Additionally, we also allow the same relay to be present in multiple positions
+in the path. These changes prevent an adversary from learning which relays are
+vanguards by creating many circuits and observing which relays are *not*
+chosen in the rendezvous endpoint position.
+
 Furthermore, to better protect the identity of these new pinned guard nodes,
 and to avoid linkability of activity, the circuit lengths have been
 altered for rendezvous point circuits, hidden service directory circuits, and
