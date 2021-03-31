@@ -371,8 +371,8 @@ the mitigations for this are to use [OnionBalance](#using-onionbalance), use
 or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
-to an appropriate value for your service. And [#monitor-your-service](monitor
-your service) for evidence of any unexpected spikes in traffic volume.
+to an appropriate value for your service. And
+[#monitor-your-service](monitor your service) for evidence of any unexpected spikes in traffic volume.
 
 Additionally, since quantum computing is rapidly improving, it is worth noting
 that this adversary's ability to store large quantities of traffic for later
@@ -450,12 +450,12 @@ To use Snowflake, either
 or get the snowflake-client binary from a Tor Browser Alpha build. Then,
 configure it like so in torrc:
 
-'''
+```
 UseBridges 1
 Bridge snowflake 127.0.0.1:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72
 ClientTransportPlugin snowflake exec ./snowflake-client -url https://snowflake-broker.azureedge.net/ -front ajax.aspnetcdn.com -ice stun:stun.l.google.com:19302
 -max 3
-'''
+```
 
 The IP address can be any IP, so long as it is unique from other transports.
 
