@@ -281,11 +281,11 @@ specific onion service addresses, they can attempt to **confirm** that you are
 running one of these specific services on their local network via a few
 different attack vectors:
 
-A. Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
-B. Send lots of traffic to the onion service to see if you get more traffic on your internet connection.
-C. Kill your TCP connections to see if any of their connections to that onion service close.
-D. If you weren't using vanguards, they can confirm an onion service even
-   easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
+* Block your connection to Tor (or disable your internet connection) to see if any onion services they care about go down.
+* Send lots of traffic to the onion service to see if you get more traffic on your internet connection.
+* Kill your TCP connections to see if any of their connections to that onion service close.
+* If you weren't using vanguards, they can confirm an onion service even
+  easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
 The first two vectors of Capability #4 **confirmation** attack can be mitigated by
 [using OnionBalance](#using-onionbalance), and by setting
@@ -355,7 +355,7 @@ The mitigations for these are the same as they are for the local adversary.
 This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
-those [attacks scale](https://www.freehaven.net/anonbib/cache/fingerprinting-ndss2016.pdf].
+those [attacks scale](https://www.freehaven.net/anonbib/cache/fingerprinting-ndss2016.pdf).
 Additionally, [research is beginning to suggest](https://lists.torproject.org/pipermail/tor-dev/2020-December/014498.html)
 that padding cover traffic that defend against website traffic fingerprinting
 will defend against correlation as well.
