@@ -510,7 +510,10 @@ Bridge 127.0.0.1:9001                # 9001 is the relay process's OR port.
 
 The story deepens, however. When you do this, **your onion service uptime will
 be strongly correlated to your relay uptime, and both are now very
-easily observable by client adversaries**.
+easily observable by client adversaries**. Additionally, your onion service
+traffic bytecounts will still show up in your relay's extra-info descriptor
+and [Metrics Portal](https://metrics.torproject.org/rs.html) bandwidth stats,
+and there may still be some noticable asymmetry there as a result of local use.
 
 [OnionBalance](#using-onionbalance) is one way to address this (ie: running
 several Tor relays on different machines, each with their own OnionBalance
@@ -520,7 +523,13 @@ To look as much like a normal onion service as possible, you should use two
 Tor relays, and each on different machines in different data centers. In this
 way, your traffic will appear as an onion service that is using your two
 guards, and your onion service as a whole won't go down unless both of your
-relays are down.
+relays are down. Your paths will be shorter, and your layer3 guards will now
+function as your layer2 guards, so you may want to change the vangaurd's
+layer2 rotation and relay count parameters appropriately.
+
+It's unfortunate that it is so messy to use a Tor relay for cover traffic,
+and that it does not come with its own new risks, but that is the reality of
+the situation in all its gory details.
 
 ## Using OnionBalance
 
