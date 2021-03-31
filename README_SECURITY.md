@@ -116,7 +116,7 @@ to an appropriate value for your service can help you detect and mitigate this
 attack. Should this limit get hit (it is a NOTICE message), or high load or DoS
 attacks happen against your service, consider monitoring your Guard's bandwidth
 history for visible traffic increases in the [public metrics portal](https://metrics.torproject.org/rs.html#search/flag:Guard),
-as any visible spikes there will be visible to the aversary too, and can aid in Guard
+as any visible spikes there will be visible to the adversary too, and can aid in Guard
 discovery. See also the section on [Monitoring Your Service](#monitor-your-service).
 If you see any such spikes, it means Tor's metrics are too detailed. Consider
 contacting someone at the Tor Project, or [filing a bug](https://gitlab.torproject.org/tpo/core/tor/-/issues/).
@@ -189,7 +189,7 @@ perform circuit packet timing analysis to determine if a circuit is in use or
 not, and then perform further analysis on that circuit to attempt to classify
 the traffic using deep learning. This [multi-stage
 approach](https://www.freehaven.net/anonbib/cache/fingerprinting-wpes17.pdf)
-allows the aversary to focus on inspecting only what is likely to be onion
+allows the adversary to focus on inspecting only what is likely to be onion
 service traffic.
 
 We have deployed a defense to obscure basic aspects of onion service circuit setup
@@ -287,7 +287,7 @@ different attack vectors:
 * If you weren't using vanguards, they can confirm an onion service even
   easier (see [Proposal 291](https://gitweb.torproject.org/torspec.git/tree/proposals/291-two-guard-nodes.txt) for details).
 
-The first two vectors of Capability #4 **confirmation** attack can be mitigated by
+The first two vectors of the capability #4 **confirmation** attack can be mitigated by
 [using OnionBalance](#using-onionbalance), and by setting
 **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
@@ -372,7 +372,7 @@ or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service. And
-[#monitor-your-service](monitor your service) for evidence of any unexpected spikes in traffic volume.
+[monitor your service](#monitor-your-service) for evidence of any unexpected spikes in traffic volume.
 
 Additionally, since quantum computing is rapidly improving, it is worth noting
 that this adversary's ability to store large quantities of traffic for later
@@ -429,7 +429,7 @@ between obfs4 and Snowflake.
 As described in previous sections, because Snowflake is not vulnerable to TCP
 RST injection, and will resume circuits via other Snowflake bridges even if
 blocked from its current ones mid-connection, this makes it an ideal solution
-to confirmation attacks where an aversary tries to block access to Tor and
+to confirmation attacks where an adversary tries to block access to Tor and
 then see if your service goes down. Unfortunately, Snowflake does not have
 traffic analysis defenses like obfs4,
 [nor do you get any benefit](https://lists.torproject.org/pipermail/tor-dev/2020-January/014127.html) from running
@@ -494,7 +494,7 @@ stalls in the overall network activity of your relay. See
 [Ticket #16585](https://gitlab.torproject.org/tpo/core/tor/-/issues/16585) for the gory
 details. Worse still, if it is the same process, your Tor relay will report
 your onion service history in its read/write statistics, which result in a
-[noticeable asymmetry in these statistcis](https://gitlab.torproject.org/tpo/core/tor/-/issues/8742).
+[noticeable asymmetry in these statistics](https://gitlab.torproject.org/tpo/core/tor/-/issues/8742).
 
 However, if you run your Tor relay as a separate process on the same machine
 as your onion service Tor process, but **also** use that relay locally as a
@@ -513,7 +513,7 @@ be strongly correlated to your relay uptime, and both are now very
 easily observable by client adversaries**. Additionally, your onion service
 traffic bytecounts will still show up in your relay's extra-info descriptor
 and [Metrics Portal](https://metrics.torproject.org/rs.html) bandwidth stats,
-and there may still be some noticable asymmetry there as a result of local use.
+and there may still be some noticeable asymmetry there as a result of local use.
 
 [OnionBalance](#using-onionbalance) is one way to address this (ie: running
 several Tor relays on different machines, each with their own OnionBalance
@@ -633,7 +633,7 @@ You should also monitor the bandwidth history of your vanguards relays, using
 especially if you are under DoS or if [BandGuards alert
 logs](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md#the-bandguards-subsystem)
 are present. If an adversary is able to flood or DoS your service so much that
-it corresponds to a noticable bump in the public relay bandwidth history data,
+it corresponds to a noticeable bump in the public relay bandwidth history data,
 they may be able to determine your Guards this way. If you notice this effect,
 please find some way to alert the Tor Project or
 [file a bug](https://gitlab.torproject.org/tpo/core/tor/-/issues/), as it
