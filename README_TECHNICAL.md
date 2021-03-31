@@ -215,7 +215,7 @@ won't necessarily know which guard node each circuit traversed. This should
 increase the quantity of data they must inject in order to successfully mount
 this attack (and by more than just a factor of two, because of this uncertainty).
 
-The traffic splitting done by
+   The traffic splitting done by
 [Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
 and the [TurboTunnel prototype for obfs4](https://github.com/net4people/bbs/issues/14#issuecomment-544747519)
 will also provide some degree of mitigation here.
@@ -273,7 +273,7 @@ mitigate the various forms of confirmation attacks of this side channel.
 
 # Security Information
 
-For additional security information, including the various attack vectors that
-remain against onion services, please see
+For additional security information, including attack vectors that
+remain against onion services and potential mitigations, please see
 [README\_SECURITY.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md).
 
