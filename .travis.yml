@@ -5,10 +5,10 @@ matrix:
  include:
   - python: 2.7
     env: TOXENV=py2
-  - python: 3.9
+  - python: 3.8
     env: TOXENV=py3
   - python: pypy
-    env: TOXENV=pypy3
+    env: TOXENV=pypy2
   - python: pypy3
     env: TOXENV=pypy3
 #before_install:
