@@ -5,8 +5,12 @@ matrix:
  include:
   - python: 2.7
     env: TOXENV=py2
-  - python: 3.6
+  - python: 3.9
     env: TOXENV=py3
+  - python: pypy
+    env: TOXENV=pypy3
+  - python: pypy3
+    env: TOXENV=pypy3
 #before_install:
   # Install tor and chutney if doing functional tests
   #- if [[ $TEST == 'functional' ]]; then ./test/scripts/install-tor.sh; fi
