@@ -8,6 +8,8 @@ next
 - Document current traffic analysis research horizon. #60.
 - Document that vanguards disables path restrictions. #53.
 - Document that CookieAuthentication is automatic by default. #48.
+- Add option to close service introduction circs with too much traffic
+  (off by default) #42.
 
 0.3.1
 -----

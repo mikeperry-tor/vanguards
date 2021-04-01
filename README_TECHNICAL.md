@@ -180,7 +180,27 @@ introduction points, you may need to raise this limit via the
 **circ_max_hsdesc_kilobytes** setting in the [configuration
 file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf).
 
-3. ***Total Circuit Megabytes***
+3. ***Total Service-Side Introduction Circuit Kilobytes***
+
+   Introduction circuits are normally held open by services for ~18-24 hours,
+regardless of traffic quantity or activity, which makes them a risk for
+flood and check traffic analysis attacks. Additionally, introduction
+requests are a vector for denial of service, since they cause the service to
+spend considerably more resources to handle than they take to generate.
+
+   It turns out that closing introduction circuits after too many are sent can
+help with both of these cases. It does impact reachability, though, so this
+option should be used with care. It is off by default. (The long-term solution
+DoS solution is either [Proof of
+Work](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/327-pow-over-intro.txt)
+or [Introduction Tokens](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/331-res-tokens-for-anti-dos.md)).
+
+   When **circ_max_serv_intro_kilobytes** is non-zero, the bandguards
+subsystem sets a limit on the total amount of traffic allowed on onion service
+introduction circuits. Once this limit is exceeded, the circuit is closed and a WARN
+log message is emitted by the bandguards subsystem.
+
+4. ***Total Circuit Megabytes***
 
    A final vector for injecting side channel traffic is at the application layer.
 
@@ -236,7 +256,7 @@ discovery signal for the adversary. If you notice such bumps, please find
 a way to contact the Tor Project, as this means that our relay bandwidth
 reporting is too detailed.
 
-4. ***Max Circuit Age***
+5. ***Max Circuit Age***
 
    Since Tor currently rotates to new TLS connections every week, if a circuit stays open longer than this period, then it will cause its old TLS connection to be held open. After a while, the circuit will be one of the few things using that TLS connection. This lack of multiplexing makes traffic analysis easier.
 
@@ -251,7 +271,7 @@ It does not make much sense to make this value significantly lower (and low
 values such as 1 hour will make you stand out), but set it higher if you need
 long-lived connections to your service.
 
-5. ***Connectivity to the Tor Network***
+6. ***Connectivity to the Tor Network***
 
    Reachability itself is a side-channel. An adversary can correlate your
 uptime to other events to reduce your anonymity, or even actively attempt to

@@ -5,6 +5,7 @@ from math import floor, ceil
 from vanguards.bandguards import BandwidthStats
 
 from vanguards.bandguards import CIRC_MAX_HSDESC_KILOBYTES
+from vanguards.bandguards import CIRC_MAX_SERV_INTRO_KILOBYTES
 from vanguards.bandguards import CIRC_MAX_MEGABYTES
 from vanguards.bandguards import CIRC_MAX_AGE_HOURS
 from vanguards.bandguards import CIRC_MAX_DISCONNECTED_SECS
@@ -86,6 +87,10 @@ def built_hsdir_circ(circ_id):
   s = "650 CIRC "+str(circ_id)+" BUILT $5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed,$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$CFBBA0D858F02E40B1432A65F6D13C9BDFE7A46B~0x3d001,$81A59766272894D27FE8375C4F83A6BA453671EF~chutney BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY PURPOSE=HS_SERVICE_HSDIR HS_STATE=HSSI_CONNECTING TIME_CREATED=2018-05-04T06:08:59.886885\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
+def built_serv_intro_circ(circ_id):
+  s = "650 CIRC "+str(circ_id)+" BUILT $5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed,$1F9544C0A80F1C5D8A5117FBFFB50694469CC7F4~as44194l10501,$CFBBA0D858F02E40B1432A65F6D13C9BDFE7A46B~0x3d001,$81A59766272894D27FE8375C4F83A6BA453671EF~chutney BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY PURPOSE=HS_SERVICE_INTRO HS_STATE=HSSI_CONNECTING TIME_CREATED=2018-05-04T06:08:59.886885\r\n"
+  return ControlMessage.from_str(s, "EVENT")
+
 def built_general_circ(circ_id, guard="$5416F3E8F80101A133B1970495B04FDBD1C7446B~Unnamed"):
   s = "650 CIRC "+str(circ_id)+" BUILT "+guard+",$8101421BEFCCF4C271D5483C5AABCAAD245BBB9D~rofltor1,$FDAC8BA3ABFCC107D1B1EAC953F195BEEBA7FF54~Viking,$705DB1E61846652FC447E7EC2DDAE0F7D5407D9E~Unnamed BUILD_FLAGS=IS_INTERNAL,NEED_CAPACITY PURPOSE=GENERAL TIME_CREATED=2018-05-04T08:24:07.078225\r\n"
   return ControlMessage.from_str(s, "EVENT")
@@ -114,6 +119,17 @@ def circ_bw(circ_id, read, sent, delivered_read, delivered_sent,
 def check_hsdir(state, controller, circ_id):
   read = _CELL_PAYLOAD_SIZE
   while read < CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
+    state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
+                               _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
+    read += _CELL_PAYLOAD_SIZE
+    assert controller.closed_circ == None
+
+  state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
+                             _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
+
+def check_serv_intro(state, controller, circ_id):
+  read = _CELL_PAYLOAD_SIZE
+  while read < CIRC_MAX_SERV_INTRO_KILOBYTES*_BYTES_PER_KB:
     state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, 0,
                                _CELL_DATA_RATE*_CELL_PAYLOAD_SIZE, 0, 0, 0))
     read += _CELL_PAYLOAD_SIZE
@@ -160,6 +176,7 @@ def check_dropped_bytes(state, controller, circ_id,
 # Test plan:
 def test_bwstats():
   global CIRC_MAX_MEGABYTES
+  global CIRC_MAX_SERV_INTRO_KILOBYTES
   controller = MockController()
   state = BandwidthStats(controller)
   controller.bwstats = state
@@ -211,6 +228,40 @@ def test_bwstats():
   check_hsdir(state, controller, circ_id)
   assert controller.closed_circ == None
   vanguards.bandguards.CIRC_MAX_HSDESC_KILOBYTES = CIRC_MAX_HSDESC_KILOBYTES
+
+  # - INTRO size cap disabled by default
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_serv_intro_circ(circ_id))
+  assert vanguards.bandguards.CIRC_MAX_SERV_INTRO_KILOBYTES == CIRC_MAX_SERV_INTRO_KILOBYTES
+  assert state.circs[str(circ_id)].is_serv_intro == True
+  assert state.circs[str(circ_id)].is_service == True
+  check_serv_intro(state, controller, circ_id)
+  assert controller.closed_circ == None
+
+  # - INTRO size cap exceeded for direct service circ
+  circ_id += 1
+  controller.closed_circ = None
+  vanguards.bandguards.CIRC_MAX_SERV_INTRO_KILOBYTES = 1024
+  CIRC_MAX_SERV_INTRO_KILOBYTES = 1024
+  state.circ_event(built_serv_intro_circ(circ_id))
+  assert state.circs[str(circ_id)].is_serv_intro == True
+  assert state.circs[str(circ_id)].is_service == True
+  check_serv_intro(state, controller, circ_id)
+  assert controller.closed_circ == str(circ_id)
+
+  # - INTRO size cap exceeded for cannibalized circ
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_circ(circ_id, "HS_VANGUARDS"))
+  assert state.circs[str(circ_id)].is_serv_intro == False
+  state.circ_minor_event(cannibalized_circ(circ_id, "HS_SERVICE_INTRO"))
+  assert state.circs[str(circ_id)].is_serv_intro == True
+  assert state.circs[str(circ_id)].is_service == True
+  check_serv_intro(state, controller, circ_id)
+  assert controller.closed_circ == str(circ_id)
+  vanguards.bandguards.CIRC_MAX_SERV_INTRO_KILOBYTES = 0
+  CIRC_MAX_SERV_INTRO_KILOBYTES = 0
 
   # - Max bytes exceed (read, write)
   circ_id += 1

@@ -27,6 +27,9 @@ CIRC_MAX_AGE_HOURS = 24 # 1 day
 # Maximum size for an hsdesc fetch (including setup+get+dropped cells)
 CIRC_MAX_HSDESC_KILOBYTES = 30
 
+# Maximum number of bytes allowed on a service intro circ before close
+CIRC_MAX_SERV_INTRO_KILOBYTES = 0
+
 # Warn if Tor can't build or use circuits for this many seconds
 CIRC_MAX_DISCONNECTED_SECS = 30
 
@@ -54,6 +57,7 @@ class BwCircuitStat:
     self.is_hs = is_hs
     self.is_service = 1
     self.is_hsdir = 0
+    self.is_serv_intro = 0
     self.dropped_cells_allowed = 0
     self.purpose = None
     self.hs_state = None
@@ -237,6 +241,8 @@ class BandwidthStats:
       if event.purpose == "HS_CLIENT_HSDIR" or \
          event.purpose == "HS_SERVICE_HSDIR":
         self.circs[event.id].is_hsdir = 1
+      elif event.purpose == "HS_SERVICE_INTRO":
+        self.circs[event.id].is_serv_intro = 1
       plog("DEBUG", "Added circ for "+event.raw_content())
 
     # Debugging
@@ -309,6 +315,8 @@ class BandwidthStats:
     if event.purpose == "HS_CLIENT_HSDIR" or \
        event.purpose == "HS_SERVICE_HSDIR":
       self.circs[event.id].is_hsdir = 1
+    elif event.purpose == "HS_SERVICE_INTRO":
+      self.circs[event.id].is_serv_intro = 1
 
     # PURPOSE_CHANGED from HS_VANGUARDS -> in_use
     if event.event == stem.CircEvent.PURPOSE_CHANGED:
@@ -512,6 +520,14 @@ class BandwidthStats:
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB)
+      control.try_close_circuit(self.controller, circ.circ_id)
+    if CIRC_MAX_SERV_INTRO_KILOBYTES > 0 and \
+       circ.is_serv_intro and circ.total_bytes() > \
+       CIRC_MAX_SERV_INTRO_KILOBYTES*_BYTES_PER_KB:
+      self.limit_exceeded("WARN", "CIRC_MAX_SERV_INTRO_KILOBYTES",
+                          circ.circ_id,
+                          circ.total_bytes(),
+                          CIRC_MAX_SERV_INTRO_KILOBYTES*_BYTES_PER_KB)
       control.try_close_circuit(self.controller, circ.circ_id)
 
   def limit_exceeded(self, level, str_name, circ_id, cur_val, max_val, extra=""):
