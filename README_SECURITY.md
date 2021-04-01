@@ -69,7 +69,7 @@ a very high degree of certainty.
 ## Adversaries: Client
 
 Client adversaries are those that attack your onion service using nothing more
-than a Tor client and normal internet access. 
+than a Tor client and normal internet access.
 
 In addition to nuisances such as DoS attacks, these adversaries can
 perform anonymity attacks that provide the following capabilities:
@@ -232,8 +232,8 @@ However, local adversaries still have the following capabilities:
    fixed).
 4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
-5. **Suspect** that you run a particular service, if access of it is infrequent.
-6. **Suspect** when your client accesses a particular service, if other client
+5. **Suspect** that you run a service, if access of it is infrequent.
+6. **Suspect** when your client accesses an onion service, if other client
    activity is low.
 
 For capability #1, local adversaries can **determine** that you are running Tor
@@ -287,7 +287,9 @@ The first vector of the capability #4 **confirmation** attack can be mitigated b
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service, and by [monitoring your service](#monitor-your-service).
 
-The second and third vector can be mitigated by using the
+The second and third vector can be detected by the
+[HoneyBadger](https://github.com/david415/HoneyBadger) tool. Alternatively, it
+can be mitigated by using the
 [Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
 pluggable transport. Snowflake uses UDP WebRTC connections, which are not
 vulnerable to TCP RST injections to close them. Additionally, Snowflake will
@@ -325,29 +327,29 @@ are also in this class.
 The global adversary can perform most of the attacks that the local adversary
 can, but everywhere. It may be significantly more expensive for the global
 adversary to perform **active** attacks than it is for the local adversary to
-do so, because they tend to operate on the side and get copies of traffic
+do so, because they tend to [operate on the side](https://www.wired.com/2013/11/this-is-how-the-internet-backbone-has-been-turned-into-a-weapon/) and get copies of traffic
 rather than in-line, and active attacks come with more detection risk, but
-for the most part this degrades their capability only slightly.
+for the most part this degrades their capability only slightly or not at all.
+"Man-on-the-side" RST injection is enough to allow confirmation attacks of stock Tor.
 
 In some cases, versions of this adversary only have access to low-resolution
 traffic information (aka [Netflow logs](https://en.wikipedia.org/wiki/NetFlow)
 from compromised routers). In other cases, especially the Five Eyes (and
-whoever compromises *them*), [their
-capabilities](https://www.openrightsgroup.org/app/uploads/2020/03/01-Part_One_Chapter_One-Passive_Collection.pdf)
-appear to be converging on full take Internet surveillance, especially for
-limited periods of time, and even long periods of archival for specific
-targets.
+[whoever compromises *them*](https://en.wikipedia.org/wiki/The_Shadow_Brokers)),
+their capabilities appear to be [converging on full take Internet surveillance](https://www.openrightsgroup.org/app/uploads/2020/03/01-Part_One_Chapter_One-Passive_Collection.pdf), especially for limited periods of time, and even long periods of
+archival for specific targets.
 
 The global adversary has the following capabilities:
 
 1. **Determine** a list of most/all IPs that connect to the public Tor network.
 2. **Suspect** which of these IPs might be running onion services.
 3. **Suspect** which of these IPs might be using the vanguards addon (soon to be fixed).
-4. **Strongly Suspect** that an IP might be running a specific onion service address, if it is
+4. **Confirm** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
-5. **Suspect** that an IP might be connecting to a specific onion service
-   address as a client, if it is of interest to them and other client activity
-   is low.
+5. **Suspect** that you run a particular service of interest, if access of it is
+   infrequent.
+6. **Suspect** when your client accesses a particular onion service of
+   interest, if other client activity is low.
 
 The mitigations for these are the same as they are for the local adversary.
 
@@ -355,22 +357,30 @@ This same adversary can theoretically perform additional attacks to attempt to
 deanonymize all Tor traffic all of the time, but [there are
 limits](http://archives.seul.org/or/dev/Sep-2008/msg00016.html) to how well
 those [attacks scale](https://www.freehaven.net/anonbib/cache/fingerprinting-ndss2016.pdf).
-Additionally, [research is beginning to suggest](https://lists.torproject.org/pipermail/tor-dev/2020-December/014498.html)
-that padding cover traffic that defends against website traffic fingerprinting
-will defend against correlation as well.
-
-These limits are also the reason that the global confirmation attack has been
-degraded to "**Strongly Suspect**" for Capability #4, and combined with traffic
-fingerprinting of services. Essentially, the global adversary loses
-statistical confidence in these attacks because they must consider all events
-across the entire Internet, and this raises the possibility of another
-attacker or other random activity increasing the [base rate of unrelated
+Essentially, the global adversary loses statistical confidence in these attacks because
+they must consider all events across the entire Internet, and this raises the possibility
+of another attacker or other random activity increasing the [base rate of unrelated
 events](https://en.wikipedia.org/wiki/Base_rate_fallacy) to their attack.
 
-For capability #4, the global adversary does become more certain in their
-suspicion if they are able to induce the onion service to transmit
-significantly more traffic than its baseline, and over long periods of time,
-this may even become **Confirm**. Again, the mitigations for this are to use
+However, they can use their global visibility to gain confidence over time,
+through the use of correlation rather than fingerprinting.
+
+On the bright side, [research is beginning to suggest](https://lists.torproject.org/pipermail/tor-dev/2020-December/014498.html)
+that padding cover traffic that defends against website traffic fingerprinting
+will defend against correlation as well, but that will only extend the amount
+of time that correlation takes. We believe this time extension will be
+significant, especially for client activity, but the research community
+currently has no tools to estimate how signficant.
+
+For capability #4, the adversary primarily maintains their capability to
+**confirm** primarily through their ability to perform TCP RST injection on the
+side. The [HoneyBadger](https://github.com/david415/HoneyBadger) tool can
+detect this, and the
+[Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
+pluggable transport eliminates the vector. However, the global adversary can
+also operate a client, and send large amounts of traffic to an onion service
+over long periods of time, to gain signficant confidence in a specific onion
+service IP address over time. Again, the mitigations for this are to use
 [OnionBalance](#using-onionbalance), use or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
@@ -468,8 +478,8 @@ and add them to your torrc like so:
 
 ```
 UseBridges 1
-Bridge obfs4 85.17.30.79:443 FC259A04A328A07FED1413E9FC6526530D9FD87A cert=RutxZlu8BtyP+y0NX7bAVD41+J/qXNhHUrKjFkRSdiBAhIHIQLhKQ2HxESAKZprn/lR3KA iat-mode=2 
-Bridge obfs4 38.229.1.78:80 C8CBDB2464FC9804A69531437BCF2BE31FDD2EE4 cert=Hmyfd2ev46gGY7NoVxA9ngrPF2zCZtzskRTzoWXbxNkzeVnGFPWmrTtILRyqCTjHR+s9dg iat-mode=2 
+Bridge obfs4 85.17.30.79:443 FC259A04A328A07FED1413E9FC6526530D9FD87A cert=RutxZlu8BtyP+y0NX7bAVD41+J/qXNhHUrKjFkRSdiBAhIHIQLhKQ2HxESAKZprn/lR3KA iat-mode=2
+Bridge obfs4 38.229.1.78:80 C8CBDB2464FC9804A69531437BCF2BE31FDD2EE4 cert=Hmyfd2ev46gGY7NoVxA9ngrPF2zCZtzskRTzoWXbxNkzeVnGFPWmrTtILRyqCTjHR+s9dg iat-mode=2
 
 ClientTransportPlugin obfs2,obfs3,obfs4,scramblesuit exec /usr/bin/obfs4proxy
 ```
@@ -648,3 +658,7 @@ they may be able to determine your Guards this way. If you notice this effect,
 please find some way to alert the Tor Project or
 [file a bug](https://gitlab.torproject.org/tpo/core/tor/-/issues/), as it
 indicates that our relay bandwidth metrics are too detailed.
+
+Finally, if you are not running Snowflake, consider using a tool such as
+[HoneyBadger](https://github.com/david415/HoneyBadger) to monitor for TCP RST
+injection attacks.
