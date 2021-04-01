@@ -124,7 +124,7 @@ inject traffic of their choice (especially against onion services).
 The vanguards addon is designed to protect against network adversaries.
 Setting aside the attacks that the vanguards addon defends against (which are
 documented in
-[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md)),
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md)),
 network adversaries can still perform attacks that provide the following
 capabilities:
 
@@ -173,7 +173,7 @@ Guard or middle relays via the following mechanisms:
 as the Rendezvous Point).
 
 The vanguards addon has additional checks to detect activity related to these attacks, as well. Those details are covered in
-[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/reamde/README_TECHNICAL.md).
+[README\_TECHNICAL.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_TECHNICAL.md).
 
 [Monitoring your service closely](#monitor-your-service) for these attacks can
 help you detect attempts by the adversary to perform these attacks.
@@ -192,10 +192,8 @@ but further research is [currently investigating shortcomings and improvements](
 
 Research is also progressing in [defending against traffic
 fingerprinting](https://arxiv.org/abs/2011.13471) using [Tor's circuit padding
-framework](https://github.com/torproject/tor/blob/master/doc/HACKING/CircuitPaddingDevelopment.md)
-using [Tor's Circuit Padding
-Framework](https://github.com/torproject/tor/blob/master/doc/HACKING/CircuitPaddingDevelopment.md), as
-well as [traffic
+framework](https://github.com/torproject/tor/blob/master/doc/HACKING/CircuitPaddingDevelopment.md),
+as well as [traffic
 splitting](https://www.comsys.rwth-aachen.de/fileadmin/papers/2020/2020-delacadena-trafficsliver.pdf)
 using
 [Conflux](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposals/329-traffic-splitting.txt),
@@ -220,7 +218,7 @@ the Tor relays you use to connect to the Tor network, and any other ISPs and
 [routers](https://spectrum.ieee.org/tech-talk/computing/hardware/us-suspicions-of-chinas-huawei-based-partly-on-nsas-own-spy-tricks) along your path to the Tor network.
 
 The local adversary has less surveillance resolution than the network
-adversary, because Tor's TLS encryption prevents it from knowing  which of
+adversary, because Tor's TLS encryption prevents it from knowing which of
 your packets belong to which Tor circuit. This means that the local adversary
 cannot perform most of the fingerprinting and related attacks that the network
 adversary can perform, unless overall traffic is light. Hence, most attacks
@@ -234,7 +232,7 @@ However, local adversaries still have the following capabilities:
    fixed).
 4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
-5. **Suspect** that run a particular service, if access is infrequent.
+5. **Suspect** that you run a particular service, if access of it is infrequent.
 6. **Suspect** when your client accesses a particular service, if other client
    activity is low.
 
@@ -307,11 +305,11 @@ addon will emit NOTICE and WARN messages related to connectivity loss, and
 your service will become unreachable.
 
 Capability #5 and #6 are similar to those capabilities of the Network
-adversary, except that because traffic from multiple circuits is multiplexed
-over TLS, if there is large amounts of concurrent activity, the adversary
-[loses accuracy](https://www.freehaven.net/anonbib/cache/websitefingerprinting-pets2016.pdf),
-especially when activity significantly overlaps. The research
-defenses outlined in the Network adversary also all apply here, too.
+adversary via website fingerprinting, but because traffic from multiple circuits
+is multiplexed over TLS, if there is large amounts of concurrent activity, the adversary
+[loses accuracy](https://www.freehaven.net/anonbib/cache/websitefingerprinting-pets2016.pdf)
+when activity significantly overlaps. The research defenses outlined in the
+Network Adversary also all apply here, too.
 
 ## Adversaries: Global
 
@@ -345,7 +343,7 @@ The global adversary has the following capabilities:
 1. **Determine** a list of most/all IPs that connect to the public Tor network.
 2. **Suspect** which of these IPs might be running onion services.
 3. **Suspect** which of these IPs might be using the vanguards addon (soon to be fixed).
-4. **Suspect** that an IP might be running a specific onion service address, if it is
+4. **Strongly Suspect** that an IP might be running a specific onion service address, if it is
    running a specific service that is of interest to them.
 5. **Suspect** that an IP might be connecting to a specific onion service
    address as a client, if it is of interest to them and other client activity
@@ -362,8 +360,12 @@ that padding cover traffic that defends against website traffic fingerprinting
 will defend against correlation as well.
 
 These limits are also the reason that the global confirmation attack has been
-degraded to "**suspect**" for Capability #4, and combined with traffic
-fingerprinting of services.
+degraded to "**Strongly Suspect**" for Capability #4, and combined with traffic
+fingerprinting of services. Essentially, the global adversary loses
+statistical confidence in these attacks because they must consider all events
+across the entire Internet, and this raises the possibility of another
+attacker or other random activity increasing the [base rate of unrelated
+events](https://en.wikipedia.org/wiki/Base_rate_fallacy) to their attack.
 
 For capability #4, the global adversary does become more certain in their
 suspicion if they are able to induce the onion service to transmit
