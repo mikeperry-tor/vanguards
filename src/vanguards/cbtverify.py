@@ -61,7 +61,7 @@ class TimeoutStats:
     plog("INFO", "CBT Timeout rate: "+str(event.timeout_rate)+"; Our measured timeout rate: "+str(self.timeout_rate_all())+"; Hidden service timeout rate: "+str(self.timeout_rate_hs()))
     plog("INFO", event.raw_content())
     if event.set_type == "COMPUTED":
-      plog("INFO", "CBT Timeout computed: "+event.raw_content)
+      plog("INFO", "CBT Timeout computed: "+event.raw_content())
       self.record_timeouts = True
     if event.set_type == "RESET":
       plog("INFO", "CBT Timeout reset")
