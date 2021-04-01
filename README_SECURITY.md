@@ -369,9 +369,9 @@ events](https://en.wikipedia.org/wiki/Base_rate_fallacy) to their attack.
 
 For capability #4, the global adversary does become more certain in their
 suspicion if they are able to induce the onion service to transmit
-significantly more traffic than its baseline for a long period of time. Again,
-the mitigations for this are to use [OnionBalance](#using-onionbalance), use
-or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
+significantly more traffic than its baseline, and over long periods of time,
+this may even become **Confirm**. Again, the mitigations for this are to use
+[OnionBalance](#using-onionbalance), use or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service. And
