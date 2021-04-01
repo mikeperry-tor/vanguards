@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import logging
+import logging.handlers
 import sys
+import os.path
 
 logger = None
 loglevel = "DEBUG"
@@ -22,9 +23,12 @@ def set_loglevel(level):
   loglevel = level
 
 def set_logfile(filename):
-  global logfile, logger
+  global logfile
   try:
-    logfile = open(filename, "a")
+    if filename == ":syslog:":
+      logfile = ":syslog:"
+    else:
+      logfile = open(filename, "a")
     logger_init()
   except Exception as e:
     plog("ERROR", "Can't open log file "+str(filename)+": "+str(e))
@@ -37,12 +41,25 @@ def logger_init():
   # Default behavior = log to stdout if TorUtil.logfile is None,
   # or to the open file specified otherwise.
   logger = logging.getLogger("TorCtl")
-  formatter = logging.Formatter("%(levelname)s[%(asctime)s]: %(message)s",
-                                "%a %b %d %H:%M:%S %Y")
 
-  if not logfile:
-    logfile = sys.stdout
-  ch = logging.StreamHandler(logfile)
+  if logfile == ":syslog:":
+    if os.path.exists("/dev/log"):
+      ch = logging.handlers.SysLogHandler("/dev/log")
+    elif os.path.exists("/var/run/syslog"):
+      ch = logging.handlers.SysLogHandler("/var/run/syslog")
+    else:
+      ch = logging.handlers.SysLogHandler()
+
+    formatter = logging.Formatter("vanguards %(levelname)s: %(message)s")
+  else:
+    formatter = logging.Formatter("%(levelname)s[%(asctime)s]: %(message)s",
+                                  "%a %b %d %H:%M:%S %Y")
+    if not logfile:
+      logfile = sys.stdout
+      ch = logging.StreamHandler(logfile)
+    else:
+      ch = logging.StreamHandler(logfile)
+
   ch.setFormatter(formatter)
   logger.addHandler(ch)
   logger.setLevel(loglevels[loglevel])

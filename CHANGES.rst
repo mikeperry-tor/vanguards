@@ -10,6 +10,7 @@ next
 - Document that CookieAuthentication is automatic by default. #48.
 - Add option to close service introduction circs with too much traffic
   (off by default) #42.
+- Provide syslog logging ability. #56.
 
 0.3.1
 -----

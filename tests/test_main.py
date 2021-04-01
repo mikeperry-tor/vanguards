@@ -264,6 +264,15 @@ def test_failures():
   except SystemExit:
     assert True
 
+  # Test syslog success
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main", "--logfile", ":syslog:" ]
+  try:
+    vanguards.main.main()
+    assert True
+  except SystemExit:
+    assert False
+
   # Test loglevel and log success
   vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--loglevel", "INFO", "--logfile", "valid.log.test" ]
