@@ -11,6 +11,7 @@ next
 - Add option to close service introduction circs with too much traffic
   (off by default) #42.
 - Provide syslog logging ability. #56.
+- Add path verification component for integration testing. #61.
 
 0.3.1
 -----

@@ -10,6 +10,7 @@ from . import rendguard
 from . import vanguards
 from . import bandguards
 from . import cbtverify
+from . import pathverify
 
 from . import config
 
@@ -158,6 +159,26 @@ def control_loop(state):
     controller.add_event_listener(
                  functools.partial(cbtverify.TimeoutStats.cbt_event, timeouts),
                                   stem.control.EventType.BUILDTIMEOUT_SET)
+
+  if config.ENABLE_PATHVERIFY:
+    paths = pathverify.PathVerify(controller,
+                                  vanguards.NUM_LAYER1_GUARDS,
+                                  vanguards.NUM_LAYER2_GUARDS,
+                                  vanguards.NUM_LAYER3_GUARDS)
+
+    controller.add_event_listener(
+                 functools.partial(pathverify.PathVerify.circ_event, paths),
+                                  stem.control.EventType.CIRC)
+    controller.add_event_listener(
+                 functools.partial(pathverify.PathVerify.circ_minor_event, paths),
+                                  stem.control.EventType.CIRC_MINOR)
+    controller.add_event_listener(
+                 functools.partial(pathverify.PathVerify.orconn_event, paths),
+                                  stem.control.EventType.ORCONN)
+    controller.add_event_listener(
+                 functools.partial(pathverify.PathVerify.conf_changed_event,
+                                   paths),
+                                  stem.control.EventType.CONF_CHANGED)
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.

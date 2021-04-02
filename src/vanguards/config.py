@@ -30,6 +30,8 @@ ENABLE_BANDGUARDS=True
 
 ENABLE_CBTVERIFY=False
 
+ENABLE_PATHVERIFY=False
+
 # State file location
 STATE_FILE = "vanguards.state"
 
@@ -57,6 +59,7 @@ _RETRY_LIMIT = None
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
+  global ENABLE_PATHVERIFY
   global LOGLEVEL, LOGFILE
   global ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS
 
@@ -123,16 +126,21 @@ def setup_options():
                       help="Enable Circuit Build Time monitoring")
   parser.set_defaults(cbtverify_enabled=ENABLE_CBTVERIFY)
 
+  parser.add_argument("--enable_pathverify", dest="pathverify_enabled",
+                      action="store_true",
+                      help="Enable path selection monitoring")
+  parser.set_defaults(pathverify_enabled=ENABLE_PATHVERIFY)
+
   options = parser.parse_args()
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
-   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY,
+   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY, ENABLE_PATHVERIFY,
    ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.control_pass,
        options.bandguards_enabled, options.rendguard_enabled,
-       options.cbtverify_enabled, options.one_shot_vanguards,
-       options.vanguards_enabled)
+       options.cbtverify_enabled, options.pathverify_enabled,
+       options.one_shot_vanguards, options.vanguards_enabled)
 
   if options.loglevel != None:
     LOGLEVEL = options.loglevel
