@@ -10,7 +10,7 @@ _ROUTELEN_FOR_PURPOSE = {
                          "HS_CLIENT_REND"   : 4,
                          "HS_SERVICE_INTRO" : 4,
                          "HS_SERVICE_REND"  : 5,
-                         "HS_VANGUARDS"     : 3
+                         "HS_VANGUARDS"     : 4
                         }
 
 class PathVerify:
@@ -45,13 +45,13 @@ class PathVerify:
     if layer2:
       self.layer2 = set(layer2.split(","))
       if len(self.layer2) != self.num_layer2:
-        plog("NOTICE", "Wrong number of layer2 guards  configured: "+ \
-             str(len(self.layer2)) + " vs " + str(self.num_layer2))
+       plog("NOTICE", "Wrong number of layer2 guards. " + \
+            str(self.num_layer2)+" vs: "+str(self.layer2))
     if layer3:
       self.layer3 = set(layer3.split(","))
       if len(self.layer3) != self.num_layer3:
-        plog("NOTICE", "Wrong number of layer3 guards  configured: "+ \
-             str(len(self.layer3)) + " vs " + str(self.num_layer3))
+        plog("NOTICE", "Wrong number of layer3 guards. " + \
+             str(self.num_layer3)+" vs: "+str(self.layer3))
 
   def conf_changed_event(self, event):
     if "HSLayer2Nodes" in event.changed:
@@ -60,16 +60,16 @@ class PathVerify:
     if "HSLayer3Nodes" in event.changed:
       self.layer3 = set(event.changed["HSLayer3Nodes"][0].split(","))
 
-    # These can become empty briefly on sighup
-    if len(self.layer2):
+    # These can become empty briefly on sighup. Aka set([''])
+    if len(self.layer2) > 1:
       if len(self.layer2) != self.num_layer2:
-        plog("NOTICE", "Wrong number of layer2 guards  configured: "+ \
-             str(len(self.layer2)) + " vs " + str(self.num_layer2))
+        plog("NOTICE", "Wrong number of layer2 guards. " + \
+            str(self.num_layer2)+" vs: "+str(self.layer2))
 
-    if len(self.layer3):
+    if len(self.layer3) > 1:
       if len(self.layer3) != self.num_layer3:
-        plog("NOTICE", "Wrong number of layer3 guards  configured: "+ \
-             str(len(self.layer3)) + " vs " + str(self.num_layer3))
+        plog("NOTICE", "Wrong number of layer3 guards. " + \
+             str(self.num_layer3)+" vs: "+str(self.layer3))
 
     plog("DEBUG", event.raw_content())
 
@@ -97,10 +97,10 @@ class PathVerify:
       if not event.path[0][0] in self.layer1:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
              str(self.layer1))
-      if not event.path[1][0] in self.layer2:
+      if len(event.path) > 1 and not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
-      if not event.path[2][0] in self.layer3:
+      if len(event.path) > 1 and not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
@@ -121,8 +121,10 @@ class PathVerify:
       plog("WARN", "Purpose switched from non-hs to hs: "+ \
            str(event.raw_content()))
     elif event.purpose[0:3] != "HS_" and event.old_purpose[0:3] == "HS_":
-      plog("WARN", "Purpose switched from hs to non-hs: "+ \
-           str(event.raw_content()))
+      if event.purpose != "CIRCUIT_PADDING" and \
+         event.purpose != "MEASURE_TIMEOUT":
+        plog("WARN", "Purpose switched from hs to non-hs: "+ \
+             str(event.raw_content()))
 
     if event.purpose[0:3] == "HS_" or event.old_purpose[0:3] == "HS_":
       if not event.path[0][0] in self.layer1:
