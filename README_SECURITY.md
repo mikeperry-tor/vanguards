@@ -372,7 +372,7 @@ of time that correlation takes. We believe this time extension will be
 significant, especially for client activity, but the research community
 currently has no tools to estimate how signficant.
 
-For capability #4, the adversary primarily maintains their capability to
+For capability #4, the adversary maintains their capability to
 **confirm** primarily through their ability to perform TCP RST injection on the
 side. The [HoneyBadger](https://github.com/david415/HoneyBadger) tool can
 detect this, and the
