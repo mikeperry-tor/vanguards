@@ -71,6 +71,8 @@ class PathVerify:
         plog("NOTICE", "Wrong number of layer3 guards  configured: "+ \
              str(len(self.layer3)) + " vs " + str(self.num_layer3))
 
+    plog("DEBUG", event.raw_content())
+
   def orconn_event(self, event):
     if event.status == "CONNECTED":
       self.layer1.add(event.endpoint_fingerprint)
@@ -88,7 +90,7 @@ class PathVerify:
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT"):
       if len(event.path) != _ROUTELEN_FOR_PURPOSE[event.purpose]:
-        plog("NOTICE", "Route len "+str(len(path))+ " is not " + \
+        plog("NOTICE", "Route len "+str(len(event.path))+ " is not " + \
              str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
              event.purpose +":"+str(event.hs_state)+" + " + \
              event.raw_content())
