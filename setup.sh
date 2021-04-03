@@ -44,4 +44,5 @@ echo
 echo "If we got this far, everything should be ready!"
 echo
 echo "Run 'source ${DEST}/bin/activate' to start the environment."
-echo "Then run 'vanguards'"
+echo
+echo "Then run 'vanguards' or './vanguards_parallel.sh'"

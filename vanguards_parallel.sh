@@ -18,3 +18,12 @@ $VANGUARDS_LOCATION --disable_vanguards --disable_rendguard $OTHER_OPTIONS &
 
 # Rendguards instance
 $VANGUARDS_LOCATION --disable_vanguards --disable_bandguards $OTHER_OPTIONS &
+
+jobs
+
+echo
+echo "Vanguards is now running in the background as the above jobs."
+echo
+echo "If you still are experiencing high CPU from the vanguards process,"
+echo "remember that it can be run with --one_shot_vanguards, once per hour"
+echo "from cron."
