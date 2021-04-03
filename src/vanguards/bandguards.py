@@ -399,7 +399,6 @@ class BandwidthStats:
       self.circs[event.id].overhead_sent_bytes += overhead_written
 
       self.check_circuit_limits(self.circs[event.id])
-    plog("DEBUG", event.raw_content())
 
   def check_connectivity(self, now):
     if self.no_conns_since:

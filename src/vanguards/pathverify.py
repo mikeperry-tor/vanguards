@@ -93,10 +93,20 @@ class PathVerify:
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT"):
       if len(event.path) != _ROUTELEN_FOR_PURPOSE[event.purpose]:
-        plog("NOTICE", "Route len "+str(len(event.path))+ " is not " + \
-             str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
-             event.purpose +":"+str(event.hs_state)+" + " + \
-             event.raw_content())
+        if event.purpose == "HS_SERVICE_HSDIR" and \
+           event.hs_state == "HSSI_CONNECTING":
+          # This can happen when HS_VANGUARDS are cannibalized..
+          # XXX: Is that a bug?
+          plog("INFO", "Route len "+str(len(event.path))+ " is not " + \
+               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+               event.purpose +":"+str(event.hs_state)+" + " + \
+               event.raw_content())
+        else:
+          plog("NOTICE", "Route len "+str(len(event.path))+ " is not " + \
+               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+               event.purpose +":"+str(event.hs_state)+" + " + \
+               event.raw_content())
+
       if not event.path[0][0] in self.layer1:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
              str(self.layer1))
@@ -110,10 +120,15 @@ class PathVerify:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
-      if len(filter(lambda x: self.layer1[x], self.layer1.iterkeys())) != \
-         self.num_layer1:
-        plog("NOTICE", "Circuits built with different number of guards " + \
-             "than configured. Currently using: " + str(self.layer1))
+      layer1_use = len(filter(lambda x: self.layer1[x],
+                              self.layer1.iterkeys()))
+
+      if layer1_use > self.num_layer1:
+        plog("WARN", "Circuits are being used on more guards " + \
+             "than configured. Current guard use counts: " + str(self.layer1))
+      elif layer1_use < self.num_layer1:
+        plog("NOTICE", "Circuits are being used on fewer guards " + \
+             "than configured. Current guard use counts: " + str(self.layer1))
 
       if len(self.layer2) != self.num_layer2:
         plog("WARN", "Circuit built with different number of layer2 nodes " + \
