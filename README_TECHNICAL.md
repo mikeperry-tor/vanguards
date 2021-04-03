@@ -11,10 +11,32 @@ node(s) that are in use by a Tor client and/or Tor onion service. Once the
 guard node is known, traffic analysis attacks that can deanonymize an onion
 service (or onion service user) become easier.
 
-The most basic form of this attack is to make many connections to a Tor onion
-service, in order to force it to create circuits until one of the adversary's
-relay is chosen for the middle hop next to the guard. That is possible because
-middle hops for rendezvous circuits are picked from the set of all relays:
+# Onion Service Overview
+
+To understand these attacks as well as the rest of this document, first let's
+give a quick overview of how onion services work in Tor.
+
+Onion service addresses are announced in encrypted descriptor documents which
+are uploaded to specially selected Tor relays, called HSDIRs. These
+descriptors list three Introduction Points, which are another set of relays
+that are used to make connection requests to a specific onion service.
+
+Services create and hold open Introduction Circuits to their chosen
+Introduction Point relays, to accept connection requests from clients.These
+client connection requests specify a client-chosen relay called the Rendezvous
+Point, which the client has made a circuit to, to accept connection back from
+the service. When a service receives a request through their Introduction
+circuit, that service makes a separate Rendezvous circuit to connect to that
+client's chosen Rendezvous Point. Then, actual onion service application data
+flows over this Rendezvous circuit, as a Tor Stream.
+
+# Onion Service Guard Discovery Attacks
+
+The most basic form of the Guard discovery attack is to make many connections
+to a Tor onion service, in order to force it to create circuits until one of
+the adversary's relay is chosen for the middle hop next to the guard. That is
+possible because middle hops for rendezvous circuits are picked from the set
+of all relays:
 
 ![Current Onion Service Paths](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustrations/illustrations/current_system.jpg)
 
@@ -27,6 +49,8 @@ is in fact part of the rendezvous circuit, leading to the discovery of that
 onion service's or client's guard node. From that point, the guard node can be
 compromised, coerced, or surveilled to determine the actual IP address of the
 onion service or client.
+
+# Vanguards Addon Defenses
 
 To defend against these attacks, this addon has three defense subsystems:
 Vanguards, Rendguard, and Bandguards.
