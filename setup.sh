@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-SYS_PYTHON=$(which pypy || which pypy3 || which python3 || which python2)
+SYS_PYTHON=$(which pypy3 || which pypy || which pypy2 || which python3 || which python2)
 
 if [ -z $1 ]
 then
