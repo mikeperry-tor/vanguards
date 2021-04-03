@@ -395,7 +395,10 @@ handshakes](https://gitlab.torproject.org/tpo/core/torspec/-/blob/master/proposa
 but it is likely that [post-quantum TLS efforts](https://csrc.nist.gov/projects/post-quantum-cryptography) will happen first,
 independently. We will deploy post-quantum TLS as soon as it is standardized,
 and that work will inform our circuit handshake algorithm choice (with a
-healthy dose of skepticism of the NIST process).
+[healthy dose of skepticism](https://cr.yp.to/papers/categories-20200918.pdf) of the
+[NIST](https://cr.yp.to/newelliptic/nistecc-20160106.pdf)
+[process](https://www.projectbullrun.org/dual-ec/documents/dual-ec-20150731.pdf)).
+
 
 # What can I do to be safer?
 
