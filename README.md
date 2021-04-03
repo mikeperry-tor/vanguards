@@ -131,8 +131,11 @@ on your system, and then run the addon directly from the source tree with:
   pypy ./src/vanguards.py
 ```
 
-Additionally, you can disable components to reduce processing overhead. Try
-disabling Rendguard first. If that is still insufficient, disable Bandguards.
+Additionally, you can try running vanguards components in parallel, so that
+the system does not bottleneck on one CPU core. A simple test script called
+[vanguards\_parallel.sh](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards_parallel.sh)
+is available to try this. If it helps,
+[please let us know](https://github.com/mikeperry-tor/vanguards/issues/62)!
 
 Vanguards by itself should not require much overhead, but if even that is too
 much, you can run the following once per hour from cron to update your torrc
