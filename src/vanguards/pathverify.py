@@ -6,7 +6,7 @@ from . import control
 from .logger import plog
 
 _ROUTELEN_FOR_PURPOSE = {
-                         "HS_VANGUARDS"     : 4
+                         "HS_VANGUARDS"     : 4,
                          "HS_CLIENT_HSDIR"  : 5,
                          "HS_CLIENT_INTRO"  : 5,
                          "HS_CLIENT_REND"   : 4,
