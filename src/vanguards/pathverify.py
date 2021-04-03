@@ -6,11 +6,13 @@ from . import control
 from .logger import plog
 
 _ROUTELEN_FOR_PURPOSE = {
+                         "HS_VANGUARDS"     : 4
+                         "HS_CLIENT_HSDIR"  : 5,
                          "HS_CLIENT_INTRO"  : 5,
                          "HS_CLIENT_REND"   : 4,
+                         "HS_SERVICE_HSDIR" : 4,
                          "HS_SERVICE_INTRO" : 4,
                          "HS_SERVICE_REND"  : 5,
-                         "HS_VANGUARDS"     : 4
                         }
 
 class PathVerify:
@@ -127,7 +129,8 @@ class PathVerify:
            str(event.raw_content()))
     elif event.purpose[0:3] != "HS_" and event.old_purpose[0:3] == "HS_":
       if event.purpose != "CIRCUIT_PADDING" and \
-         event.purpose != "MEASURE_TIMEOUT":
+         event.purpose != "MEASURE_TIMEOUT" and \
+         event.purpose != "PATH_BIAS_TESTING":
         plog("WARN", "Purpose switched from hs to non-hs: "+ \
              str(event.raw_content()))
 
