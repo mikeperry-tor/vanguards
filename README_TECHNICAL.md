@@ -32,9 +32,8 @@ To defend against these attacks, this addon has three defense subsystems:
 Vanguards, Rendguard, and Bandguards.
 
 All three subsystems apply to both service-side and client-side onion service
-activity. With Tor v0.3.5.1 and Vanguards v0.3.0 and above, the Bandguards
-subsystem also applies to client traffic that exits the Tor network to the
-normal Internet.
+activity. The Bandguards subsystem also applies to client traffic that exits the
+Tor network to the normal Internet.
 
 ## The Vanguards Subsystem
 
