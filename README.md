@@ -149,8 +149,9 @@ with fresh layer2 and layer3 guards:
 
 This is an experimental addon with many heuristics that still need tuning.
 Events that represent severe issues are at WARN level. You should
-react to these events. Warns are currently emitted for the following
-conditions:
+[react to these events](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md#monitor-your-service).
+
+Warns are currently emitted for the following conditions:
 
 1. When your service is disconnected from the Tor network, we WARN. Downtime
 can be a side channel signal or a passive information leak,
@@ -164,6 +165,8 @@ Tor a GeoIP file, we WARN.
 4. If you disable killing circuits in the rendguard component, we WARN when
 use counts for rends are exceeded.
 5. With Tor 0.3.4.10 and above, we WARN upon receipt of any dropped/ignored cell.
+6. If you enable introduction circuit rate limiting, a WARN is emitted when
+introduction circuits are killed.
 
 Events that are detected by heuristics that still need tuning are at NOTICE
 level. They may be a bug, a false positive, or an actual attack. If in doubt,
