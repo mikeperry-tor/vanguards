@@ -101,10 +101,10 @@ class PathVerify:
       else:
         self.layer1[event.path[0][0]] += 1
 
-      if len(event.path) > 1 and not event.path[1][0] in self.layer2:
+      if not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
-      if len(event.path) > 1 and not event.path[2][0] in self.layer3:
+      if not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
@@ -135,10 +135,10 @@ class PathVerify:
       if not event.path[0][0] in self.layer1:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
              str(self.layer1.keys()))
-      if not event.path[1][0] in self.layer2:
+      if len(event.path) > 1 and not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
-      if not event.path[2][0] in self.layer3:
+      if len(event.path) > 2 and not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
