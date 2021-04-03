@@ -22,7 +22,7 @@ descriptors list three Introduction Points, which are another set of relays
 that are used to make connection requests to a specific onion service.
 
 Services create and hold open Introduction Circuits to their chosen
-Introduction Point relays, to accept connection requests from clients.These
+Introduction Point relays, to accept connection requests from clients. These
 client connection requests specify a client-chosen relay called the Rendezvous
 Point, which the client has made a circuit to, to accept connection back from
 the service. When a service receives a request through their Introduction

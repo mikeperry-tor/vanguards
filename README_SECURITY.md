@@ -115,6 +115,14 @@ attack. See also the section on [Monitoring Your
 Service](#monitor-your-service), and please find a way to contact the Tor Project
 if too much data is provided by our metrics portal.
 
+Also for capability #6, clients can hold circuits opened to your service, and
+either try to DoS random Guard relays offline, or wait for Guards to go down,
+to see if their circuits to you close. Because Vanguards uses two guards, they
+will not know which Guard was in use for their circuit, hence this attack is
+not particularly strong with clients alone. It becomes **confirm** if the
+adversary additionally has [Network](#adversaries-network),
+[Local](#adversaries-local), or [Global](#adversaries-global) capabilities.
+
 ## Adversaries: Network
 
 Network adversaries are those that run relays in the Tor network, and/or that

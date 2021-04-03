@@ -63,10 +63,10 @@ class Layer1Guards:
 
     if len(layer1_in_use) > self.num_layer1:
       plog("WARN", "Circuits are being used on more guards " + \
-             "than configured. Current guard use counts: "+str(layer1_in_use))
+             "than configured. Current guard use: "+str(layer1_in_use))
     elif len(layer1_in_use) < self.num_layer1:
       plog("NOTICE", "Circuits are being used on fewer guards " + \
-             "than configured. Current guard use counts: "+str(layer1_in_use))
+             "than configured. Current guard use: "+str(layer1_in_use))
 
 class PathVerify:
   def __init__(self, controller, num_layer1, num_layer2, num_layer3):
