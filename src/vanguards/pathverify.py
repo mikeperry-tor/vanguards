@@ -16,7 +16,7 @@ _ROUTELEN_FOR_PURPOSE = {
 class PathVerify:
   def __init__(self, controller, num_layer1, num_layer2, num_layer3):
     self.controller = controller
-    self.layer1 = set()
+    self.layer1 = {}
     self.layer2 = set()
     self.layer3 = set()
     self.num_layer1 = num_layer1
@@ -28,14 +28,14 @@ class PathVerify:
   def _orconn_init(self, controller):
     for l in controller.get_info("orconn-status").split("\n"):
       if len(l):
-        self.layer1.add(l.split("~")[0][1:])
+        self.layer1[l.split("~")[0][1:]] = 0
 
     if len(self.layer1) < self.num_layer1:
       plog("NOTICE", "Fewer guards in use than configured.. Currently only "+ \
-           str(self.layer1))
+           str(self.layer1.keys()))
     elif len(self.layer1) > self.num_layer1:
       plog("NOTICE", "More guards in use than configured.. Currently using "+ \
-           str(self.layer1))
+           str(self.layer1.keys()))
 
   def _layers_init(self, controller):
     layer2 = controller.get_conf("HSLayer2Nodes", None)
@@ -75,9 +75,10 @@ class PathVerify:
 
   def orconn_event(self, event):
     if event.status == "CONNECTED":
-      self.layer1.add(event.endpoint_fingerprint)
-    elif event.status == "CLOSED" or event.status == "FAILED":
-      self.layer1.discard(event.endpoint_fingerprint)
+      self.layer1[event.endpoint_fingerprint] = 0
+    elif event.status == "CLOSED" or event.status == "FAILED" and \
+         event.endpoint_fingerprint in self.layer1:
+      del self.layer1[event.endpoint_fingerprint]
 
     if len(self.layer1) < self.num_layer1:
       plog("NOTICE", "Fewer guards in use than configured. Currently only "+ \
@@ -97,6 +98,9 @@ class PathVerify:
       if not event.path[0][0] in self.layer1:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
              str(self.layer1))
+      else:
+        self.layer1[event.path[0][0]] += 1
+
       if len(event.path) > 1 and not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
@@ -104,8 +108,9 @@ class PathVerify:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
-      if len(self.layer1) != self.num_layer1:
-        plog("NOTICE", "Circuit built with different number of guards " + \
+      if len(filter(lambda x: self.layer1[x], self.layer1.iterkeys())) != \
+         self.num_layer1:
+        plog("NOTICE", "Circuits built with different number of guards " + \
              "than configured. Currently using: " + str(self.layer1))
 
       if len(self.layer2) != self.num_layer2:
@@ -129,7 +134,7 @@ class PathVerify:
     if event.purpose[0:3] == "HS_" or event.old_purpose[0:3] == "HS_":
       if not event.path[0][0] in self.layer1:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
-             str(self.layer1))
+             str(self.layer1.keys()))
       if not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
