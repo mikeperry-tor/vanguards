@@ -12,6 +12,7 @@ next
   (off by default) #42.
 - Provide syslog logging ability. #56.
 - Add path verification component for integration testing. #61.
+- Include vanguards_parallel.sh for high load services. #62.
 
 0.3.1
 -----
