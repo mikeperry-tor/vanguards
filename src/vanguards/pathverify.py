@@ -14,11 +14,64 @@ _ROUTELEN_FOR_PURPOSE = {
                          "HS_SERVICE_INTRO" : 4,
                          "HS_SERVICE_REND"  : 5
                         }
+class Layer1Stats:
+  def __init__(self):
+    self.use_count = 0
+    self.conn_count = 1
+
+class Layer1Guards:
+  def __init__(self, num_layer1):
+    self.guards = {}
+    self.num_layer1 = num_layer1
+
+  def add_conn(self, guard_fp):
+    if guard_fp in self.guards:
+      self.guards[guard_fp].conn_count += 1
+    else:
+      self.guards[guard_fp] = Layer1Stats()
+
+  def del_conn(self, guard_fp):
+    if guard_fp in self.guards:
+      if self.guards[guard_fp].conn_count > 1:
+        self.guards[guard_fp].conn_count -= 1
+      else:
+        del self.guards[guard_fp]
+
+  def check_conn_counts(self):
+    if len(self.guards) < self.num_layer1:
+      plog("NOTICE", "Fewer guards in use than configured.. Currently only "+ \
+           str(self.guards.keys()))
+    elif len(self.guards) > self.num_layer1:
+      plog("NOTICE", "More guards in use than configured.. Currently using "+ \
+           str(self.guards.keys()))
+
+    for g in self.guards.iterkeys():
+      if self.guards[g].conn_count > 1:
+       plog("NOTICE", "Extra connections to guard "+g+": "+\
+            str(self.guards[g].conn_count))
+
+  def add_use_count(self, guard_fp):
+    if not guard_fp in self.guards:
+      plog("WARN", "Guard "+guard_fp+" not in "+ \
+           str(self.guards.keys()))
+    else:
+      self.guards[guard_fp].use_count += 1
+
+  def check_use_counts(self):
+    layer1_in_use = filter(lambda x: self.guards[x].use_count,
+                           self.guards.iterkeys())
+
+    if len(layer1_in_use) > self.num_layer1:
+      plog("WARN", "Circuits are being used on more guards " + \
+             "than configured. Current guard use counts: "+str(layer1_in_use))
+    elif len(layer1_in_use) < self.num_layer1:
+      plog("NOTICE", "Circuits are being used on fewer guards " + \
+             "than configured. Current guard use counts: "+str(layer1_in_use))
 
 class PathVerify:
   def __init__(self, controller, num_layer1, num_layer2, num_layer3):
     self.controller = controller
-    self.layer1 = {}
+    self.layer1 = Layer1Guards(num_layer1)
     self.layer2 = set()
     self.layer3 = set()
     self.num_layer1 = num_layer1
@@ -30,14 +83,10 @@ class PathVerify:
   def _orconn_init(self, controller):
     for l in controller.get_info("orconn-status").split("\n"):
       if len(l):
-        self.layer1[l.split("~")[0][1:]] = 0
+        guard_fp = l.split("~")[0][1:]
+        self.layer1.add_conn(guard_fp)
 
-    if len(self.layer1) < self.num_layer1:
-      plog("NOTICE", "Fewer guards in use than configured.. Currently only "+ \
-           str(self.layer1.keys()))
-    elif len(self.layer1) > self.num_layer1:
-      plog("NOTICE", "More guards in use than configured.. Currently using "+ \
-           str(self.layer1.keys()))
+    self.layer1.check_conn_counts()
 
   def _layers_init(self, controller):
     layer2 = controller.get_conf("HSLayer2Nodes", None)
@@ -77,17 +126,11 @@ class PathVerify:
 
   def orconn_event(self, event):
     if event.status == "CONNECTED":
-      self.layer1[event.endpoint_fingerprint] = 0
-    elif event.status == "CLOSED" or event.status == "FAILED" and \
-         event.endpoint_fingerprint in self.layer1:
-      del self.layer1[event.endpoint_fingerprint]
+      self.layer1.add_conn(event.endpoint_fingerprint)
+    elif event.status == "CLOSED" or event.status == "FAILED":
+      self.layer.del_conn(event.endpoint_fingerprint)
 
-    if len(self.layer1) < self.num_layer1:
-      plog("NOTICE", "Fewer guards in use than configured. Currently only "+ \
-           str(self.layer1))
-    elif len(self.layer1) > self.num_layer1:
-      plog("NOTICE", "More guards in use than configured. Currently using "+ \
-           str(self.layer1))
+    self.layer1.check_conn_counts()
 
   def circ_event(self, event):
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \
@@ -107,11 +150,8 @@ class PathVerify:
                event.purpose +":"+str(event.hs_state)+" + " + \
                event.raw_content())
 
-      if not event.path[0][0] in self.layer1:
-        plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
-             str(self.layer1))
-      else:
-        self.layer1[event.path[0][0]] += 1
+      self.layer1.add_use_count(event.path[0][0])
+      self.layer1.check_use_counts()
 
       if not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
@@ -119,16 +159,6 @@ class PathVerify:
       if not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
-
-      layer1_use = len(filter(lambda x: self.layer1[x],
-                              self.layer1.iterkeys()))
-
-      if layer1_use > self.num_layer1:
-        plog("WARN", "Circuits are being used on more guards " + \
-             "than configured. Current guard use counts: " + str(self.layer1))
-      elif layer1_use < self.num_layer1:
-        plog("NOTICE", "Circuits are being used on fewer guards " + \
-             "than configured. Current guard use counts: " + str(self.layer1))
 
       if len(self.layer2) != self.num_layer2:
         plog("WARN", "Circuit built with different number of layer2 nodes " + \
@@ -150,7 +180,7 @@ class PathVerify:
              str(event.raw_content()))
 
     if event.purpose[0:3] == "HS_" or event.old_purpose[0:3] == "HS_":
-      if not event.path[0][0] in self.layer1:
+      if not event.path[0][0] in self.layer1.guards:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
              str(self.layer1.keys()))
       if len(event.path) > 1 and not event.path[1][0] in self.layer2:
