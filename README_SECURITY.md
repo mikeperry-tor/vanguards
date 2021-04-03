@@ -287,7 +287,7 @@ The first vector of the capability #4 **confirmation** attack can be mitigated b
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service, and by [monitoring your service](#monitor-your-service).
 
-The second and third vector can be detected by the
+The second and third vector of capability #4 can be detected by the
 [HoneyBadger](https://github.com/david415/HoneyBadger) tool. Alternatively, it
 can be mitigated by using the
 [Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
@@ -300,7 +300,7 @@ individual SnowFlakes become blocked. It should also keep existing connections
 live, even in the event of said blocks, which goes a long way against
 confirmation attacks.
 
-The third vector can also be mitigated by [monitoring your service
+The third vector of capability #4 can also be mitigated by [monitoring your service
 closely](#monitor-your-service) for connectivity loss can also help you detect
 attempts by the adversary to **confirm** your service location. The vanguards
 addon will emit NOTICE and WARN messages related to connectivity loss, and
