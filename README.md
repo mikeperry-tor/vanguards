@@ -164,7 +164,7 @@ or an actual attack.
 Tor a GeoIP file, we WARN.
 4. If you disable killing circuits in the rendguard component, we WARN when
 use counts for rends are exceeded.
-5. We WARN upon receipt of any dropped/ignored cell.
+5. We WARN upon receipt of any cell that the Tor client drops or ignores.
 6. If you enable introduction circuit rate limiting, a WARN is emitted when
 introduction circuits are killed.
 
