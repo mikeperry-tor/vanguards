@@ -12,7 +12,7 @@ _ROUTELEN_FOR_PURPOSE = {
                          "HS_CLIENT_REND"   : 4,
                          "HS_SERVICE_HSDIR" : 4,
                          "HS_SERVICE_INTRO" : 4,
-                         "HS_SERVICE_REND"  : 5,
+                         "HS_SERVICE_REND"  : 5
                         }
 
 class PathVerify:
