@@ -3,7 +3,7 @@
 # Use pypy or pypy3, if available
 SYS_PY=$(which pypy3 || which pypy || which pypy2 || which python3 || which python2)
 
-VANGUARDS_LOCATION="$SYS_PY ./src/vanguards.py"
+VANGUARDS_LOCATION=$(which vanguards || echo "$SYS_PY ./src/vanguards.py")
 
 OTHER_OPTIONS="$@"
 

@@ -20,10 +20,21 @@ For additional security information, please see
 
 # Installation Methods
 
-There are several ways to use this addon. At the moment, the safest is to run
-it directly from git.
+There are several ways to use this addon.
 
-Packages for popular UNIX-like systems should be available soon.
+Packages for debian-like systems exist, but they are typically out of date.
+Check backports, if you're lucky it might get updated there.
+
+If you are using this addon with a system tor, and not using a system
+vanguards package, you will need to run the following as the system Tor user,
+because this addon needs access to Tor's data directory. To do this on
+debian-like systems, do:
+
+```
+  sudo -u debian-tor bash
+```
+
+Then, run all of the following as the `debian-tor` user.
 
 ## Running this addon directly from git
 
@@ -65,6 +76,13 @@ latest release via pip **without any verification**, do:
 
 ```
 torsocks pip install vanguards
+```
+
+If your distribution provides pypy3 (see
+[Performance Tuning](#performance-tuning), you can do:
+
+```
+torsocks pypy3 -m pip install vanguards
 ```
 
 # How to use the addon
@@ -116,7 +134,7 @@ For very high traffic onion services, we recommend using
 [PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
 make this addon run considerably faster.
 
-The easiest way to use PyPy is to do **sudo apt-get install pypy** or
+The easiest way to use PyPy is to do **sudo apt-get install pypy3** or
 equivalent before running **./setup.sh** as per above. The setup.sh script will
 then see that pypy is installed, and use it by default in the resulting
 virtualenv.
@@ -128,7 +146,7 @@ If you want to use pypy outside of a virtualenv, install Stem 1.7.0 or later
 on your system, and then run the addon directly from the source tree with:
 
 ```
-  pypy ./src/vanguards.py
+  pypy3 ./src/vanguards.py
 ```
 
 Additionally, you can try running vanguards components in parallel, so that
@@ -142,7 +160,7 @@ much, you can run the following once per hour from cron to update your torrc
 with fresh layer2 and layer3 guards:
 
 ```
-  pypy ./src/vanguards.py --one_shot_vanguards
+  ./src/vanguards.py --one_shot_vanguards
 ```
 
 # What do the logs mean?

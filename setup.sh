@@ -23,7 +23,7 @@ fi
 if [ -z "$(which virtualenv)" ]
 then
   echo "We need virtualenv to be in the path. If you are on a debian system, try:"
-  echo " sudo apt-get install python-virtualenv"
+  echo " sudo apt-get install virtualenv"
   exit 1
 fi
 
