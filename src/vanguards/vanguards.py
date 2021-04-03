@@ -238,10 +238,7 @@ class VanguardState:
   def configure_tor(self, controller):
     if NUM_LAYER1_GUARDS:
       controller.set_conf("NumEntryGuards", str(NUM_LAYER1_GUARDS))
-      try:
-        controller.set_conf("NumPrimaryGuards", str(NUM_LAYER1_GUARDS))
-      except stem.InvalidArguments: # pre-0.3.4 tor
-        pass
+      controller.set_conf("NumDirectoryGuards", str(NUM_LAYER1_GUARDS))
 
     if LAYER1_LIFETIME_DAYS > 0:
       controller.set_conf("GuardLifetime", str(LAYER1_LIFETIME_DAYS)+" days")
