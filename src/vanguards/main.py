@@ -104,8 +104,8 @@ def control_loop(state):
         else:
           controller = stem.control.Controller.from_port(config.CONTROL_IP,
                                                      int(config.CONTROL_PORT))
-          plog("NOTICE", "Connected to Tor via control port "+CONTROL_IP+ ":"+
-               config.CONTROL_PORT)
+          plog("NOTICE", "Connected to Tor via control port "+
+               config.CONTROL_IP+ ":"+config.CONTROL_PORT)
     except ValueError as e:
       plog("ERROR", "Control port must be an integer or 'default'. Got "+
            str(config.CONTROL_PORT))
