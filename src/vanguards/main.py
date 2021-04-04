@@ -79,15 +79,32 @@ def run_main():
     sys.exit(1)
 
 def control_loop(state):
-  try:
-    if config.CONTROL_SOCKET != "":
+  if not config.CONTROL_SOCKET and not config.CONTROL_PORT:
+    try:
       controller = \
-        stem.control.Controller.from_socket_file(config.CONTROL_SOCKET)
-    else:
-      controller = stem.control.Controller.from_port(config.CONTROL_IP,
-                                                     config.CONTROL_PORT)
-  except stem.SocketError as e:
-    return "failed: "+str(e)
+        stem.control.Controller.from_socket_file("/run/tor/control")
+    except stem.SocketError as e:
+      try:
+        controller = stem.control.Controller.from_port()
+      except stem.SocketError as e:
+        return "failed: "+str(e)
+  else:
+    try:
+      if config.CONTROL_SOCKET != "":
+        controller = \
+          stem.control.Controller.from_socket_file(config.CONTROL_SOCKET)
+      else:
+        if not config.CONTROL_PORT or config.CONTROL_PORT == "default":
+          controller = stem.control.Controller.from_port(config.CONTROL_IP)
+        else:
+          controller = stem.control.Controller.from_port(config.CONTROL_IP,
+                                                         int(config.CONTROL_PORT))
+    except ValueError as e:
+      plog("ERROR", "Control port must be an integer or 'default'. Got "+
+           str(config.CONTROL_PORT))
+      sys.exit(1)
+    except stem.SocketError as e:
+      return "failed: "+str(e)
 
   control.authenticate_any(controller, config.CONTROL_PASS)
 

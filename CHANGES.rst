@@ -14,6 +14,7 @@ next
 - Add path verification component for integration testing. #61.
 - Include vanguards_parallel.sh for high load services. #62.
 - Set NumDirectoryGuards to 2, to help ensure only 2 orconns. #63
+- Automatically try common control sock and control ports if unset. #64.
 
 0.3.1
 -----

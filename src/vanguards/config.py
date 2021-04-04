@@ -50,7 +50,7 @@ ONE_SHOT_VANGUARDS = False
 CLOSE_CIRCUITS = True
 
 CONTROL_IP = "127.0.0.1"
-CONTROL_PORT = 9051
+CONTROL_PORT = ""
 CONTROL_SOCKET = ""
 CONTROL_PASS = ""
 
@@ -85,15 +85,15 @@ def setup_options():
   parser.add_argument("--control_ip", dest="control_ip", default=CONTROL_IP,
                     help="The IP address of the Tor Control Port to connect to (default: "+
                     CONTROL_IP+")")
-  parser.add_argument("--control_port", type=int, dest="control_port",
+  parser.add_argument("--control_port", type=str, dest="control_port",
                       default=CONTROL_PORT,
                       help="The Tor Control Port to connect to (default: "+
-                      str(CONTROL_PORT)+")")
+                      "tries both 9050 and 9151)")
 
   parser.add_argument("--control_socket", dest="control_socket",
                       default=CONTROL_SOCKET,
                       help="The Tor Control Socket path to connect to "+
-                      "(default: "+str(CONTROL_SOCKET)+")")
+                      "(default: try /run/tor/control, then control port)")
   parser.add_argument("--control_pass", dest="control_pass",
                       default=CONTROL_PASS,
                       help="The Tor Control Port password (optional) ")
