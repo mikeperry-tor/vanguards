@@ -39,10 +39,10 @@ class Layer1Guards:
 
   def check_conn_counts(self):
     if len(self.guards) < self.num_layer1:
-      plog("NOTICE", "Fewer guards in use than configured.. Currently only "+ \
+      plog("NOTICE", "Fewer guard connections than configured. Connected to: "+ \
            str(self.guards.keys()))
     elif len(self.guards) > self.num_layer1:
-      plog("NOTICE", "More guards in use than configured.. Currently using "+ \
+      plog("NOTICE", "More guard connections than configured. Connected to: "+ \
            str(self.guards.keys()))
 
     for g in self.guards.keys():

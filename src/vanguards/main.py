@@ -83,11 +83,13 @@ def control_loop(state):
     try:
       controller = \
         stem.control.Controller.from_socket_file("/run/tor/control")
+      plog("NOTICE", "Connected to Tor via /run/tor/control socket")
     except stem.SocketError as e:
       try:
         controller = stem.control.Controller.from_port()
       except stem.SocketError as e:
         return "failed: "+str(e)
+      plog("NOTICE", "Connected to Tor via control port")
   else:
     try:
       if config.CONTROL_SOCKET != "":
