@@ -15,8 +15,12 @@ mkdir -p $DEST
 if [ -z "$(which $SYS_PYTHON)" ]
 then
   echo "We need pypy or pypy3 to be in the path."
+  echo
   echo "If you are on a Debian or Ubuntu system, you can try: "
   echo " sudo apt-get install pypy virtualenv"
+  echo
+  echo "If there is no pypy for your arch, edit this script to set"
+  echo "SYS_PYTHON=\"python\""
   exit 1
 fi
 
