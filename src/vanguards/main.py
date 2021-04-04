@@ -86,21 +86,26 @@ def control_loop(state):
       plog("NOTICE", "Connected to Tor via /run/tor/control socket")
     except stem.SocketError as e:
       try:
-        controller = stem.control.Controller.from_port()
+        controller = stem.control.Controller.from_port(config.CONTROL_IP)
       except stem.SocketError as e:
         return "failed: "+str(e)
-      plog("NOTICE", "Connected to Tor via control port")
+      plog("NOTICE", "Connected to Tor via "+config.CONTROL_IP+" control port")
   else:
     try:
       if config.CONTROL_SOCKET != "":
         controller = \
           stem.control.Controller.from_socket_file(config.CONTROL_SOCKET)
+        plog("NOTICE", "Connected to Tor via socket "+config.CONTROL_SOCKET)
       else:
         if not config.CONTROL_PORT or config.CONTROL_PORT == "default":
           controller = stem.control.Controller.from_port(config.CONTROL_IP)
+          plog("NOTICE", "Connected to Tor via "+config.CONTROL_IP+
+                         " control port")
         else:
           controller = stem.control.Controller.from_port(config.CONTROL_IP,
-                                                         int(config.CONTROL_PORT))
+                                                     int(config.CONTROL_PORT))
+          plog("NOTICE", "Connected to Tor via control port "+control_IP+ ":"+
+               config.CONTROL_PORT)
     except ValueError as e:
       plog("ERROR", "Control port must be an integer or 'default'. Got "+
            str(config.CONTROL_PORT))
