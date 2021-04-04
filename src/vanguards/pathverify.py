@@ -136,10 +136,14 @@ class PathVerify:
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT"):
       if len(event.path) != _ROUTELEN_FOR_PURPOSE[event.purpose]:
-        if event.purpose == "HS_SERVICE_HSDIR" and \
-           event.hs_state == "HSSI_CONNECTING":
+        if (event.purpose == "HS_SERVICE_HSDIR" and \
+            event.hs_state == "HSSI_CONNECTING") or \
+           (event.purpose == "HS_CLIENT_INTRO" and \
+            event.hs_state == "HSCI_CONNECTING"):
           # This can happen when HS_VANGUARDS are cannibalized..
           # XXX: Is that a bug?
+          # It can also happen if client intros fail and are retried with a
+          # new hop. That case is not a bug.
           plog("INFO", "Route len "+str(len(event.path))+ " is not " + \
                str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
                event.purpose +":"+str(event.hs_state)+" + " + \

@@ -19,7 +19,7 @@ $VANGUARDS_LOCATION --disable_vanguards --disable_rendguard --logfile :syslog: $
 # Rendguards instance
 $VANGUARDS_LOCATION --disable_vanguards --disable_bandguards --logfile :syslog: $OTHER_OPTIONS &
 
-jobs
+jobs -l
 
 echo
 echo "Vanguards is now running in the background as the above jobs."
