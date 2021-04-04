@@ -11,18 +11,19 @@ OTHER_OPTIONS="$@"
 # one vanguards, one bandguards, one rendguards
 
 # Vanguards instance
-$VANGUARDS_LOCATION --disable_bandguards --disable_rendguard $OTHER_OPTIONS &
+$VANGUARDS_LOCATION --disable_bandguards --disable_rendguard --logfile :syslog: $OTHER_OPTIONS &
 
 # Bandguards instance
-$VANGUARDS_LOCATION --disable_vanguards --disable_rendguard $OTHER_OPTIONS &
+$VANGUARDS_LOCATION --disable_vanguards --disable_rendguard --logfile :syslog: $OTHER_OPTIONS &
 
 # Rendguards instance
-$VANGUARDS_LOCATION --disable_vanguards --disable_bandguards $OTHER_OPTIONS &
+$VANGUARDS_LOCATION --disable_vanguards --disable_bandguards --logfile :syslog: $OTHER_OPTIONS &
 
 jobs
 
 echo
 echo "Vanguards is now running in the background as the above jobs."
+echo "Note that they log to syslog to avoid overwriting eachother's logs"
 echo
 echo "If you still are experiencing high CPU from the vanguards process,"
 echo "remember that it can be run with --one_shot_vanguards, once per hour"
