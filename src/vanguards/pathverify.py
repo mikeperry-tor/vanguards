@@ -45,7 +45,7 @@ class Layer1Guards:
       plog("NOTICE", "More guards in use than configured.. Currently using "+ \
            str(self.guards.keys()))
 
-    for g in self.guards.iterkeys():
+    for g in self.guards.keys():
       if self.guards[g].conn_count > 1:
        plog("NOTICE", "Extra connections to guard "+g+": "+\
             str(self.guards[g].conn_count))
@@ -59,7 +59,7 @@ class Layer1Guards:
 
   def check_use_counts(self):
     layer1_in_use = filter(lambda x: self.guards[x].use_count,
-                           self.guards.iterkeys())
+                           self.guards.keys())
     layer1_counts = map(lambda x:
                           x+": "+str(self.guards[x].use_count),
                         layer1_in_use)
