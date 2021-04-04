@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-SYS_PYTHON=$(which pypy3 || which pypy || which pypy2 || which python3 || which python2)
+SYS_PYTHON=$(which pypy3 || which pypy || which pypy2)
 
 if [ -z $1 ]
 then
@@ -14,9 +14,9 @@ mkdir -p $DEST
 # 1. Install python if needed
 if [ -z "$(which $SYS_PYTHON)" ]
 then
-  echo "We need pypy, pypy3, python3, or python2 to be in the path."
+  echo "We need pypy or pypy3 to be in the path."
   echo "If you are on a Debian or Ubuntu system, you can try: "
-  echo " sudo apt-get install pypy python-virtualenv"
+  echo " sudo apt-get install pypy virtualenv"
   exit 1
 fi
 
