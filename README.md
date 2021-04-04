@@ -45,10 +45,13 @@ virtualenv download packages from PYPI without verification.**
 2. [Install Stem](https://stem.torproject.org/download.html)
 3. Run **./src/vanguards.py**
 
+By default, vanguards will try to connect to "/run/tor/control", and if that
+fails, will try control port 9051 (System Tor), and then 9151 (Tor Browser).
+
 If your control port is on an alternate IP and Port, specify that with
 **--control_host _IP_ --control_port _portnum_**.
 
-If you are using a control socket, specify its full path with
+If you are using a different control socket path, specify its full path with
 **--control_socket /path/to/socket**.
 
 Note that **./src/vanguards.py** has several other options under **--help**.
@@ -112,7 +115,7 @@ DataDirectory /path/to/tor/datadir
 and then run:
 
 ```
-vanguards --control_port=9099     # (or --control_socket /path/to/socket).
+vanguards --control_port 9099     # (or --control_socket /path/to/socket).
 ```
 
 ## Client use
@@ -122,8 +125,11 @@ Tor Browser or with Onionshare.
 
 To use it with Tor Browser, all you have to do is start Tor Browser, and then run:
 ```
-  ./src/vanguards.py --control_port 9151
+  ./src/vanguards.py
 ```
+
+If you also have a system Tor, you will need to specify Tor Browser's control
+port with `--control_port 9151`
 
 To use it with Onionshare, set up your Tor to expose a control port and attach
 both onionshare and the vanguards addon to it.
