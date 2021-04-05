@@ -468,8 +468,17 @@ class BandwidthStats:
       # They get rebuilt, and side channels are bad, mmmk.
       if circ.purpose == "HS_SERVICE_INTRO" and \
          circ.hs_state == "HSSI_ESTABLISHED":
-        plog("NOTICE", "Tor bug #29699: Got %d dropped cell on circ %s "\
+        plog("INFO", "Tor bug #29699: Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).",
+                       circ.dropped_read_cells(), circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
+        control.try_close_circuit(self.controller, circ.circ_id)
+      elif circ.purpose == "CIRCUIT_PADDING" and \
+           circ.old_purpose == "HS_CLIENT_INTRO" and \
+           circ.old_hs_state == "HSCI_INTRO_SENT":
+        plog("INFO", "Tor bug #40359. Got %d dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s)",
                        circ.dropped_read_cells(), circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))

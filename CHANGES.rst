@@ -15,6 +15,9 @@ next
 - Include vanguards_parallel.sh for high load services. #62.
 - Set NumDirectoryGuards to 2, to help ensure only 2 orconns. #63
 - Automatically try common control sock and control ports if unset. #64.
+- Workaround for Tor bug #40359 (dropped cell on padded intro circs
+  after use). #65
+- Demote Tor Bug #29699 dropped cell NOTICE to INFO. #66
 
 0.3.1
 -----

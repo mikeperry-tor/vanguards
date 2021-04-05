@@ -82,7 +82,7 @@ torsocks pip install vanguards
 ```
 
 If your distribution provides pypy3 (see
-[Performance Tuning](#performance-tuning), you can do:
+[Performance Tuning](#performance-tuning)), you can do:
 
 ```
 torsocks pypy3 -m pip install vanguards
