@@ -1,14 +1,21 @@
 #!/bin/sh -e
 
+# This script launches three vanguard components in parallel, logging to
+# syslog, and ideally using pypy.
+#
+# This prevents vanguards from bottlenecking on a single CPU core.
+#
+# However, the bandguards instance may still require high CPU, since it
+# listens to many events. Let us know if this script helps or does not help
+# by commenting on: https://github.com/mikeperry-tor/vanguards/issues/62
+
+
 # Use pypy or pypy3, if available
 SYS_PY=$(which pypy3 || which pypy || which pypy2 || which python3 || which python2)
 
 VANGUARDS_LOCATION=$(which vanguards || echo "$SYS_PY ./src/vanguards.py")
 
 OTHER_OPTIONS="$@"
-
-# Run three instances in parallel:
-# one vanguards, one bandguards, one rendguards
 
 # Vanguards instance
 $VANGUARDS_LOCATION --disable_bandguards --disable_rendguard --logfile :syslog: $OTHER_OPTIONS &
