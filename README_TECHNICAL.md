@@ -30,6 +30,10 @@ circuit, that service makes a separate Rendezvous circuit to connect to that
 client's chosen Rendezvous Point. Then, actual onion service application data
 flows over this Rendezvous circuit, as a Tor Stream.
 
+
+![Onion Service Connections](https://people.torproject.org/~mikeperry/images/onion-service-explainer.png)
+
+
 # Onion Service Guard Discovery Attacks
 
 The most basic form of the Guard discovery attack is to make many connections
