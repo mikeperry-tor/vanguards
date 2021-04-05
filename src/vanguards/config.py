@@ -171,6 +171,8 @@ def setup_options():
         plog("ERROR", "Failed to resolve hostname "+options.control_ip)
         sys.exit(1)
 
+  plog("DEBUG", "Applied command line options")
+
   return options
 
 # Avoid a big messy dict of defaults. We already have them.
@@ -220,3 +222,7 @@ def apply_config(config_file):
   # Special cased CLOSE_CIRCUITS option has to be transfered
   # to the control.py module
   setattr(control, "_CLOSE_CIRCUITS", CLOSE_CIRCUITS)
+
+
+  plog("NOTICE", "Vanguards successfilly applied config options from "+
+       config_file)
