@@ -31,7 +31,7 @@ client's chosen Rendezvous Point. Then, actual onion service application data
 flows over this Rendezvous circuit, as a Tor Stream.
 
 
-![Onion Service Connections](https://people.torproject.org/~mikeperry/images/onion-service-explainer.png)
+![Onion Service Connections](https://people.torproject.org/~mikeperry/images/onion-service-explainer.jpg)
 
 
 # Onion Service Guard Discovery Attacks
