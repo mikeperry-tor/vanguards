@@ -447,11 +447,11 @@ class BandwidthStats:
                                   CIRC_MAX_AGE_HOURS*_SECS_PER_HOUR,
                         self.circs.values()))
     for circ in kill_circs:
+      control.try_close_circuit(self.controller, circ.circ_id)
       self.limit_exceeded("NOTICE", "CIRC_MAX_AGE_HOURS",
                           circ.circ_id,
                           (now - circ.created_at)/_SECS_PER_HOUR,
                           CIRC_MAX_AGE_HOURS)
-      control.try_close_circuit(self.controller, circ.circ_id)
 
   # Used for 1x/sec heartbeat only
   def bw_event(self, event):
@@ -468,34 +468,34 @@ class BandwidthStats:
       # They get rebuilt, and side channels are bad, mmmk.
       if circ.purpose == "HS_SERVICE_INTRO" and \
          circ.hs_state == "HSSI_ESTABLISHED":
+        control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #29699: Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).",
                        circ.dropped_read_cells(), circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
-        control.try_close_circuit(self.controller, circ.circ_id)
       elif circ.purpose == "CIRCUIT_PADDING" and \
            circ.old_purpose == "HS_CLIENT_INTRO" and \
            circ.old_hs_state == "HSCI_INTRO_SENT":
+        control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #40359. Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s)",
                        circ.dropped_read_cells(), circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
-        control.try_close_circuit(self.controller, circ.circ_id)
       elif not circ.built:
        plog("INFO", "Tor bug #29927: Got a dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).", circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       else:
+        control.try_close_circuit(self.controller, circ.circ_id)
         plog("WARN", "Possible Tor bug, or possible attack if very frequent: "\
                      +"Got %d dropped cell on circ %s "\
                      +"(in state %s %s; old state %s %s)",
                      circ.dropped_read_cells(), circ.circ_id,
                      str(circ.purpose), str(circ.hs_state),
                      str(circ.old_purpose), str(circ.old_hs_state))
-        control.try_close_circuit(self.controller, circ.circ_id)
     elif circ.dropped_read_cells() > 0:
       # Log workaround drop cell cases for completeness
       if circ.purpose == "PATH_BIAS_TESTING":
@@ -517,27 +517,27 @@ class BandwidthStats:
 
     if CIRC_MAX_MEGABYTES > 0 and \
        circ.total_bytes() > CIRC_MAX_MEGABYTES*_BYTES_PER_MB:
+      control.try_close_circuit(self.controller, circ.circ_id)
       self.limit_exceeded("NOTICE", "CIRC_MAX_MEGABYTES",
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_MEGABYTES*_BYTES_PER_MB)
-      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_HSDESC_KILOBYTES > 0 and \
        circ.is_hsdir and circ.total_bytes() > \
        CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
+      control.try_close_circuit(self.controller, circ.circ_id)
       self.limit_exceeded("WARN", "CIRC_MAX_HSDESC_KILOBYTES",
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB)
-      control.try_close_circuit(self.controller, circ.circ_id)
     if CIRC_MAX_SERV_INTRO_KILOBYTES > 0 and \
        circ.is_serv_intro and circ.total_bytes() > \
        CIRC_MAX_SERV_INTRO_KILOBYTES*_BYTES_PER_KB:
+      control.try_close_circuit(self.controller, circ.circ_id)
       self.limit_exceeded("WARN", "CIRC_MAX_SERV_INTRO_KILOBYTES",
                           circ.circ_id,
                           circ.total_bytes(),
                           CIRC_MAX_SERV_INTRO_KILOBYTES*_BYTES_PER_KB)
-      control.try_close_circuit(self.controller, circ.circ_id)
 
   def limit_exceeded(self, level, str_name, circ_id, cur_val, max_val, extra=""):
     plog(level, "Circ "+str(circ_id)+" exceeded "+str_name+": "+str(cur_val)+
