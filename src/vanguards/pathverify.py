@@ -69,8 +69,8 @@ class Layer1Guards:
   # (Retval used only by tests)
   def check_use_counts(self):
     ret = 0
-    layer1_in_use = filter(lambda x: self.guards[x].use_count,
-                           self.guards.keys())
+    layer1_in_use = list(filter(lambda x: self.guards[x].use_count,
+                                self.guards.keys()))
     layer1_counts = map(lambda x:
                           x+": "+str(self.guards[x].use_count),
                         layer1_in_use)
