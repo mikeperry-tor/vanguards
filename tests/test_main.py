@@ -59,9 +59,10 @@ class MockController:
   def get_version(self):
     return TOR_VERSION
 
-  def get_conf(self, key):
+  def get_conf(self, key, default=None):
     if key == "DataDirectory":
       return DATA_DIR
+    return default
 
   def get_info(self, key, default=None):
     if key == "orconn-status":
@@ -90,6 +91,7 @@ class MockController:
 
 stem.control.Controller = MockController
 vanguards.config.ENABLE_CBTVERIFY = True
+vanguards.config.ENABLE_PATHVERIFY = True
 vanguards.config.STATE_FILE = "tests/state.mock.test"
 vanguards.config._RETRY_LIMIT = 1
 
@@ -188,6 +190,17 @@ def test_failures():
   # Test connection failures for socket+ file
   vanguards.config.apply_config(DEFAULT_CONFIG)
   sys.argv = ["test_main", "--control_socket", "None.conf" ]
+  THROW_SOCKET=True
+  try:
+    vanguards.main.main()
+    assert False
+  except SystemExit:
+    assert True
+  THROW_SOCKET=False
+
+  # Test connection failures for name resolution
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  sys.argv = ["test_main", "--control_ip", "localbogusxyzzy" ]
   THROW_SOCKET=True
   try:
     vanguards.main.main()

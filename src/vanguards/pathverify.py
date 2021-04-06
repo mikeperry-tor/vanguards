@@ -37,18 +37,26 @@ class Layer1Guards:
       else:
         del self.guards[guard_fp]
 
+  # Returns -1 when fewer than expected, 0 when correct, +1 when too many
+  # (Retval used only by tests)
   def check_conn_counts(self):
+    ret = 0
+
     if len(self.guards) < self.num_layer1:
       plog("NOTICE", "Fewer guard connections than configured. Connected to: "+ \
            str(self.guards.keys()))
+      ret = -1
     elif len(self.guards) > self.num_layer1:
       plog("NOTICE", "More guard connections than configured. Connected to: "+ \
            str(self.guards.keys()))
+      ret = 1
 
     for g in self.guards.keys():
       if self.guards[g].conn_count > 1:
        plog("NOTICE", "Extra connections to guard "+g+": "+\
             str(self.guards[g].conn_count))
+       ret = 1
+    return ret
 
   def add_use_count(self, guard_fp):
     if not guard_fp in self.guards:
@@ -57,7 +65,10 @@ class Layer1Guards:
     else:
       self.guards[guard_fp].use_count += 1
 
+  # Returns -1 when fewer than expected, 0 when correct, +1 when too many
+  # (Retval used only by tests)
   def check_use_counts(self):
+    ret = 0
     layer1_in_use = filter(lambda x: self.guards[x].use_count,
                            self.guards.keys())
     layer1_counts = map(lambda x:
@@ -67,9 +78,12 @@ class Layer1Guards:
     if len(layer1_in_use) > self.num_layer1:
       plog("WARN", "Circuits are being used on more guards " + \
              "than configured. Current guard use: "+str(layer1_counts))
+      ret = 1
     elif len(layer1_in_use) < self.num_layer1:
       plog("NOTICE", "Circuits are being used on fewer guards " + \
              "than configured. Current guard use: "+str(layer1_counts))
+      ret = -1
+    return ret
 
 class PathVerify:
   def __init__(self, controller, num_layer1, num_layer2, num_layer3):
@@ -98,14 +112,11 @@ class PathVerify:
     # These may be empty at startup
     if layer2:
       self.layer2 = set(layer2.split(","))
-      if len(self.layer2) != self.num_layer2:
-       plog("NOTICE", "Wrong number of layer2 guards. " + \
-            str(self.num_layer2)+" vs: "+str(self.layer2))
+
     if layer3:
       self.layer3 = set(layer3.split(","))
-      if len(self.layer3) != self.num_layer3:
-        plog("NOTICE", "Wrong number of layer3 guards. " + \
-             str(self.num_layer3)+" vs: "+str(self.layer3))
+
+    self._check_layer_counts()
 
   def conf_changed_event(self, event):
     if "HSLayer2Nodes" in event.changed:
@@ -114,24 +125,36 @@ class PathVerify:
     if "HSLayer3Nodes" in event.changed:
       self.layer3 = set(event.changed["HSLayer3Nodes"][0].split(","))
 
-    # These can become empty briefly on sighup. Aka set([''])
+    self._check_layer_counts()
+
+    plog("DEBUG", event.raw_content())
+
+  # Returns True when right number, False otherwise
+  def _check_layer_counts(self):
+    ret = False
+    # These can become empty briefly on sighup and startup. Aka set([''])
     if len(self.layer2) > 1:
       if len(self.layer2) != self.num_layer2:
         plog("NOTICE", "Wrong number of layer2 guards. " + \
             str(self.num_layer2)+" vs: "+str(self.layer2))
+        ret = False
+      else:
+        ret = True
 
     if len(self.layer3) > 1:
       if len(self.layer3) != self.num_layer3:
         plog("NOTICE", "Wrong number of layer3 guards. " + \
              str(self.num_layer3)+" vs: "+str(self.layer3))
-
-    plog("DEBUG", event.raw_content())
+        ret = False
+      else:
+        ret = True
+    return ret
 
   def orconn_event(self, event):
     if event.status == "CONNECTED":
       self.layer1.add_conn(event.endpoint_fingerprint)
     elif event.status == "CLOSED" or event.status == "FAILED":
-      self.layer.del_conn(event.endpoint_fingerprint)
+      self.layer1.del_conn(event.endpoint_fingerprint)
 
     self.layer1.check_conn_counts()
 
@@ -189,7 +212,7 @@ class PathVerify:
     if event.purpose[0:3] == "HS_" or event.old_purpose[0:3] == "HS_":
       if not event.path[0][0] in self.layer1.guards:
         plog("WARN", "Guard "+event.path[0][0]+" not in "+ \
-             str(self.layer1.keys()))
+             str(self.layer1.guards.keys()))
       if len(event.path) > 1 and not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))

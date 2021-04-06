@@ -401,6 +401,18 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
+  # Test workaround for #40359
+  circ_id += 1
+  controller.closed_circ = None
+  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_CONNECTING"))
+  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
+                                             "HS_CLIENT_INTRO",
+                                             "CIRCUIT_PADDING",
+                                             "HSCI_INTRO_SENT",
+                                             "None"))
+  check_dropped_bytes(state, controller, circ_id, 1000, 1)
+  assert controller.closed_circ == str(circ_id)
+
   # Test workaround for #29786
   circ_id += 1
   controller.closed_circ = None

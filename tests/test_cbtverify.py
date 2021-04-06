@@ -34,6 +34,10 @@ def cbt():
   s = "650 BUILDTIMEOUT_SET COMPUTED TOTAL_TIMES=1000 TIMEOUT_MS=2320 XM=1885 ALPHA=7.740810 CUTOFF_QUANTILE=0.800000 TIMEOUT_RATE=0.059891 CLOSE_MS=60000 CLOSE_RATE=0.030248\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
+def cbt_reset():
+  s = "650 BUILDTIMEOUT_SET RESET TOTAL_TIMES=1000 TIMEOUT_MS=2320 XM=1885 ALPHA=7.740810 CUTOFF_QUANTILE=0.800000 TIMEOUT_RATE=0.059891 CLOSE_MS=60000 CLOSE_RATE=0.030248\r\n"
+  return ControlMessage.from_str(s, "EVENT")
+
 # Test plan:
 #  - Make 10 hs circs, 2 timeouts + 1 expired, verify 80%
 #  - Make 10 circuits, 1 timeouts, verify 85%; verify no change to hs
@@ -97,3 +101,44 @@ def test_cbt():
   i+=1
   ts.circ_event(launched_hs_circ(i))
   ts.circ_event(launched_hs_circ(i))
+
+  # Test reset and make sure not counted
+  ts.cbt_event(cbt_reset())
+  assert ts.timeout_rate_hs() == 0.0
+  assert ts.timeout_rate_all() == 0.0
+
+  i = 0
+  while i < 8:
+    i += 1
+    ts.circ_event(launched_hs_circ(i))
+    ts.circ_event(built_circ(i))
+
+  i += 1
+  ts.circ_event(launched_hs_circ(i))
+  ts.circ_event(timeout_circ(i))
+  ts.circ_event(expired_circ(i))
+  i += 1
+  ts.circ_event(launched_hs_circ(i))
+  ts.circ_event(timeout_circ(i))
+  assert ts.timeout_rate_hs() == 0.0
+  assert ts.timeout_rate_all() == 0.0
+
+  # Now it should start counting again
+  ts.cbt_event(cbt())
+
+  i = 0
+  while i < 8:
+    i += 1
+    ts.circ_event(launched_hs_circ(i))
+    ts.circ_event(built_circ(i))
+
+  i += 1
+  ts.circ_event(launched_hs_circ(i))
+  ts.circ_event(timeout_circ(i))
+  ts.circ_event(expired_circ(i))
+  i += 1
+  ts.circ_event(launched_hs_circ(i))
+  ts.circ_event(timeout_circ(i))
+  assert ts.timeout_rate_hs() == 0.2
+  assert ts.timeout_rate_all() == 0.2
+
