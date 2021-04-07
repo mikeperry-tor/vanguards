@@ -71,9 +71,9 @@ class Layer1Guards:
     ret = 0
     layer1_in_use = list(filter(lambda x: self.guards[x].use_count,
                                 self.guards.keys()))
-    layer1_counts = map(lambda x:
+    layer1_counts = list(map(lambda x:
                           x+": "+str(self.guards[x].use_count),
-                        layer1_in_use)
+                        layer1_in_use))
 
     if len(layer1_in_use) > self.num_layer1:
       plog("WARN", "Circuits are being used on more guards " + \

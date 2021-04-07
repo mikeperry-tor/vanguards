@@ -196,6 +196,8 @@ all such attacks that rely on dropped cells.
 
    The allowed dropped cell count is 0, and cannot be configured.
 
+   Note that if your guard is malicious, it can ignore the DESTROY cell
+
 2. ***Total Hidden Service Descriptor Kilobytes***
 
    In addition to injecting relay cells that are dropped, it is also possible for relays to inject data at the end of an onion service descriptor, or in response to an onion service descriptor submission. Tor will continue reading this data prior to attempting to parse the descriptor or response, and these parsers can be convinced to discard additional data.
