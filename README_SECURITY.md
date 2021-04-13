@@ -112,8 +112,9 @@ statistics (which come from Tor relay extra-info descriptors. Setting **circ_max
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
 to an appropriate value for your service can help you detect and mitigate this
 attack. See also the section on [Monitoring Your
-Service](#monitor-your-service), and please find a way to contact the Tor Project
-if too much data is provided by our metrics portal.
+Service](#monitor-your-service), and please
+[contact the Tor Project](https://anonticket.onionize.space/) if too
+much data is provided by our metrics portal.
 
 Also for capability #6, clients can hold circuits opened to your service, and
 either try to DoS random Guard relays offline, or wait for Guards to go down,

@@ -281,9 +281,9 @@ connectivity, and reconnect the remaining portion to a new circuit.
 unexpected high load or DoS attack, consider monitoring your Guard relay
 bandwidth in the [public relay bandwidth data]((https://metrics.torproject.org/rs.html#search/flag:Guard)) to check for
 noticable bumps in traffic that correspond to DoS, as this is a Guard
-discovery signal for the adversary. If you notice such bumps, please find
-a way to contact the Tor Project, as this means that our relay bandwidth
-reporting is too detailed.
+discovery signal for the adversary. If you notice such bumps, please
+[contact the Tor Project](https://anonticket.onionize.space/), as this means
+that our relay bandwidth reporting is too detailed.
 
 5. ***Max Circuit Age***
 
