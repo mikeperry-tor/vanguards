@@ -19,6 +19,8 @@ next
   after use). #65
 - Demote Tor Bug #29699 dropped cell NOTICE to INFO. #66
 - Close circuits before logging about the issue. #67.
+- Always close PATH_BIAS_TESTING circutis with invalid cells. #68
+
 
 0.3.1
 -----

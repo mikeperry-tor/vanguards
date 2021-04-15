@@ -330,18 +330,6 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 0, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # Test that 1 dropped cell is allowed on pathbias
-  circ_id += 1
-  controller.closed_circ = None
-  state.circ_event(built_circ(circ_id, "HS_CLIENT_REND"))
-  state.circ_minor_event(purpose_changed_circ(circ_id,
-                                             "HS_CLIENT_REND",
-                                             "PATH_BIAS_TESTING"))
-  check_dropped_bytes(state, controller, circ_id, 0, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 0, 1)
-  assert controller.closed_circ == str(circ_id)
-
   # Test that dropped cells are allowed on not-built circ.
   circ_id += 1
   controller.closed_circ = None
@@ -413,7 +401,7 @@ def test_bwstats():
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
-  # Test workaround for #29786
+  # Test workaround for #29786 (should close now)
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_INTRO", "HSSI_ESTABLISHED"))
@@ -422,8 +410,6 @@ def test_bwstats():
                                              "PATH_BIAS_TESTING",
                                              "HSSI_CONNECTING",
                                              "None"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
@@ -435,21 +421,6 @@ def test_bwstats():
                                              "PATH_BIAS_TESTING",
                                              "HSCI_CONNECTING",
                                              "None"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == str(circ_id)
-
-  circ_id += 1
-  controller.closed_circ = None
-  state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_REND", "HSCR_CONNECTING"))
-  state.circ_minor_event(purpose_changed_hs_circ(circ_id,
-                                             "HS_CLIENT_REND",
-                                             "PATH_BIAS_TESTING",
-                                             "HSCR_CONNECTING",
-                                             "None"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 

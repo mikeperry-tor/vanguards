@@ -326,27 +326,10 @@ class BandwidthStats:
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",
              self.circs[event.id].delivered_read_bytes)
 
-      # Tor Bug #29786 workaround (see also
-      # https://github.com/mikeperry-tor/vanguards/issues/37)
-      if event.purpose == "PATH_BIAS_TESTING":
-        # If purpose changes to PATH_BIAS_TESTING, then check for known cases
-        # of dropped cells:
-        # 1a. Path bias: pending RELAY_COMMAND_INTRO_ESTABLISHED cell
-        if event.old_purpose == "HS_SERVICE_INTRO" \
-           and event.old_hs_state == "HSSI_CONNECTING":
-          self.circs[event.id].dropped_cells_allowed = 1
-        # 1b. Path bias: pending RELAY_COMMAND_RENDEZVOUS_ESTABLISHED cell
-        if event.old_purpose == "HS_CLIENT_REND" \
-           and event.old_hs_state == "HSCR_CONNECTING":
-          self.circs[event.id].dropped_cells_allowed = 1
-        # 1c. Path bias: pending RELAY_COMMAND_INTRODUCE_ACK cell
-        if event.old_purpose == "HS_CLIENT_INTRO" \
-           and event.old_hs_state != "HSCI_DONE":
-          self.circs[event.id].dropped_cells_allowed = 1
       # Workaround for Tor bug #29700 (see also
       # https://github.com/mikeperry-tor/vanguards/issues/37).
       # Class 3: Service rend circs can sometimes fail ntor handshake on extend
-      elif event.purpose == "HS_SERVICE_REND":
+      if event.purpose == "HS_SERVICE_REND":
         if event.hs_state == "HSSR_CONNECTING":
           self.circs[event.id].dropped_cells_allowed = 1
         else:
@@ -481,6 +464,16 @@ class BandwidthStats:
         plog("INFO", "Tor bug #40359. Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s)",
                        circ.dropped_read_cells(), circ.circ_id,
+                       str(circ.purpose), str(circ.hs_state),
+                       str(circ.old_purpose), str(circ.old_hs_state))
+      elif circ.purpose == "PATH_BIAS_TESTING":
+        # Pathbias circs all seem to have cases of dropped cells. If we
+        # get any, it probably means the probe failed anyway. Worst case,
+        # it might even have been withheld until dropped cells can be
+        # injected.
+        control.try_close_circuit(self.controller, circ.circ_id)
+        plog("INFO", "Tor bug #29786: Got a dropped cell on circ %s "\
+                       +"(in state %s %s; old state %s %s).", circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       elif not circ.built:
