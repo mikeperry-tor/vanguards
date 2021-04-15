@@ -363,16 +363,12 @@ def test_bwstats():
   controller.closed_circ = None
   state.circ_event(built_hs_circ(circ_id, "HS_SERVICE_REND", "HSSR_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test workaround for #29927:
   circ_id += 1
   controller.closed_circ = None
   state.circ_event(built_hs_circ(circ_id, "HS_CLIENT_INTRO", "HSCI_DONE"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
@@ -434,8 +430,6 @@ def test_bwstats():
                                              "None",
                                              "HSSR_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   # Test workaround for #29927
@@ -448,8 +442,6 @@ def test_bwstats():
                                              "None",
                                              "HSCR_CONNECTING"))
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
   circ_id += 1
@@ -460,8 +452,6 @@ def test_bwstats():
                                              "HS_CLIENT_INTRO",
                                              "None",
                                              "HSCI_DONE"))
-  check_dropped_bytes(state, controller, circ_id, 1000, 1)
-  assert controller.closed_circ == None
   check_dropped_bytes(state, controller, circ_id, 1000, 1)
   assert controller.closed_circ == str(circ_id)
 
