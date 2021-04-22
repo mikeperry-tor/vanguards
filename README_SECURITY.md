@@ -242,8 +242,8 @@ However, local adversaries still have the following capabilities:
 4. **Confirm** that you are running a specific onion service address, if you are
    running a specific service that is of interest to them.
 5. **Suspect** that you run a service, if access of it is infrequent.
-6. **Suspect** when your client accesses an onion service, if other client
-   activity is low.
+6. **Suspect** when your tor client accesses an onion service, if other activity
+   of your tor client is low.
 
 For capability #1, local adversaries can **determine** that you are running Tor
 because the list of Tor relays is public, and connections to them are obvious.
@@ -389,7 +389,20 @@ detect this, and the
 pluggable transport eliminates the vector. However, the global adversary can
 also operate a client, and send large amounts of traffic to an onion service
 over long periods of time, to gain signficant confidence in a specific onion
-service IP address over time. Again, the mitigations for this are to use
+service IP address over time.
+
+Note that local/quasi-global adversaries such as Russia now have the
+ability to
+[shape traffic through their infrastructure](https://arstechnica.com/gadgets/2021/03/a-russian-isp-confirms-roskomnadzors-twitter-blocking-blooper/).
+While this does not seem to make a difference in capability with respect to
+onion services, due to the flooding attacks of cabaility #4, it is worth
+noting. The game is to
+[export such technology](https://www.nytimes.com/2019/04/24/technology/ecuador-surveillance-cameras-police-government.html).
+If you care about policy, or just want to play this game for the lulz, pay
+attention and
+[skate to where the puck is going to be](https://itif.org/publications/2020/06/29/censorship-and-us-content-exports-china-why-we-need-better-market-access-not).
+
+Again, the mitigations for this are to use
 [OnionBalance](#using-onionbalance), use or run [a bridge](#Use-Bridges-or-Run-a-relay-or-Bridge) with your
 onion service, and/or set **circ_max_megabytes** in your
 [vanguards.conf](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf)
