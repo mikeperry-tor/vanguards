@@ -391,11 +391,11 @@ also operate a client, and send large amounts of traffic to an onion service
 over long periods of time, to gain signficant confidence in a specific onion
 service IP address over time.
 
-Note that local/quasi-global adversaries such as Russia now have the
+Note that quasi-global adversaries such as Russia now have the
 ability to
 [shape traffic through their infrastructure](https://arstechnica.com/gadgets/2021/03/a-russian-isp-confirms-roskomnadzors-twitter-blocking-blooper/).
 While this does not seem to make a difference in capability with respect to
-onion services, due to the flooding attacks of cabaility #4, it is worth
+onion services, due to the flooding attacks of capability #4, it is worth
 noting. The game is to
 [export such technology](https://www.nytimes.com/2019/04/24/technology/ecuador-surveillance-cameras-police-government.html).
 If you care about policy, or just want to play this game for the lulz, pay
