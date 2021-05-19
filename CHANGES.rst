@@ -21,6 +21,7 @@ next
 - Close circuits before logging about the issue. #67.
 - Always close PATH_BIAS_TESTING circutis with invalid cells. #68
 - Eliminate clearly invalid cases of allowed dropped cells. #69
+- Use 4 Layer2 guards, to match upcoming C tor's vanguards-lite. #73.
 
 
 0.3.1

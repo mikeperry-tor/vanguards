@@ -114,11 +114,7 @@ Lengths](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustratio
 
 The number of nodes in each of these sets, as well as the ranges on rotation
 times for each set, can be specified as config file parameters. The subsystem
-currently uses 2 entry guards, 3 layer2 guards, and 8 layer3 guards.
-
-High load onion services may consider using 4 layer2 guards by changing the
-**num_layer2_guards** option in the [configuration
-file](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards-example.conf), but going beyond that is not recommended.
+currently uses 2 entry guards, 4 layer2 guards, and 8 layer3 guards.
 
 ## The Rendguard Subsystem
 
