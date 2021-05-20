@@ -186,6 +186,7 @@ def control_loop(state):
 
   if config.ENABLE_PATHVERIFY:
     paths = pathverify.PathVerify(controller,
+                                  config.ENABLE_VANGUARDS,
                                   vanguards.NUM_LAYER1_GUARDS,
                                   vanguards.NUM_LAYER2_GUARDS,
                                   vanguards.NUM_LAYER3_GUARDS)
@@ -200,9 +201,16 @@ def control_loop(state):
                  functools.partial(pathverify.PathVerify.orconn_event, paths),
                                   stem.control.EventType.ORCONN)
     controller.add_event_listener(
+                 functools.partial(pathverify.PathVerify.guard_event, paths),
+                                  stem.control.EventType.GUARD)
+    controller.add_event_listener(
                  functools.partial(pathverify.PathVerify.conf_changed_event,
                                    paths),
                                   stem.control.EventType.CONF_CHANGED)
+    # After launch pathverify, we send a NEWNYM to get fresh circs and
+    # vg-lite guards
+    controller.signal("NEWNYM")
+
 
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.

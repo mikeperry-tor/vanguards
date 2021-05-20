@@ -14,6 +14,18 @@ _ROUTELEN_FOR_PURPOSE = {
                          "HS_SERVICE_INTRO" : 4,
                          "HS_SERVICE_REND"  : 5
                         }
+
+# XXX: Hrmm
+_ROUTELEN_FOR_PURPOSE_LITE = {
+                         "HS_VANGUARDS"     : 3,
+                         "HS_CLIENT_HSDIR"  : 4,
+                         "HS_CLIENT_INTRO"  : 4,
+                         "HS_CLIENT_REND"   : 4,
+                         "HS_SERVICE_HSDIR" : 3,
+                         "HS_SERVICE_INTRO" : 3,
+                         "HS_SERVICE_REND"  : 4
+                        }
+
 class Layer1Stats:
   def __init__(self):
     self.use_count = 0
@@ -86,16 +98,17 @@ class Layer1Guards:
     return ret
 
 class PathVerify:
-  def __init__(self, controller, num_layer1, num_layer2, num_layer3):
+  def __init__(self, controller, full_vanguards, num_layer1, num_layer2, num_layer3):
     self.controller = controller
-    self.layer1 = Layer1Guards(num_layer1)
+    self.full_vanguards = full_vanguards
     self.layer2 = set()
     self.layer3 = set()
     self.num_layer1 = num_layer1
     self.num_layer2 = num_layer2
     self.num_layer3 = num_layer3
-    self._orconn_init(controller)
     self._layers_init(controller)
+    self.layer1 = Layer1Guards(self.num_layer1)
+    self._orconn_init(controller)
 
   def _orconn_init(self, controller):
     for l in controller.get_info("orconn-status").split("\n"):
@@ -112,18 +125,33 @@ class PathVerify:
     # These may be empty at startup
     if layer2:
       self.layer2 = set(layer2.split(","))
+      self.full_vanguards = True
 
     if layer3:
       self.layer3 = set(layer3.split(","))
+      self.full_vanguards = True
+
+    # If they are empty, and vanguards is disabled by the addon,
+    # then we're just verifying vg-lite in C-Tor.
+    if not layer2 and not layer3 and not self.full_vanguards:
+      plog("NOTICE", "Monitoring vanguards-lite with pathverify.")
+      # Update our num layer params because they now depend on vg-lite
+      self.num_layer1 = 1
+      self.num_layer2 = 4
+      self.num_layer3 = 0
+    else:
+      plog("NOTICE", "Monitoring vanguards with pathverify.")
 
     self._check_layer_counts()
 
   def conf_changed_event(self, event):
     if "HSLayer2Nodes" in event.changed:
       self.layer2 = set(event.changed["HSLayer2Nodes"][0].split(","))
+      self.full_vanguards = True
 
     if "HSLayer3Nodes" in event.changed:
       self.layer3 = set(event.changed["HSLayer3Nodes"][0].split(","))
+      self.full_vanguards = True
 
     self._check_layer_counts()
 
@@ -158,10 +186,24 @@ class PathVerify:
 
     self.layer1.check_conn_counts()
 
+  def guard_event(self, event):
+    if event.status == "GOOD_L2":
+      self.layer2.add(event.endpoint_fingerprint)
+    elif event.status == "BAD_L2":
+      self.layer2.discard(event.endpoint_fingerprint)
+
+    plog("DEBUG", event.raw_content())
+
+  def routelen_for_purpose(self, purpose):
+    if self.full_vanguards:
+      return _ROUTELEN_FOR_PURPOSE[event.purpose]
+    else:
+      return _ROUTELEN_FOR_PURPOSE_LITE[event.purpose]
+
   def circ_event(self, event):
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \
        event.status == "GUARD_WAIT"):
-      if len(event.path) != _ROUTELEN_FOR_PURPOSE[event.purpose]:
+      if len(event.path) != self.routelen_for_purpose(event.purpose):
         if (event.purpose == "HS_SERVICE_HSDIR" and \
             event.hs_state == "HSSI_CONNECTING") or \
            (event.purpose == "HS_CLIENT_INTRO" and \
@@ -186,7 +228,8 @@ class PathVerify:
       if not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
-      if not event.path[2][0] in self.layer3:
+
+      if self.num_layer3 and not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
@@ -216,7 +259,7 @@ class PathVerify:
       if len(event.path) > 1 and not event.path[1][0] in self.layer2:
          plog("WARN", "Layer2 "+event.path[1][0]+" not in "+ \
              str(self.layer2))
-      if len(event.path) > 2 and not event.path[2][0] in self.layer3:
+      if self.num_layer3 and len(event.path) > 2 and not event.path[2][0] in self.layer3:
          plog("WARN", "Layer3 "+event.path[1][0]+" not in "+ \
              str(self.layer3))
 
