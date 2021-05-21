@@ -129,6 +129,10 @@ class MockController:
     self.got_set_conf = False
     self.got_save_conf = False
     self.get_info_vals = {}
+    self._logguard = None
+
+  def signal(self, sig):
+    pass
 
   # FIXME: os.path.join
   def get_network_statuses(self):

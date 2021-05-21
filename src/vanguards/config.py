@@ -28,6 +28,8 @@ ENABLE_RENDGUARD=True
 
 ENABLE_BANDGUARDS=True
 
+ENABLE_LOGGUARD=True
+
 ENABLE_CBTVERIFY=False
 
 ENABLE_PATHVERIFY=False
@@ -58,7 +60,7 @@ _RETRY_LIMIT = None
 
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
-  global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY
+  global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_LOGGUARD, ENABLE_CBTVERIFY
   global ENABLE_PATHVERIFY
   global LOGLEVEL, LOGFILE
   global ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS
@@ -116,6 +118,11 @@ def setup_options():
                       help="Disable circuit side channel checks (may help performance)")
   parser.set_defaults(bandguards_eabled=ENABLE_BANDGUARDS)
 
+  parser.add_argument("--disable_logguard", dest="logguard_enabled",
+                      action="store_false",
+                      help="Disable Tor log monitoring (may help performance)")
+  parser.set_defaults(logguard_enabled=ENABLE_LOGGUARD)
+
   parser.add_argument("--disable_rendguard", dest="rendguard_enabled",
                       action="store_false",
                       help="Disable rendezvous misuse checks (may help performance)")
@@ -134,11 +141,12 @@ def setup_options():
   options = parser.parse_args()
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
-   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_CBTVERIFY, ENABLE_PATHVERIFY,
-   ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS) = \
+   ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_LOGGUARD, ENABLE_CBTVERIFY,
+   ENABLE_PATHVERIFY, ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.control_pass,
        options.bandguards_enabled, options.rendguard_enabled,
+       options.logguard_enabled,
        options.cbtverify_enabled, options.pathverify_enabled,
        options.one_shot_vanguards, options.vanguards_enabled)
 
@@ -206,6 +214,7 @@ def generate_config():
   set_options_from_module(config, vanguards, "Vanguards")
   set_options_from_module(config, bandguards, "Bandguards")
   set_options_from_module(config, rendguard, "Rendguard")
+  set_options_from_module(config, rendguard, "Logguard")
 
   return config
 
@@ -218,6 +227,7 @@ def apply_config(config_file):
   get_options_for_module(config, vanguards, "Vanguards")
   get_options_for_module(config, bandguards, "Bandguards")
   get_options_for_module(config, rendguard, "Rendguard")
+  get_options_for_module(config, rendguard, "Logguard")
 
   # Special cased CLOSE_CIRCUITS option has to be transfered
   # to the control.py module

@@ -35,6 +35,10 @@ class MockController:
   def __init__(self):
     self.closed_circ = None
     self.bwstats = None
+    self._logguard = None
+
+  def signal(self, sig):
+    pass
 
   def close_circuit(self, circ_id):
     self.closed_circ = circ_id

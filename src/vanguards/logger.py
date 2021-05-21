@@ -13,6 +13,7 @@ loglevels = { "DEBUG":  logging.DEBUG,
               "NOTICE": logging.INFO + 5,
               "WARN":   logging.WARN,
               "ERROR":  logging.ERROR,
+              "ERR" :   logging.ERROR,
               "NONE":   logging.ERROR + 5 }
 
 def set_loglevel(level):

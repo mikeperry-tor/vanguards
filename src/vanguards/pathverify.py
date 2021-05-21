@@ -196,9 +196,9 @@ class PathVerify:
 
   def routelen_for_purpose(self, purpose):
     if self.full_vanguards:
-      return _ROUTELEN_FOR_PURPOSE[event.purpose]
+      return _ROUTELEN_FOR_PURPOSE[purpose]
     else:
-      return _ROUTELEN_FOR_PURPOSE_LITE[event.purpose]
+      return _ROUTELEN_FOR_PURPOSE_LITE[purpose]
 
   def circ_event(self, event):
     if event.purpose[0:3] == "HS_" and (event.status == stem.CircStatus.BUILT or \

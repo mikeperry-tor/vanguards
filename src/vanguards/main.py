@@ -9,6 +9,7 @@ from . import control
 from . import rendguard
 from . import vanguards
 from . import bandguards
+from . import logguard
 from . import cbtverify
 from . import pathverify
 
@@ -144,6 +145,28 @@ def control_loop(state):
                  functools.partial(rendguard.RendGuard.circ_event,
                                    state.rendguard, controller),
                                   stem.control.EventType.CIRC)
+
+  # Ok, little low on fucks here. But this is fine. This will work.
+  # We check for None in control.try_close_circuit()
+  controller._logguard = None
+
+  if config.ENABLE_LOGGUARD:
+    logs = logguard.LogGuard(controller) # Also registeres logbuffer events
+
+    # Make the log object available later for log dumping
+    controller._logguard = logs
+
+    # Always log warns
+    controller.add_event_listener(
+                 functools.partial(logguard.LogGuard.log_warn_event,
+                                   logs),
+                                   stem.control.EventType.WARN)
+
+    # For post-close logs
+    controller.add_event_listener(
+                 functools.partial(logguard.LogGuard.circ_event, logs),
+                                  stem.control.EventType.CIRC)
+
 
   if config.ENABLE_BANDGUARDS:
     bandwidths = bandguards.BandwidthStats(controller)

@@ -36,6 +36,9 @@ def get_consensus_weights(consensus_filename):
   return parsed_consensus.bandwidth_weights
 
 def try_close_circuit(controller, circ_id):
+  if controller._logguard:
+    controller._logguard.dump_log_queue(circ_id, "Pre")
+
   if _CLOSE_CIRCUITS:
     try:
       controller.close_circuit(circ_id)

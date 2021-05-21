@@ -82,6 +82,10 @@ class MockController:
     self.layer1 = []
     self.layer2 = []
     self.layer3 = []
+    self._logguard = None
+
+  def signal(self, sig):
+    pass
 
   def close_circuit(self, circ_id):
     self.closed_circ = circ_id
@@ -123,7 +127,7 @@ def test_pathverify():
                        "C86C538EF0A24E010342F30DBCACC2A7EB7CA833", "CFBBA0D858F02E40B1432A65F6D13C9BDFE7A46B",
                        "CFBBA0D858F02E40B1432A65F6D13C9BDFE7A469", "FDAC8BA3ABFCC107D1B1EAC953F195BEEBA7FF54",
                        "E8B3796C809853D9C8AF6B8EDE9080B6F2AE8005", "705DB1E61846652FC447E7EC2DDAE0F7D5407D9E"]
-  pv = PathVerify(controller, 2, 3, 8)
+  pv = PathVerify(controller, True, 2, 3, 8)
   assert pv.layer1.check_conn_counts() == 0
   assert pv._check_layer_counts()
 
@@ -138,7 +142,7 @@ def test_pathverify():
                        "CFBBA0D858F02E40B1432A65F6D13C9BDFE7A469", "FDAC8BA3ABFCC107D1B1EAC953F195BEEBA7FF54",
                        "E8B3796C809853D9C8AF6B8EDE9080B6F2AE8005", "705DB1E61846652FC447E7EC2DDAE0F7D5407D9E",
                        "66CA5474346F35E375C4D4514C51A540545347EE"]
-  pv = PathVerify(controller, 2, 3, 8)
+  pv = PathVerify(controller, True, 2, 3, 8)
   assert pv.layer1.check_conn_counts() == 1
   assert not pv._check_layer_counts()
 
@@ -150,7 +154,7 @@ def test_pathverify():
                        "C86C538EF0A24E010342F30DBCACC2A7EB7CA833", "CFBBA0D858F02E40B1432A65F6D13C9BDFE7A46B",
                        "CFBBA0D858F02E40B1432A65F6D13C9BDFE7A469", "FDAC8BA3ABFCC107D1B1EAC953F195BEEBA7FF54",
                        "E8B3796C809853D9C8AF6B8EDE9080B6F2AE8005"]
-  pv = PathVerify(controller, 2, 3, 8)
+  pv = PathVerify(controller, True, 2, 3, 8)
   assert pv.layer1.check_conn_counts() == -1
   assert not pv._check_layer_counts()
 

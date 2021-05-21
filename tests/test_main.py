@@ -22,6 +22,10 @@ FAIL_SAVE_CONF = False
 class MockController:
   def __init__(self):
     self.alive = True
+    self._logguard = None
+
+  def signal(self, sig):
+    pass
 
   @staticmethod
   def from_port(ip, port):
