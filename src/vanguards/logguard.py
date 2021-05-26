@@ -68,6 +68,8 @@ class LogGuard:
     self.log_buffer.append(event)
 
     # XXX: This might not be efficient, idk
+    # XXX: This might also be a memleak/memfrag, depending on how list()
+    # decides to handle this underneath :/
     while len(self.log_buffer) > self.log_limit:
       self.log_buffer.pop(0)
 
