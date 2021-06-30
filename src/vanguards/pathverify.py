@@ -213,12 +213,12 @@ class PathVerify:
           # It can also happen if client intros fail and are retried with a
           # new hop. That case is not a bug.
           plog("INFO", "Route len "+str(len(event.path))+ " is not " + \
-               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+               str(self.routelen_for_purpose(event.purpose))+ " for purpose " + \
                event.purpose +":"+str(event.hs_state)+" + " + \
                event.raw_content())
         else:
           plog("NOTICE", "Route len "+str(len(event.path))+ " is not " + \
-               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+               str(self.routelen_for_purpose(event.purpose))+ " for purpose " + \
                event.purpose +":"+str(event.hs_state)+" + " + \
                event.raw_content())
 
