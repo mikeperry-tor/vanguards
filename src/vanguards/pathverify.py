@@ -20,9 +20,9 @@ _ROUTELEN_FOR_PURPOSE_LITE = {
                          "HS_VANGUARDS"     : 3,
                          "HS_CLIENT_HSDIR"  : 4,
                          "HS_CLIENT_INTRO"  : 4,
-                         "HS_CLIENT_REND"   : 4,
-                         "HS_SERVICE_HSDIR" : 3,
-                         "HS_SERVICE_INTRO" : 3,
+                         "HS_CLIENT_REND"   : 3,
+                         "HS_SERVICE_HSDIR" : 4,
+                         "HS_SERVICE_INTRO" : 4,
                          "HS_SERVICE_REND"  : 4
                         }
 
@@ -212,13 +212,13 @@ class PathVerify:
           # XXX: Is that a bug?
           # It can also happen if client intros fail and are retried with a
           # new hop. That case is not a bug.
-          plog("INFO", "Route len "+str(len(event.path))+ " is not " + \
-               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+          plog("INFO", "Tor made a "+str(len(event.path))+ "-hop path, but I wanted a " + \
+               str(self.routelen_for_purpose(event.purpose))+ "-hop path for purpose " + \
                event.purpose +":"+str(event.hs_state)+" + " + \
                event.raw_content())
         else:
-          plog("NOTICE", "Route len "+str(len(event.path))+ " is not " + \
-               str(_ROUTELEN_FOR_PURPOSE[event.purpose])+ " for purpose " + \
+          plog("NOTICE", "Tor made a "+str(len(event.path))+ "-hop path, but I wanted a " + \
+               str(self.routelen_for_purpose(event.purpose))+ "-hop path for purpose " + \
                event.purpose +":"+str(event.hs_state)+" + " + \
                event.raw_content())
 
