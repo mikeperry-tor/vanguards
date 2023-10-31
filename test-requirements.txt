@@ -138,9 +138,9 @@ six==1.11.0 \
     #   -r test-requirements.txt
     #   more-itertools
     #   pytest
-urllib3==1.24.2 \
-    --hash=sha256:4c291ca23bbb55c76518905869ef34bdd5f0e46af7afe6861e8375643ffee1a0 \
-    --hash=sha256:9a247273df709c4fedb38c711e44292304f73f39ab01beda9f6b9fc375669ac3
+urllib3==1.26.5 \
+    --hash=sha256:753a0374df26658f99d826cfe40394a686d05985786d946fbe4165b5148f5a7c \
+    --hash=sha256:a7acd0977125325f516bda9735fa7142b909a8d01e8b2e4c8108d0984e6e0098
     # via
     #   -r test-requirements.txt
     #   requests
