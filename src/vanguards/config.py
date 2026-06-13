@@ -6,6 +6,7 @@ import ipaddress
 import os
 import socket
 import sys
+import tempfile
 
 from . import bandguards
 from . import rendguard
@@ -15,10 +16,7 @@ from . import control
 from . import logger
 from .logger import plog
 
-try:
-  from configparser import SafeConfigParser, Error
-except ImportError:
-  from ConfigParser import SafeConfigParser, Error
+from configparser import ConfigParser, Error
 
 ################# Global options ##################
 
@@ -35,10 +33,10 @@ ENABLE_CBTVERIFY=False
 ENABLE_PATHVERIFY=False
 
 # State file location
-STATE_FILE = "vanguards.state"
+STATE_FILE = os.path.join(tempfile.gettempdir(), "vanguards.state")
 
 # Config file location
-_CONFIG_FILE = "vanguards.conf"
+_CONFIG_FILE = os.path.join(tempfile.gettempdir(), "vanguards.conf")
 
 # Loglevel
 LOGLEVEL = "NOTICE"
@@ -58,12 +56,31 @@ CONTROL_PASS = ""
 
 _RETRY_LIMIT = None
 
+DAEMONIZE = False
+
+def daemonize():
+    pid = os.fork()
+    if pid > 0:
+        sys.exit(0)
+    os.setsid()
+    pid = os.fork()
+    if pid > 0:
+        sys.exit(0)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with open(os.devnull, "r") as f:
+        os.dup2(f.fileno(), sys.stdin.fileno())
+    with open(os.devnull, "w") as f:
+        os.dup2(f.fileno(), sys.stdout.fileno())
+        os.dup2(f.fileno(), sys.stderr.fileno())
+
 def setup_options():
   global CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS, STATE_FILE
   global ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_LOGGUARD, ENABLE_CBTVERIFY
   global ENABLE_PATHVERIFY
   global LOGLEVEL, LOGFILE
   global ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS
+  global DAEMONIZE
 
   parser = argparse.ArgumentParser()
 
@@ -138,17 +155,23 @@ def setup_options():
                       help="Enable path selection monitoring")
   parser.set_defaults(pathverify_enabled=ENABLE_PATHVERIFY)
 
+  parser.add_argument("--daemonize", "-d", dest="daemonize",
+                      action="store_true",
+                      help="Run vanguards as a background daemon")
+
   options = parser.parse_args()
 
   (STATE_FILE, CONTROL_IP, CONTROL_PORT, CONTROL_SOCKET, CONTROL_PASS,
    ENABLE_BANDGUARDS, ENABLE_RENDGUARD, ENABLE_LOGGUARD, ENABLE_CBTVERIFY,
-   ENABLE_PATHVERIFY, ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS) = \
+   ENABLE_PATHVERIFY, ONE_SHOT_VANGUARDS, ENABLE_VANGUARDS,
+   DAEMONIZE) = \
       (options.state_file, options.control_ip, options.control_port,
        options.control_socket, options.control_pass,
        options.bandguards_enabled, options.rendguard_enabled,
        options.logguard_enabled,
        options.cbtverify_enabled, options.pathverify_enabled,
-       options.one_shot_vanguards, options.vanguards_enabled)
+       options.one_shot_vanguards, options.vanguards_enabled,
+       options.daemonize)
 
   if options.loglevel != None:
     LOGLEVEL = options.loglevel
@@ -209,7 +232,7 @@ def set_options_from_module(config, module, section):
       config.set(section, param, str(val))
 
 def generate_config():
-  config = SafeConfigParser(allow_no_value=True)
+  config = ConfigParser(allow_no_value=True)
   set_options_from_module(config, sys.modules[__name__], "Global")
   set_options_from_module(config, vanguards, "Vanguards")
   set_options_from_module(config, bandguards, "Bandguards")
@@ -219,9 +242,9 @@ def generate_config():
   return config
 
 def apply_config(config_file):
-  config = SafeConfigParser(allow_no_value=True)
+  config = ConfigParser(allow_no_value=True)
 
-  config.readfp(open(config_file, "r"))
+  config.read_file(open(config_file, "r"))
 
   get_options_for_module(config, sys.modules[__name__], "Global")
   get_options_for_module(config, vanguards, "Vanguards")

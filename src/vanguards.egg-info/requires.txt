@@ -1,0 +1,5 @@
+setuptools
+stem>=1.7.0
+
+[:python_version < "3"]
+ipaddress>=1.0.17

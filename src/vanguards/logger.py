@@ -42,6 +42,8 @@ def logger_init():
   # Default behavior = log to stdout if TorUtil.logfile is None,
   # or to the open file specified otherwise.
   logger = logging.getLogger("TorCtl")
+  for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
 
   if logfile == ":syslog:":
     if os.path.exists("/dev/log"):

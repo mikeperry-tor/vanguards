@@ -1,0 +1,15 @@
+[Unit]
+Description=Vanguards Tor guard protection daemon
+After=network.target tor.service
+Wants=tor.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/lib/vanguards/vanguards.state
+ExecStart=vanguards --logfile /var/log/vanguards.log --state /var/lib/vanguards/vanguards.state
+Restart=on-failure
+RestartSec=5
+StateDirectory=vanguards
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+mkdir -p "$PREFIX/var/lib/vanguards"
+rm -f "$PREFIX/var/lib/vanguards/vanguards.state"
+exec vanguards --logfile "$PREFIX/var/log/vanguards.log" --state "$PREFIX/var/lib/vanguards/vanguards.state"

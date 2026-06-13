@@ -1,3 +1,6 @@
+# 0.4.1
+
+
 # The Vanguards Onion Service Addon
 
 [![Build Status](https://travis-ci.org/mikeperry-tor/vanguards.png?branch=master)](https://travis-ci.org/mikeperry-tor/vanguards) [![Coverage Status](https://coveralls.io/repos/github/mikeperry-tor/vanguards/badge.png?branch=master)](https://coveralls.io/github/mikeperry-tor/vanguards?branch=master)

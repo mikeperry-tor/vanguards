@@ -1,0 +1,31 @@
+Metadata-Version: 2.4
+Name: vanguards
+Version: 0.4.1
+Summary: Vanguards help guard you from getting vanned...
+Home-page: https://github.com/mikeperry-tor/vanguards
+Author: Mike Perry
+License: MIT/Expat
+Keywords: tor
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5
+License-File: LICENSE
+Requires-Dist: setuptools
+Requires-Dist: ipaddress>=1.0.17; python_version < "3"
+Requires-Dist: stem>=1.7.0
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: summary
+
+
+For the full README and other project information, please see the
+`Vanguard project page on github <https://github.com/mikeperry-tor/vanguards>`_.

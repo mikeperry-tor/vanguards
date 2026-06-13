@@ -55,6 +55,10 @@ setup(
         "console_scripts": [
             'vanguards = vanguards.main:main',
         ]},
+    data_files=[
+        ('lib/systemd/system', ['service/vanguards.service']),
+        ('var/service/vanguards', ['service/termux/run']),
+    ],
     description="Vanguards help guard you from getting vanned...",
     long_description=DESCRIPTION,
     include_package_data=True,

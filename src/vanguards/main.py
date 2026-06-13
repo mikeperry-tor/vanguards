@@ -1,5 +1,7 @@
 import functools
+import os
 import stem
+import tempfile
 import time
 import sys
 
@@ -16,6 +18,7 @@ from . import pathverify
 from . import config
 
 from .logger import plog
+from . import logger
 
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.10")
 
@@ -43,6 +46,13 @@ def run_main():
            " can't be read: "+str(e))
       sys.exit(1)
     options = config.setup_options()
+
+  if config.DAEMONIZE:
+    if config.LOGFILE == "":
+      logpath = os.path.join(tempfile.gettempdir(), "vanguards.log")
+      config.LOGFILE = logpath
+      logger.set_logfile(logpath)
+    config.daemonize()
 
   try:
     # TODO: Use tor's data directory.. or our own

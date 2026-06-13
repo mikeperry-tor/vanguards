@@ -43,7 +43,13 @@ pip install --require-hashes -r requirements.txt
 
 $(basename $SYS_PYTHON) setup.py install
 
-# 4. Inform user what to do
+# 4. Create state directory
+mkdir -p /var/lib/vanguards 2>/dev/null || true
+if [ -n "$PREFIX" ]; then
+  mkdir -p "$PREFIX/var/lib/vanguards"
+fi
+
+# 5. Inform user what to do
 echo
 echo "If we got this far, everything should be ready!"
 echo
