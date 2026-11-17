@@ -4,6 +4,7 @@ import getpass
 import os
 import shutil
 
+import stem.connection
 import stem.control
 import vanguards.control
 import vanguards.config
