@@ -282,8 +282,16 @@ def addon_mode(work, service, client):
             assert count == 1, "One-shot did not persist the directory guard count"
             torrc.write_text(updated)
             control.signal("RELOAD")
-            wait_for("addon guard reapplication", lambda: "Reapplying vanguards" in log.read_text()
-                     and tor_settings(control) == expected)
+            try:
+                wait_for("addon guard reapplication", lambda: "Reapplying vanguards" in log.read_text()
+                         and tor_settings(control) == expected)
+            except RuntimeError as exc:
+                actual = tor_settings(control)
+                mismatches = [key for key, before, after in zip(GUARD_OPTIONS, expected, actual)
+                              if before != after]
+                reapplied = "Reapplying vanguards" in log.read_text()
+                raise RuntimeError(f"{exc}; reload callback ran: {reapplied}; "
+                                   f"settings differed: {mismatches}") from None
             transfer(client, service, control, log, [set(layer.split(",")) for layer in expected[:2]])
             wait_for_refresh(state)
             assert tor_settings(control) == expected
