@@ -169,7 +169,7 @@ class VanguardState:
     rend_nodes = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
                              [FlagsRestriction(["Fast", "Valid"],
-                                               ["Authority"])]),
+                                               ["Authority", "MiddleOnly"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
     # Cannibalized circuits can use Exit relays as rendezvous points.
     rend_nodes.repair_exits()
