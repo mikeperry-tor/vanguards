@@ -168,7 +168,8 @@ with fresh layer2 and layer3 guards:
 
 One-shot mode requires addon-managed guards and a usable consensus. It reports
 a failure and leaves Tor's saved configuration alone if guard setup cannot
-be completed.
+be completed. With `--disable_rendguard`, guard updates use only their own
+selection weights and preserve saved rendezvous counts.
 
 # What do the logs mean?
 
