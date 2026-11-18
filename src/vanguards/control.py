@@ -33,7 +33,8 @@ def get_consensus_weights(consensus_filename):
                           document_handler =
                             stem.descriptor.DocumentHandler.BARE_DOCUMENT))
 
-  assert(parsed_consensus.is_consensus)
+  if not getattr(parsed_consensus, "is_consensus", False):
+    raise stem.DescriptorUnavailable("Tor's consensus cache contains a different document type")
   return parsed_consensus.bandwidth_weights
 
 def try_close_circuit(controller, circ_id):

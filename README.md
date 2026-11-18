@@ -108,11 +108,15 @@ CookieAuthentication 1
 DataDirectory /path/to/tor/datadir
 ```
 
-and then run:
+Then run the addon:
 
 ```
 vanguards --control_port 9099     # (or --control_socket /path/to/socket).
 ```
+
+The addon needs read access to Tor's consensus cache. It uses Tor's
+`CacheDirectory` when set and `DataDirectory` otherwise. Use an absolute
+path that resolves on both the Tor and addon filesystems.
 
 Use `--disable_vanguards` to leave guard configuration to Tor while running
 the enabled monitoring and circuit defenses. The addon leaves guard settings

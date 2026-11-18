@@ -35,7 +35,7 @@ class MockController:
                    document_handler =
                       stem.descriptor.DocumentHandler.ENTRIES))
 
-  def get_conf(self, key):
+  def get_conf(self, key, default=None):
     if key == "DataDirectory":
       return "tests"
 

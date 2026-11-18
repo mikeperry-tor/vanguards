@@ -128,6 +128,7 @@ def sanity_check(state):
 class MockController:
   def __init__(self):
     self.data_dir = "tests"
+    self.cache_dir = None
     self.exclude_nodes = None
     self.exclude_unknown = "1"
     self.got_set_conf = False
@@ -144,13 +145,16 @@ class MockController:
                    document_handler =
                       stem.descriptor.DocumentHandler.ENTRIES))
 
-  def get_conf(self, key):
+  def get_conf(self, key, default=None):
     if key == "DataDirectory":
       return self.data_dir
+    if key == "CacheDirectory":
+      return self.cache_dir
     if key == "ExcludeNodes":
       return self.exclude_nodes
     if key == "GeoIPExcludeUnknown":
       return self.exclude_unknown
+    return default
 
   def set_conf(self, key, val):
     self.got_set_conf = True
@@ -167,7 +171,7 @@ class MockController:
     else:
       return default
 
-@pytest.mark.parametrize("missing", ["file", None, "Wme", "Wed", "zero-exits", "no-relays"])
+@pytest.mark.parametrize("missing", ["file", None, "Wme", "Wed", "zero-exits", "no-relays", "unknown-type"])
 def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
   filename = "cached-microdesc-consensus"
   valid = (Path("tests") / filename).read_text()
@@ -185,6 +189,8 @@ def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
 
   if missing == "file":
     cache.unlink()
+  elif missing == "unknown-type":
+    cache.write_text("@type unsupported 1.0\n")
   elif missing == "no-relays":
     controller.get_network_statuses = lambda: []
   else:
@@ -216,6 +222,15 @@ def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
   state.new_consensus_event(controller, object())
   assert controller.got_set_conf
   assert state.rendguard.use_counts is not previous_counts
+
+def test_consensus_uses_tor_cache_directory(tmp_path):
+  shutil.copy("tests/cached-microdesc-consensus", tmp_path)
+  controller = MockController()
+  controller.data_dir = str(tmp_path / "unused")
+  controller.cache_dir = str(tmp_path)
+  state = VanguardState(str(tmp_path / "state"))
+  state.new_consensus_event(controller, None)
+  assert state.layer2 and controller.got_set_conf
 
 def test_new_vanguards():
   state = VanguardState("tests/state.mock2")

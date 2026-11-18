@@ -226,19 +226,24 @@ class VanguardState:
 
     exclude_nodes = ExcludeNodes(controller)
 
-    data_dir = controller.get_conf("DataDirectory")
-    if data_dir == None:
-      plog("ERROR",
-           "You must set a DataDirectory location option in your torrc.")
-      sys.exit(1)
+    try:
+      cache_dir = controller.get_conf("CacheDirectory")
+    except stem.InvalidArguments:
+      cache_dir = None
+    if not cache_dir:
+      cache_dir = controller.get_conf("DataDirectory")
+    if cache_dir is None:
+      raise stem.DescriptorUnavailable(
+          "Set an absolute CacheDirectory or DataDirectory in torrc that the addon can read")
 
-    consensus_file = os.path.join(controller.get_conf("DataDirectory"),
-                             "cached-microdesc-consensus")
+    consensus_file = os.path.join(cache_dir, "cached-microdesc-consensus")
 
     try:
       weights = control.get_consensus_weights(consensus_file)
     except IOError as e:
       raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
+    except (StopIteration, TypeError, ValueError):
+      raise stem.DescriptorUnavailable("Cannot parse consensus at " + consensus_file)
 
     try:
       self.consensus_update(routers, weights, exclude_nodes)
