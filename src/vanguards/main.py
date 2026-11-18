@@ -2,11 +2,11 @@ import functools
 import stem
 import time
 import sys
+from threading import Lock
 
 import stem.response.events
 
 from . import control
-from . import rendguard
 from . import vanguards
 from . import bandguards
 from . import logguard
@@ -18,6 +18,7 @@ from . import config
 from .logger import plog
 
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.10")
+_CONSENSUS_RETRY_SECONDS = 5
 
 def main():
   try:
@@ -125,19 +126,54 @@ def control_loop(state):
 
   control.authenticate_any(controller, config.CONTROL_PASS)
 
+  consensus_ready = False
+  pending_reload = None
+  fatal_error = None
+  reload_lock = Lock()
+  next_consensus_retry = None
+  deferred_reload = None
+
+  def reapply_guards(event):
+    nonlocal deferred_reload, fatal_error
+    try:
+      if state.signal_event(controller, event):
+        deferred_reload = (event, time.monotonic() + _CONSENSUS_RETRY_SECONDS)
+      else:
+        deferred_reload = None
+    except SystemExit as exc:
+      fatal_error = exc
+
+  def reload_guards(event):
+    nonlocal pending_reload
+    if event.signal != "RELOAD":
+      return
+    with reload_lock:
+      if not consensus_ready:
+        pending_reload = event
+        return
+    reapply_guards(event)
+
+  if config.ENABLE_VANGUARDS and not config.ONE_SHOT_VANGUARDS:
+    controller.add_event_listener(reload_guards, stem.control.EventType.SIGNAL)
+
   # The new_consensus_event must still get called even if vanguards
   # is "disabled", because we also have to parse the consensus to
   # update rendguard counts
   if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
     try:
       state.new_consensus_event(controller, None, require_guards=config.ONE_SHOT_VANGUARDS)
+      with reload_lock:
+        if pending_reload is not None:
+          reapply_guards(pending_reload)
+          pending_reload = None
+        consensus_ready = True
     except stem.DescriptorUnavailable as e:
-      controller.close()
       if config.ONE_SHOT_VANGUARDS:
+        controller.close()
         plog("ERROR", "Cannot configure guards: %s", str(e))
         sys.exit(1)
-      plog("NOTICE", "Tor needs descriptors: "+str(e)+". Trying again...")
-      return "failed: "+str(e)
+      plog("NOTICE", "Waiting for Tor consensus data: %s", str(e))
+      next_consensus_retry = time.monotonic()
 
   if config.ONE_SHOT_VANGUARDS:
     try:
@@ -152,11 +188,35 @@ def control_loop(state):
   # transferred to the event thread here. They must not be used in
   # our thread anymore.
 
+  def refresh_consensus(event):
+    nonlocal consensus_ready, fatal_error, next_consensus_retry, pending_reload
+    try:
+      if state.new_consensus_event(controller, event):
+        with reload_lock:
+          consensus_ready = True
+          pending_reload = None
+        next_consensus_retry = None
+      else:
+        next_consensus_retry = time.monotonic() + _CONSENSUS_RETRY_SECONDS
+    except SystemExit as exc:
+      # A fatal setup error must exit from the main thread.
+      fatal_error = exc
+
+  def retry_consensus_work(event):
+    if next_consensus_retry is None and deferred_reload is None:
+      return
+    now = time.monotonic()
+    if next_consensus_retry is not None and now >= next_consensus_retry:
+      refresh_consensus(event)
+    if fatal_error is None and deferred_reload is not None and now >= deferred_reload[1]:
+      reapply_guards(deferred_reload[0])
+
+  def rendguard_event(event):
+    if consensus_ready:
+      state.rendguard.circ_event(controller, event)
+
   if config.ENABLE_RENDGUARD:
-    controller.add_event_listener(
-                 functools.partial(rendguard.RendGuard.circ_event,
-                                   state.rendguard, controller),
-                                  stem.control.EventType.CIRC)
+    controller.add_event_listener(rendguard_event, stem.control.EventType.CIRC)
 
   # Ok, little low on fucks here. But this is fine. This will work.
   # We check for None in control.try_close_circuit()
@@ -246,18 +306,15 @@ def control_loop(state):
   # Thread-safety: We're effectively transferring controller to the event
   # thread here.
   if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
-    controller.add_event_listener(
-                   functools.partial(vanguards.VanguardState.new_consensus_event,
-                                     state, controller),
-                                    stem.control.EventType.NEWCONSENSUS)
-  if config.ENABLE_VANGUARDS:
-    controller.add_event_listener(
-                   functools.partial(vanguards.VanguardState.signal_event,
-                                     state, controller),
-                                    stem.control.EventType.SIGNAL)
+    controller.add_event_listener(refresh_consensus, stem.control.EventType.NEWCONSENSUS)
+    controller.add_event_listener(retry_consensus_work, stem.control.EventType.BW)
 
   # Blah...
-  while controller.is_alive():
+  while fatal_error is None and controller.is_alive():
     time.sleep(1)
+  if fatal_error is not None:
+    # Exit directly. Closing a Stem controller here joins its event thread,
+    # which may itself be waiting to send a control command.
+    raise fatal_error
 
   return "closed"

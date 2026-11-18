@@ -1,6 +1,7 @@
 import sys
 import stem
 import getpass
+import logging
 import os
 import shutil
 import pytest
@@ -163,21 +164,13 @@ def test_failures():
   vanguards.config.apply_config(DEFAULT_CONFIG)
   DATA_DIR = None
   sys.argv = ["test_main" ]
-  try:
-    vanguards.main.main()
-    assert False
-  except SystemExit:
-    assert True
+  vanguards.main.main()
 
   # Test bogus DataDirectory
   vanguards.config.apply_config(DEFAULT_CONFIG)
   DATA_DIR = "/.bogus23"
   sys.argv = ["test_main" ]
-  try:
-    vanguards.main.main()
-    assert False
-  except SystemExit:
-    assert True
+  vanguards.main.main()
   DATA_DIR = "tests"
 
   # Test connection failures for socket
@@ -446,3 +439,156 @@ def test_managed_reload_only_reapplies_guard_settings(monkeypatch, tmp_path):
   for handler in handlers:
     handler(event)
   assert set(writes) == {"HSLayer2Nodes", "HSLayer3Nodes", "NumEntryGuards", "NumDirectoryGuards"}
+
+@pytest.mark.parametrize("recover_on_bw", [False, True])
+def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp_path, recover_on_bw):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
+  monkeypatch.setattr(sys.modules[__name__], "DATA_DIR", str(tmp_path))
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  now = 0
+  monkeypatch.setattr(vanguards.main.time, "monotonic", lambda: now)
+  handlers = {}
+  rendguard_calls = []
+  state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
+  monkeypatch.setattr(type(state.rendguard), "circ_event",
+                      lambda guard, controller, event: rendguard_calls.append(event))
+
+  def subscribe(controller, handler, *events):
+    for event in events:
+      handlers.setdefault(event, []).append(handler)
+
+  monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  assert vanguards.main.control_loop(state) == "closed"
+  assert "CIRC_BW" in handlers and "NEWCONSENSUS" in handlers
+  event = object()
+  handlers["CIRC"][0](event)
+  assert not rendguard_calls
+  assert not (tmp_path / "state").exists()
+
+  retry = handlers["BW"][-1]
+  retry(event)
+  assert retry in handlers["BW"] and not (tmp_path / "state").exists()
+  shutil.copy("tests/cached-microdesc-consensus", tmp_path)
+  if recover_on_bw:
+    retry(event)
+    assert not (tmp_path / "state").exists()
+    now = vanguards.main._CONSENSUS_RETRY_SECONDS
+    retry(event)
+  else:
+    handlers["NEWCONSENSUS"][0](event)
+    retry(event)
+  assert retry in handlers["BW"]
+  handlers["CIRC"][0](event)
+  assert rendguard_calls == [event]
+  assert (tmp_path / "state").is_file()
+
+@pytest.mark.parametrize("after_reload, invalid_parameter", [(False, False), (True, False), (True, True)])
+def test_consensus_work_retries_after_startup(monkeypatch, tmp_path, after_reload, invalid_parameter):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(sys.modules[__name__], "DATA_DIR", str(tmp_path))
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  now = 0
+  monkeypatch.setattr(vanguards.main.time, "monotonic", lambda: now)
+  cache = tmp_path / "cached-microdesc-consensus"
+  shutil.copy("tests/cached-microdesc-consensus", cache)
+  handlers = {}
+  writes = []
+  rendguard_calls = []
+  state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
+  get_conf = MockController.get_conf
+  monkeypatch.setattr(MockController, "get_conf", lambda controller, key, default=None:
+                      "auto" if key == "VanguardsLiteEnabled" else get_conf(controller, key, default))
+  monkeypatch.setattr(MockController, "set_conf", lambda controller, key, value: writes.append(key))
+  monkeypatch.setattr(type(state.rendguard), "circ_event",
+                      lambda guard, controller, event: rendguard_calls.append(event))
+
+  def subscribe(controller, handler, *events):
+    for event in events:
+      handlers.setdefault(event, []).append(handler)
+
+  monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  assert vanguards.main.control_loop(state) == "closed"
+  guard_settings = {"NumEntryGuards", "NumDirectoryGuards", "HSLayer2Nodes", "HSLayer3Nodes"}
+  assert guard_settings <= set(writes)
+  original_layers = (list(state.layer2), list(state.layer3))
+  original_counts = state.rendguard.use_counts
+  writes.clear()
+  if invalid_parameter:
+    cache.write_text(cache.read_text().replace("usecreatefast=0\n",
+                                              "usecreatefast=0 vanguards-lite-enabled=bad\n", 1))
+  else:
+    cache.unlink()
+  event = object()
+  if after_reload:
+    reload_event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
+    handlers["SIGNAL"][0](reload_event)
+  else:
+    handlers["NEWCONSENSUS"][0](event)
+
+  handlers["CIRC"][0](event)
+  assert rendguard_calls == [event]
+  retry = handlers["BW"][-1]
+  now += vanguards.main._CONSENSUS_RETRY_SECONDS
+  retry(event)
+  assert not writes
+  shutil.copy("tests/cached-microdesc-consensus", cache)
+  retry(event)
+  assert not writes
+  now += vanguards.main._CONSENSUS_RETRY_SECONDS
+  retry(event)
+  assert set(writes) == guard_settings and len(writes) == len(guard_settings)
+  if after_reload:
+    assert (state.layer2, state.layer3) == original_layers
+    assert state.rendguard.use_counts is original_counts
+  else:
+    assert state.rendguard.use_counts is not original_counts
+  now += vanguards.main._CONSENSUS_RETRY_SECONDS
+  retry(event)
+  assert len(writes) == len(guard_settings)
+
+def test_fatal_consensus_callback_exits_the_control_loop(monkeypatch, tmp_path):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
+  returned = []
+
+  def update(controller, event, *, require_guards=False):
+    if event is None:
+      raise stem.DescriptorUnavailable("No consensus yet")
+    raise SystemExit(1)
+
+  def subscribe(controller, handler, *events):
+    if "NEWCONSENSUS" in events:
+      handler(object())
+      returned.append(True)
+
+  monkeypatch.setattr(state, "new_consensus_event", update)
+  monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  with pytest.raises(SystemExit) as exc:
+    vanguards.main.control_loop(state)
+  assert exc.value.code == 1 and returned
+
+def test_reload_during_initial_consensus_is_reapplied(monkeypatch, tmp_path):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
+  signals = []
+  reapplied = []
+  reload_lock = vanguards.main.Lock()
+  monkeypatch.setattr(vanguards.main, "Lock", lambda: reload_lock)
+  reload_event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
+
+  def subscribe(controller, handler, *events):
+    if "SIGNAL" in events:
+      signals.append(handler)
+
+  def update(controller, event, *, require_guards=False):
+    signals[0](reload_event)
+    assert not reapplied
+
+  monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  monkeypatch.setattr(state, "new_consensus_event", update)
+  monkeypatch.setattr(state, "signal_event",
+                      lambda controller, event: reapplied.append((event, reload_lock.locked())))
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  assert vanguards.main.control_loop(state) == "closed"
+  assert reapplied == [(reload_event, True)]

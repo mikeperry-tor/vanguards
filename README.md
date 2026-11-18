@@ -120,6 +120,8 @@ The addon needs read access to Tor's consensus cache. It uses Tor's
 path that resolves on both the Tor and addon filesystems. The addon reads
 relay statuses and weights together from Tor's active consensus flavor,
 including `cached-consensus` when `UseMicrodescriptors 0` is set.
+In long-running mode, the addon retries consensus reads after temporary failures,
+including when a failed read delays guard reapplication after a Tor reload.
 
 Use `--disable_vanguards` to leave guard configuration to Tor while running
 the enabled monitoring and circuit defenses. The addon leaves guard settings

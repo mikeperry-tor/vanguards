@@ -37,9 +37,12 @@ docker run --rm --network none \
   vanguards-integration-local tests/integration/control_smoke.py
 ```
 
-This checks Unix and TCP control authentication, option and event availability,
-and the launcher's retry when no consensus is available. The fixture runs
-before bootstrap.
+This checks Unix and TCP control authentication and option and event availability
+before bootstrap. On both endpoints, one-shot operation fails without writing
+state and the long-running monitors stay active and retry while no usable
+consensus is available.
+The smoke fixture also checks that the operator's Conflux setting survives
+addon attachment and Tor reload.
 
 ## Private onion-service qualification
 
