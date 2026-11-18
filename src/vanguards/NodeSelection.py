@@ -13,6 +13,9 @@ class NoNodesRemain(RestrictionError):
   "Error raised for issues with applying restrictions"
   pass
 
+class UnusableWeight(RestrictionError):
+  """A relay in the selection pool has a missing or invalid weight."""
+
 class NodeRestriction:
   "Interface for node restriction policies"
   def r_is_ok(self, r):
@@ -90,15 +93,17 @@ class BwWeightedGenerator(NodeGenerator):
 
   def flag_to_weight(self, node):
     if 'Guard' in node.flags and "Exit" in node.flags:
-      return self.bw_weights[u'W'+self.position+'d']/self.WEIGHT_SCALE
-
-    if 'Exit' in node.flags:
-      return self.bw_weights[u'W'+self.position+'e']/self.WEIGHT_SCALE
-
-    if "Guard" in node.flags:
-      return self.bw_weights[u'W'+self.position+'g']/self.WEIGHT_SCALE
-
-    return self.bw_weights[u'Wmm']/self.WEIGHT_SCALE
+      key = 'W' + self.position + 'd'
+    elif 'Exit' in node.flags:
+      key = 'W' + self.position + 'e'
+    elif 'Guard' in node.flags:
+      key = 'W' + self.position + 'g'
+    else:
+      key = 'Wmm'
+    weight = self.bw_weights.get(key, -1)
+    if weight < 0:
+      raise UnusableWeight(key)
+    return weight / self.WEIGHT_SCALE
 
 
   # This function handles https://github.com/mikeperry-tor/vanguards/issues/24

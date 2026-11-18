@@ -44,6 +44,10 @@ def run_main():
       sys.exit(1)
     options = config.setup_options()
 
+  if config.ONE_SHOT_VANGUARDS and not config.ENABLE_VANGUARDS:
+    plog("ERROR", "One-shot mode requires addon-managed vanguards.")
+    sys.exit(1)
+
   try:
     # TODO: Use tor's data directory.. or our own
     state = vanguards.VanguardState.read_from_file(config.STATE_FILE)
@@ -124,6 +128,9 @@ def control_loop(state):
       state.new_consensus_event(controller, None)
     except stem.DescriptorUnavailable as e:
       controller.close()
+      if config.ONE_SHOT_VANGUARDS:
+        plog("ERROR", "Cannot configure guards: %s", str(e))
+        sys.exit(1)
       plog("NOTICE", "Tor needs descriptors: "+str(e)+". Trying again...")
       return "failed: "+str(e)
 

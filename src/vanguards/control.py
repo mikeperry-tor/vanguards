@@ -1,4 +1,5 @@
 import stem
+import stem.descriptor
 import sys
 import getpass
 

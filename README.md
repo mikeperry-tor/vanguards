@@ -141,6 +141,10 @@ with fresh layer2 and layer3 guards:
   python3 src/vanguards.py --one_shot_vanguards
 ```
 
+One-shot mode requires addon-managed guards and a usable consensus. It reports
+a failure and leaves Tor's saved configuration alone if guard setup cannot
+be completed.
+
 # What do the logs mean?
 
 This is an experimental addon with many heuristics that still need tuning.
