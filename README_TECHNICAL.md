@@ -226,7 +226,8 @@ Guard discovery.
    the setting can interrupt existing Conflux exit streams. Onion-service
    circuits do not use Conflux.
 
-   Note that if your guard is malicious, it can ignore the DESTROY cell
+   Note that if your guard is malicious, it can ignore the DESTROY cell. [Torspec #220](https://gitlab.torproject.org/tpo/core/torspec/-/work_items/220) tracks Tor protocol design to
+   mitigate this case.
 
 2. ***Total Hidden Service Descriptor Kilobytes***
 
