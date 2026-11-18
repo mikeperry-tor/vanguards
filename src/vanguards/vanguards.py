@@ -49,6 +49,9 @@ class GuardNode:
     self.chosen_at = chosen_at
     self.expires_at = expires_at
 
+class ConsensusUnavailable(stem.DescriptorUnavailable):
+  """Tor's active consensus is unavailable to the controller."""
+
 class ExcludeNodes:
   def __init__(self, controller):
     self.networks = []
@@ -235,7 +238,7 @@ class VanguardState:
     if not cache_dir:
       cache_dir = controller.get_conf("DataDirectory")
     if cache_dir is None:
-      raise stem.DescriptorUnavailable(
+      raise ConsensusUnavailable(
           "Set an absolute CacheDirectory or DataDirectory in torrc that the addon can read")
 
     microdesc = controller.get_conf("UseMicrodescriptors") != "0"
@@ -254,21 +257,23 @@ class VanguardState:
       if tor_consensus.rstrip(b"\n") != consensus.get_bytes().rstrip(b"\n"):
         raise stem.DescriptorUnavailable("Cached consensus differs from the connected Tor's consensus document")
     except IOError as e:
-      raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
+      raise ConsensusUnavailable("Cannot read "+consensus_file+": "+str(e))
+    except stem.DescriptorUnavailable as e:
+      raise ConsensusUnavailable(str(e)) from e
     except (StopIteration, TypeError, ValueError):
-      raise stem.DescriptorUnavailable("Cannot parse consensus at " + consensus_file)
+      raise ConsensusUnavailable("Cannot parse consensus at " + consensus_file)
 
     if consensus.is_microdescriptor != microdesc:
-      raise stem.DescriptorUnavailable("Unexpected consensus flavor in " + consensus_file)
+      raise ConsensusUnavailable("Unexpected consensus flavor in " + consensus_file)
     active = controller.get_info("consensus/valid-after", "")
     if not active or active != str(consensus.valid_after):
-      raise stem.DescriptorUnavailable("Cached consensus does not match Tor's active consensus")
+      raise ConsensusUnavailable("Cached consensus does not match Tor's active consensus")
     # Tor's control response includes Valid for every relay in method 24+
     # consensuses, even if the cached router row omits the flag.
     implies_valid = (consensus.consensus_method or 0) >= 24
     for router in consensus.routers.values():
       if not router.fingerprint or not router.address:
-        raise stem.DescriptorUnavailable("Consensus contains an invalid relay identity or address")
+        raise ConsensusUnavailable("Consensus contains an invalid relay identity or address")
       if implies_valid and "Valid" not in router.flags:
         router.flags.append("Valid")
     return consensus
@@ -290,7 +295,7 @@ class VanguardState:
           try:
             enabled = "1" if int(param[len(key):]) > 0 else "0"
           except ValueError:
-            raise stem.DescriptorUnavailable("Invalid vanguards-lite-enabled consensus parameter")
+            raise ConsensusUnavailable("Invalid vanguards-lite-enabled consensus parameter")
           break
     if enabled == "0":
       raise stem.DescriptorUnavailable(
@@ -302,6 +307,8 @@ class VanguardState:
     if self.enable_vanguards:
       try:
         self._check_vanguards_lite(controller, consensus)
+      except ConsensusUnavailable:
+        raise
       except stem.DescriptorUnavailable as exc:
         if require_guards:
           raise
@@ -331,6 +338,7 @@ class VanguardState:
       sys.exit(1)
 
   def signal_event(self, controller, event):
+    """Handle reload and report whether to retry an unavailable consensus."""
     if event.signal == "RELOAD":
       try:
         if (getattr(self, "_guards_deferred", False)
@@ -341,10 +349,13 @@ class VanguardState:
           self._check_vanguards_lite(controller)
           self.configure_tor(controller)
       except stem.DescriptorUnavailable as exc:
-        self._guards_deferred = True
         plog("WARN", "Skipping guard reapplication: %s", str(exc))
-        return
+        if isinstance(exc, ConsensusUnavailable):
+          return True
+        self._guards_deferred = True
+        return False
       plog("NOTICE", "Tor got SIGHUP. Reapplying vanguards.")
+    return False
 
   def configure_tor(self, controller):
     if NUM_LAYER1_GUARDS:

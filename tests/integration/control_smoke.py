@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from threading import Event
 import time
 
 import stem.connection
@@ -30,6 +31,7 @@ def check_endpoint(connect, options, tor, work):
         controller.authenticate()
         assert str(controller.get_version()) == "0.4.9.17"
         assert controller.get_conf("DataDirectory") == str(work / "tor")
+        assert controller.get_conf("CacheDirectory") == str(work / "cache")
         assert controller.get_conf("DisableNetwork") == "1"
         for setting in ("HSLayer2Nodes", "HSLayer3Nodes", "VanguardsLiteEnabled",
                         "NumEntryGuards", "NumDirectoryGuards", "ProtocolWarnings"):
@@ -38,15 +40,52 @@ def check_endpoint(connect, options, tor, work):
             lambda event: None, "CIRC", "CIRC_MINOR", "CIRC_BW", "ORCONN",
             "BW", "NETWORK_LIVENESS", "NEWCONSENSUS", "SIGNAL", "NOTICE", "WARN", "ERR",
         )
+        assert controller.get_conf("ConfluxEnabled") == "1"
+        original_guards = controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes"))
 
     state_path = work / "vanguards.state"
-    result = subprocess.run(
-        [sys.executable, "/checkout/src/vanguards.py", *options,
-         "--state", str(state_path), "--retry_limit", "1"],
-        cwd=work, capture_output=True, text=True, timeout=15,
-    )
-    missing = f"Cannot read {work / 'tor' / 'cached-microdesc-consensus'}:"
-    assert result.returncode == 1 and missing in result.stdout, result
+    addon_config = work / "vanguards.conf"
+    addon_config.write_text("[Bandguards]\nconn_max_disconnected_secs = 1\n")
+    command = [sys.executable, "/checkout/src/vanguards.py", *options,
+               "--config", str(addon_config), "--state", str(state_path), "--retry_limit", "1"]
+    missing = f"Cannot read {work / 'cache' / 'cached-microdesc-consensus'}:"
+    result = subprocess.run(command + ["--one_shot_vanguards"], cwd=work,
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 1 and missing in result.stdout
+    log_path = work / "addon.log"
+    with log_path.open("w") as log:
+        with subprocess.Popen(command, cwd=work, stdout=log, stderr=log) as addon:
+            try:
+                deadline = time.monotonic() + 15
+                while addon.poll() is None and time.monotonic() < deadline:
+                    diagnostics = log_path.read_text()
+                    if (missing in diagnostics and diagnostics.count("Skipping consensus update:") >= 2
+                            and "We've been disconnected from the Tor network" in diagnostics):
+                        break
+                    time.sleep(0.1)
+                else:
+                    raise RuntimeError("Addon did not retry consensus and observe the Bandguards heartbeat")
+                with wait_for_control(connect, tor) as controller:
+                    controller.authenticate()
+                    controller.set_caching(False)
+                    assert controller.get_conf("ConfluxEnabled") == "1"
+                    reloaded = Event()
+                    controller.add_event_listener(
+                        lambda event: reloaded.set() if event.signal == "RELOAD" else None,
+                        "SIGNAL",
+                    )
+                    controller.signal("RELOAD")
+                    assert reloaded.wait(10), "Tor did not reload"
+                    assert controller.get_conf("ConfluxEnabled") == "1"
+                    assert controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes")) == original_guards
+            finally:
+                if addon.poll() is None:
+                    addon.send_signal(signal.SIGINT)
+                    try:
+                        addon.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        addon.kill()
+                        addon.wait()
     assert not state_path.exists()
 
 
@@ -58,7 +97,8 @@ def main():
         port_file = work / "control-port"
         torrc.write_text(
             f"DataDirectory {work / 'tor'}\n"
-            "DisableNetwork 1\nSocksPort 0\nCookieAuthentication 1\n"
+            f"CacheDirectory {work / 'cache'}\n"
+            "DisableNetwork 1\nSocksPort 0\nCookieAuthentication 1\nConfluxEnabled 1\n"
             f"ControlSocket {socket_path}\nControlPort auto\n"
             f"ControlPortWriteToFile {port_file}\n"
         )
@@ -86,7 +126,8 @@ def main():
                     except subprocess.TimeoutExpired:
                         tor.kill()
     print("Tor 0.4.9.17 accepted Unix and TCP control and rejected invalid auth. "
-          "Both launchers took the missing-consensus retry path without writing state.")
+          "Consensus retry and the Bandguards heartbeat stayed active before bootstrap. "
+          "One-shot mode failed without writing state.")
 
 
 if __name__ == "__main__":
