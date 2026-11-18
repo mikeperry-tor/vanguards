@@ -67,14 +67,19 @@ def run_main():
     plog("ERROR", "One-shot mode requires addon-managed vanguards.")
     sys.exit(1)
 
+  state_file = config.STATE_FILE
+  if (options.parallel_rendguard_state and config.ENABLE_RENDGUARD and
+      not config.ENABLE_VANGUARDS):
+    state_file += ".rendguard"
+
   try:
     # TODO: Use tor's data directory.. or our own
-    state = vanguards.VanguardState.read_from_file(config.STATE_FILE)
+    state = vanguards.VanguardState.read_from_file(state_file)
     plog("INFO", "Current layer2 guards: "+state.layer2_guardset())
     plog("INFO", "Current layer3 guards: "+state.layer3_guardset())
   except Exception as e:
-    plog("NOTICE", "Creating new vanguard state file at: "+config.STATE_FILE)
-    state = vanguards.VanguardState(config.STATE_FILE)
+    plog("NOTICE", "Creating new vanguard state file at: "+state_file)
+    state = vanguards.VanguardState(state_file)
 
   state.enable_vanguards = config.ENABLE_VANGUARDS
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False

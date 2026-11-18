@@ -75,6 +75,9 @@ def setup_options():
                       default=os.environ.get("VANGUARDS_STATE", STATE_FILE),
                       help="File to store vanguard state")
 
+  parser.add_argument("--parallel_rendguard_state", action="store_true",
+                      help=argparse.SUPPRESS)
+
   parser.add_argument("--generate_config", dest="write_file", type=str,
                       help="Write config to a file after applying command args")
 

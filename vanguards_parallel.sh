@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 # This script launches three vanguard components in parallel, logging to
-# syslog, and ideally using pypy.
+# syslog.
 #
 # This prevents vanguards from bottlenecking on a single CPU core.
 #
@@ -10,21 +10,24 @@
 # by commenting on: https://github.com/mikeperry-tor/vanguards/issues/62
 
 
-# Use pypy or pypy3, if available
-SYS_PY=$(which pypy3 || which pypy || which pypy2 || which python3 || which python2)
+VANGUARDS_LOCATION=$(command -v vanguards || :)
 
-VANGUARDS_LOCATION=$(which vanguards || echo "$SYS_PY ./src/vanguards.py")
-
-OTHER_OPTIONS="$@"
+run_vanguards() {
+    if [ -n "$VANGUARDS_LOCATION" ]; then
+        exec "$VANGUARDS_LOCATION" "$@"
+    else
+        exec python3 "$(dirname "$0")/src/vanguards.py" "$@"
+    fi
+}
 
 # Vanguards instance
-$VANGUARDS_LOCATION --disable_bandguards --disable_rendguard --logfile :syslog: $OTHER_OPTIONS &
+run_vanguards --disable_bandguards --disable_rendguard --logfile :syslog: "$@" &
 
 # Bandguards instance
-$VANGUARDS_LOCATION --disable_vanguards --disable_rendguard --logfile :syslog: $OTHER_OPTIONS &
+run_vanguards --disable_vanguards --disable_rendguard --logfile :syslog: "$@" &
 
-# Rendguards instance
-$VANGUARDS_LOCATION --disable_vanguards --disable_bandguards --logfile :syslog: $OTHER_OPTIONS &
+# Rendguard instance
+run_vanguards --disable_vanguards --disable_bandguards --parallel_rendguard_state --logfile :syslog: "$@" &
 
 jobs -l
 
