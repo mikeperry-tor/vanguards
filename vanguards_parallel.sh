@@ -10,13 +10,20 @@
 # by commenting on: https://github.com/mikeperry-tor/vanguards/issues/62
 
 
-VANGUARDS_LOCATION=$(command -v vanguards || :)
+VANGUARDS_SOURCE="$(dirname "$0")/src/vanguards.py"
+VANGUARDS_LOCATION=
+if [ ! -f "$VANGUARDS_SOURCE" ]; then
+    VANGUARDS_LOCATION=$(command -v vanguards) || {
+        printf '%s\n' 'Cannot find the vanguards command on PATH.' >&2
+        exit 1
+    }
+fi
 
 run_vanguards() {
     if [ -n "$VANGUARDS_LOCATION" ]; then
         exec "$VANGUARDS_LOCATION" "$@"
     else
-        exec python3 "$(dirname "$0")/src/vanguards.py" "$@"
+        exec python3 "$VANGUARDS_SOURCE" "$@"
     fi
 }
 
