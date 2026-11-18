@@ -63,7 +63,9 @@ docker run --rm --network none -e PYTHONPATH=/checkout/src \
 
 The fixture uses Tor 0.4.9.17 and synthetic authority votes. It exercises
 `VanguardsLiteEnabled=1` with Tor-selected guards and with explicit addon guard
-layers, including four throttled transfers per mode. It verifies circuit
+layers, including four throttled transfers per mode. The Tor-selected service
+uses the microdescriptor consensus and the addon-managed service uses the NS
+consensus (`UseMicrodescriptors 0`). The fixture verifies circuit
 bandwidth events, reload, reconnect, persisted state, and one-shot configuration.
 The container discards its test identities and run data. Remove the temporary
 Chutney checkout after the run.

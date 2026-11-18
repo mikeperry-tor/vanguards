@@ -46,12 +46,6 @@ class MockController:
       GOT_SOCKET = infile
       return MockController()
 
-  # FIXME: os.path.join
-  def get_network_statuses(self):
-    return list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
-                   document_handler =
-                      stem.descriptor.DocumentHandler.ENTRIES))
-
   def add_event_listener(self, func, *events):
     pass
 
@@ -75,6 +69,8 @@ class MockController:
     return default
 
   def get_info(self, key, default=None):
+    if key == "consensus/valid-after":
+      return "2018-04-21 18:00:00"
     if key == "orconn-status":
       return "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED\n"+\
              "$3E53D3979DB07EFD736661C934A1DED14127B684~Unnamed CONNECTED"

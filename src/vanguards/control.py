@@ -28,14 +28,14 @@ def authenticate_any(controller, passwd=""):
   plog("NOTICE", "Vanguards %s connected to Tor %s using stem %s",
        __version__, controller.get_version(), stem.__version__)
 
-def get_consensus_weights(consensus_filename):
+def read_consensus(consensus_filename):
   parsed_consensus = next(stem.descriptor.parse_file(consensus_filename,
                           document_handler =
-                            stem.descriptor.DocumentHandler.BARE_DOCUMENT))
+                            stem.descriptor.DocumentHandler.DOCUMENT))
 
   if not getattr(parsed_consensus, "is_consensus", False):
     raise stem.DescriptorUnavailable("Tor's consensus cache contains a different document type")
-  return parsed_consensus.bandwidth_weights
+  return parsed_consensus
 
 def try_close_circuit(controller, circ_id):
   if controller._logguard:

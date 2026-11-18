@@ -72,7 +72,9 @@ def ready(node):
                 return False
             assert str(control.get_version()) == "0.4.9.17"
             routers = list(control.get_network_statuses())
-        doc = next(parse_file(str(node / "cached-microdesc-consensus"),
+            cache_name = ("cached-consensus" if control.get_conf("UseMicrodescriptors") == "0"
+                          else "cached-microdesc-consensus")
+        doc = next(parse_file(str(node / cache_name),
                               document_handler=DocumentHandler.BARE_DOCUMENT))
     except (FileNotFoundError, stem.SocketError, stem.DescriptorUnavailable, StopIteration):
         return False
@@ -338,6 +340,8 @@ def main():
                 for node in (service, managed_service):
                     with (node / "torrc").open("a") as config:
                         config.write("\nVanguardsLiteEnabled 1\n")
+                with (managed_service / "torrc").open("a") as config:
+                    config.write("UseMicrodescriptors 0\n")
                 chutney("start", work)
                 print("Private Tor network started", flush=True)
                 wait_for("client and service bootstrap with usable consensuses",
