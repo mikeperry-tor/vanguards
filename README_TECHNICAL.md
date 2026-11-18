@@ -85,9 +85,11 @@ These options ensure that all onion service circuits are restricted to a set
 of second and third layer guards, instead of sampling random ones from the
 whole network every time.
 
-On C Tor 0.4.9, `VanguardsLiteEnabled` also controls whether onion-service
-circuits use explicit `HSLayer2Nodes` and `HSLayer3Nodes`. Set it to `1` if
-you want explicit guard layers to apply independently of the consensus setting.
+On C Tor releases with `VanguardsLiteEnabled`, that setting also controls
+whether onion-service circuits use explicit `HSLayer2Nodes` and
+`HSLayer3Nodes`. Set it to `1` so explicit layers apply independently of the
+consensus setting. The addon checks this prerequisite before applying layers.
+One-shot mode reports failure when Tor would ignore them.
 
 The change to fixed nodes for the second and third layer guards is designed
 to force the adversary to have to run many more nodes, and to execute both an

@@ -106,6 +106,7 @@ ControlPort or ControlSocket torrc directives:
 ControlPort 9099             # or ControlSocket /path/to/socket
 CookieAuthentication 1
 DataDirectory /path/to/tor/datadir
+VanguardsLiteEnabled 1       # C Tor 0.4.7 and later
 ```
 
 Then run the addon:

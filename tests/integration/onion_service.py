@@ -333,6 +333,15 @@ def addon_mode(work, service, client, *, microdesc):
         listen = control.get_info("net/listeners/control").split()[0].strip('"')
         host, port = listen.split(":")
         options = ["--control_ip", host, "--control_port", port, "--state", str(state)]
+        expected = tor_settings(control)
+        control.set_conf("VanguardsLiteEnabled", "0")
+        result = subprocess.run(
+            [sys.executable, LAUNCHER, *options, "--one_shot_vanguards"],
+            cwd=work, capture_output=True, text=True, timeout=15,
+        )
+        assert result.returncode == 1 and "Tor will ignore explicit guard layers" in result.stdout
+        assert tor_settings(control) == expected and not state.exists()
+        control.set_conf("VanguardsLiteEnabled", "1")
         save_guards(work, options)
         shutdown_tor(service, control)
     start_tor(work, service)
