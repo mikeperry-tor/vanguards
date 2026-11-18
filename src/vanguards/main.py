@@ -177,10 +177,9 @@ def control_loop(state):
 
   if config.ENABLE_BANDGUARDS:
     bandwidths = bandguards.BandwidthStats(controller)
+    supports_circ_bw = controller.get_version() >= _MIN_TOR_VERSION_FOR_BW
+    bandwidths.attach_circuits(supports_circ_bw)
 
-    controller.add_event_listener(
-                 functools.partial(bandguards.BandwidthStats.circ_event, bandwidths),
-                                  stem.control.EventType.CIRC)
     controller.add_event_listener(
                  functools.partial(bandguards.BandwidthStats.bw_event, bandwidths),
                                   stem.control.EventType.BW)
@@ -192,13 +191,10 @@ def control_loop(state):
                                    bandwidths),
                                   stem.control.EventType.NETWORK_LIVENESS)
 
-    if controller.get_version() >= _MIN_TOR_VERSION_FOR_BW:
+    if supports_circ_bw:
       controller.add_event_listener(
                    functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
                                     stem.control.EventType.CIRC_BW)
-      controller.add_event_listener(
-                   functools.partial(bandguards.BandwidthStats.circ_minor_event, bandwidths),
-                                    stem.control.EventType.CIRC_MINOR)
     else:
       plog("NOTICE", "In order for bandwidth-based protections to be "+
                       "enabled, you must use Tor 0.3.4.10 or newer.")

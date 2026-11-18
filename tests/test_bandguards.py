@@ -12,6 +12,7 @@ from vanguards.bandguards import CIRC_MAX_DISCONNECTED_SECS
 from vanguards.bandguards import CONN_MAX_DISCONNECTED_SECS
 
 from vanguards.bandguards import _CELL_PAYLOAD_SIZE
+from vanguards.bandguards import _CIRCUIT_SNAPSHOT_RETRY_SECONDS
 from vanguards.bandguards import _CELL_DATA_RATE
 from vanguards.bandguards import _SECS_PER_HOUR
 from vanguards.bandguards import _BYTES_PER_KB
@@ -119,6 +120,65 @@ def circ_bw(circ_id, read, sent, delivered_read, delivered_sent,
             overhead_read, overhead_sent):
   s = "650 CIRC_BW ID="+str(circ_id)+" READ="+str(int(read))+" WRITTEN="+str(int(sent))+" TIME=2018-05-04T06:08:55.751726 DELIVERED_READ="+str(int(delivered_read))+" OVERHEAD_READ="+str(int(overhead_read))+" DELIVERED_WRITTEN="+str(int(delivered_sent))+" OVERHEAD_WRITTEN="+str(int(overhead_sent))+"\r\n"
   return ControlMessage.from_str(s, "EVENT")
+
+def test_attach_tracks_existing_circuits_and_replays_lifecycle():
+  controller = MockController()
+  stats = BandwidthStats(controller)
+  controller.bwstats = stats
+  existing = built_serv_intro_circ(1)
+  closing = built_general_circ(2)
+
+  def subscribe(handler, *events):
+    assert set(events) == {"CIRC", "CIRC_MINOR"}
+    controller.listener = handler
+
+  def snapshot():
+    controller.listener(closed_circ(2))
+    controller.listener(built_general_circ(3))
+    return [existing, closing]
+
+  controller.add_event_listener = subscribe
+  controller.get_circuits = snapshot
+  stats.attach_circuits(include_minor=True)
+  assert set(stats.circs) == {"1", "3"}
+  assert stats.circs["1"].built and stats.circs["1"].is_serv_intro
+  stats.circbw_event(circ_bw(1, _CELL_PAYLOAD_SIZE, 0, 0, 0, 0, 0))
+  assert controller.closed_circ == "1"
+
+def test_circuit_snapshot_retry_keeps_live_accounting(monkeypatch):
+  controller = MockController()
+  stats = BandwidthStats(controller)
+  controller.bwstats = stats
+  now = 0
+  monkeypatch.setattr(time, "monotonic", lambda: now)
+  monkeypatch.setattr("vanguards.bandguards.CIRC_MAX_AGE_HOURS", 0)
+  attempts = []
+
+  def snapshot():
+    attempts.append(now)
+    if len(attempts) < 3:
+      raise stem.ProtocolError("invalid circuit-status row")
+    return [built_serv_intro_circ(1), built_general_circ(2)]
+
+  controller.get_circuits = snapshot
+  controller.add_event_listener = lambda handler, *events: setattr(controller, "listener", handler)
+  stats.attach_circuits(include_minor=True)
+  controller.listener(built_general_circ(2))
+  stats.circbw_event(circ_bw(2, _CELL_PAYLOAD_SIZE, 0,
+                            _CELL_DATA_RATE * _CELL_PAYLOAD_SIZE, 0, 0, 0))
+  heartbeat = ControlMessage.from_str("650 BW 0 0\r\n", "EVENT")
+  stats.bw_event(heartbeat)
+  assert attempts == [0]
+  now = _CIRCUIT_SNAPSHOT_RETRY_SECONDS
+  stats.bw_event(heartbeat)
+  assert set(stats.circs) == {"2"}
+  now *= 2
+  stats.bw_event(heartbeat)
+  assert stats.circs["1"].is_serv_intro
+  assert stats.circs["2"].read_bytes == _CELL_PAYLOAD_SIZE
+  now *= 2
+  stats.bw_event(heartbeat)
+  assert len(attempts) == 3
 
 def check_hsdir(state, controller, circ_id):
   read = _CELL_PAYLOAD_SIZE

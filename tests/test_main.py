@@ -51,8 +51,11 @@ class MockController:
                    document_handler =
                       stem.descriptor.DocumentHandler.ENTRIES))
 
-  def add_event_listener(self, func, ev):
+  def add_event_listener(self, func, *events):
     pass
+
+  def get_circuits(self):
+    return []
 
   def authenticate(self, password=None):
     if THROW_AUTH:
@@ -391,7 +394,7 @@ def test_rendguard_only_does_not_reapply_guard_settings(monkeypatch, tmp_path):
   vanguards.config.apply_config(DEFAULT_CONFIG)
   subscribed = set()
   monkeypatch.setattr(MockController, "add_event_listener",
-                      lambda controller, handler, event: subscribed.add(event))
+                      lambda controller, handler, *events: subscribed.update(events))
   monkeypatch.setattr(vanguards.config, "ENABLE_VANGUARDS", True)
   monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards",
                                    "--state", str(tmp_path / "state")])
