@@ -440,11 +440,14 @@ def test_managed_reload_only_reapplies_guard_settings(monkeypatch, tmp_path):
     handler(event)
   assert set(writes) == {"HSLayer2Nodes", "HSLayer3Nodes", "NumEntryGuards", "NumDirectoryGuards"}
 
-def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp_path):
+@pytest.mark.parametrize("recover_on_bw", [False, True])
+def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp_path, recover_on_bw):
   vanguards.config.apply_config(DEFAULT_CONFIG)
   monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
   monkeypatch.setattr(sys.modules[__name__], "DATA_DIR", str(tmp_path))
   monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  now = 0
+  monkeypatch.setattr(vanguards.main.time, "monotonic", lambda: now)
   handlers = {}
   rendguard_calls = []
   state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
@@ -456,6 +459,8 @@ def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp
       handlers.setdefault(event, []).append(handler)
 
   monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  monkeypatch.setattr(MockController, "remove_event_listener",
+                      lambda controller, handler: handlers["BW"].remove(handler), raising=False)
   assert vanguards.main.control_loop(state) == "closed"
   assert "CIRC_BW" in handlers and "NEWCONSENSUS" in handlers
   event = object()
@@ -463,8 +468,19 @@ def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp
   assert not rendguard_calls
   assert not (tmp_path / "state").exists()
 
+  retry = handlers["BW"][-1]
+  retry(event)
+  assert retry in handlers["BW"] and not (tmp_path / "state").exists()
   shutil.copy("tests/cached-microdesc-consensus", tmp_path)
-  handlers["NEWCONSENSUS"][0](event)
+  if recover_on_bw:
+    retry(event)
+    assert not (tmp_path / "state").exists()
+    now = vanguards.main._CONSENSUS_RETRY_SECONDS
+    retry(event)
+  else:
+    handlers["NEWCONSENSUS"][0](event)
+    retry(event)
+  assert retry not in handlers["BW"]
   handlers["CIRC"][0](event)
   assert rendguard_calls == [event]
   assert (tmp_path / "state").is_file()

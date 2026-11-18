@@ -43,6 +43,7 @@ _CELL_PAYLOAD_SIZE = 509
 _RELAY_HEADER_SIZE = 11
 _RELAY_PAYLOAD_SIZE = _CELL_PAYLOAD_SIZE - _RELAY_HEADER_SIZE
 _CELL_DATA_RATE = (float(_RELAY_PAYLOAD_SIZE)/_CELL_PAYLOAD_SIZE)
+_CIRCUIT_SNAPSHOT_RETRY_SECONDS = 5
 
 _SECS_PER_HOUR = 60*60
 _BYTES_PER_KB = 1024
@@ -107,6 +108,7 @@ class BandwidthStats:
     self.disconnected_circs = False
     self.disconnected_conns = False
     self.warned_conflux = False
+    self._snapshot_retry_at = None
     self._orconn_init(controller)
     self._network_liveness_init(controller)
 
@@ -127,20 +129,26 @@ class BandwidthStats:
     # Subscribe before querying so lifecycle changes during the snapshot
     # are applied in order before bandwidth accounting starts.
     self.controller.add_event_listener(handle, *handlers)
+    circuits = self._get_circuit_snapshot()
+
+    with lock:
+      for event in circuits or ():
+        self.circ_event(event, snapshot=True)
+      for event in pending:
+        handlers[event.type](event)
+      pending = None
+
+  def _get_circuit_snapshot(self):
     try:
       circuits = self.controller.get_circuits()
     except stem.ControllerError as exc:
       # Stem's parser errors can include a raw row with SOCKS credentials.
       plog("WARN", "Cannot load existing circuits for Bandguards: %s",
            type(exc).__name__)
-      circuits = []
-
-    with lock:
-      for event in circuits:
-        self.circ_event(event, snapshot=True)
-      for event in pending:
-        handlers[event.type](event)
-      pending = None
+      self._snapshot_retry_at = time.monotonic() + _CIRCUIT_SNAPSHOT_RETRY_SECONDS
+      return None
+    self._snapshot_retry_at = None
+    return circuits
 
   def _network_liveness_init(self, controller):
     if controller.get_info("network-liveness") != "up":
@@ -436,6 +444,11 @@ class BandwidthStats:
 
   # Used for 1x/sec heartbeat only
   def bw_event(self, event):
+    if self._snapshot_retry_at is not None and time.monotonic() >= self._snapshot_retry_at:
+      # Stem dispatches lifecycle events serially with this callback.
+      for circuit in self._get_circuit_snapshot() or ():
+        if circuit.id not in self.circs:
+          self.circ_event(circuit, snapshot=True)
     now = time.time()
     self.check_connectivity(event.arrived_at)
     self.check_circ_ages(now)

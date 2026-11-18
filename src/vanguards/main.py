@@ -18,6 +18,7 @@ from . import config
 from .logger import plog
 
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.10")
+_CONSENSUS_RETRY_SECONDS = 5
 
 def main():
   try:
@@ -129,6 +130,7 @@ def control_loop(state):
   pending_reload = None
   fatal_error = None
   reload_lock = Lock()
+  next_consensus_retry = 0
 
   def reload_guards(event):
     nonlocal fatal_error, pending_reload
@@ -189,10 +191,13 @@ def control_loop(state):
       fatal_error = exc
 
   def retry_initial_consensus(event):
-    # Close the gap between the initial query and NEWCONSENSUS subscription.
-    controller.remove_event_listener(retry_initial_consensus)
-    if not consensus_ready:
+    nonlocal next_consensus_retry
+    now = time.monotonic()
+    if not consensus_ready and now >= next_consensus_retry:
+      next_consensus_retry = now + _CONSENSUS_RETRY_SECONDS
       refresh_consensus(event)
+    if consensus_ready:
+      controller.remove_event_listener(retry_initial_consensus)
 
   def rendguard_event(event):
     if consensus_ready:

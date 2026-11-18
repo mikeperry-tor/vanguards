@@ -54,10 +54,10 @@ def check_endpoint(connect, options, tor, work):
     with log_path.open("w") as log:
         with subprocess.Popen(command, cwd=work, stdout=log, stderr=log) as addon:
             try:
-                deadline = time.monotonic() + 10
+                deadline = time.monotonic() + 15
                 while addon.poll() is None and time.monotonic() < deadline:
                     diagnostics = log_path.read_text()
-                    if missing in diagnostics and "Skipping consensus update:" in diagnostics:
+                    if missing in diagnostics and diagnostics.count("Skipping consensus update:") >= 2:
                         break
                     time.sleep(0.1)
                 else:

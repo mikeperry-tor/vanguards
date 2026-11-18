@@ -76,7 +76,8 @@ weights are unusable, or if the initial candidate pool is empty. The last
 accepted guard and rendezvous state stays in use until a usable consensus
 arrives. A long-running addon keeps Bandguards and the other independent
 monitors active while waiting for the first usable consensus. Guard updates
-and Rendguard resume when it arrives.
+and Rendguard resume when it arrives. The addon retries an unavailable initial
+consensus and a failed circuit snapshot on the control connection.
 
 Each of these options is assigned its own set of nodes, which are rotated
 based on the randomized selection algorithm specified in [the Mesh Vanguards
