@@ -379,50 +379,66 @@ def test_oneshot_requires_addon_guard_management(monkeypatch):
   assert error.value.code == 1
   assert not GOT_SAVE_CONF
 
-def test_rendguard_only_does_not_reapply_guard_settings(monkeypatch, tmp_path):
+@pytest.mark.parametrize("bandguards", [False, True])
+def test_monitoring_only_leaves_tor_settings_owned_by_tor(monkeypatch, tmp_path, bandguards):
   vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(vanguards.config, "ENABLE_PATHVERIFY", False)
+  monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
   subscribed = set()
+  writes = []
   monkeypatch.setattr(MockController, "add_event_listener",
                       lambda controller, handler, *events: subscribed.update(events))
+  monkeypatch.setattr(MockController, "set_conf", lambda controller, *setting: writes.append(setting))
   monkeypatch.setattr(vanguards.config, "ENABLE_VANGUARDS", True)
-  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards", "--disable_bandguards",
-                                   "--state", str(tmp_path / "state")])
+  arguments = ["vanguards", "--disable_vanguards", "--disable_logguard",
+               "--state", str(tmp_path / "state")]
+  if not bandguards:
+    arguments.append("--disable_bandguards")
+  monkeypatch.setattr(sys, "argv", arguments)
   vanguards.main.main()
   assert "CIRC" in subscribed and "NEWCONSENSUS" in subscribed
-  assert "SIGNAL" not in subscribed
+  assert ("CIRC_BW" in subscribed) == bandguards
+  assert "SIGNAL" not in subscribed and not writes
 
-def test_bandguards_disables_conflux_on_attach_and_reload(monkeypatch, tmp_path, caplog):
-  caplog.set_level(logging.INFO, logger="TorCtl")
-  monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
+def test_bandguards_config_file_opt_out(monkeypatch, tmp_path):
   vanguards.config.apply_config(DEFAULT_CONFIG)
-  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards",
-                                   "--loglevel", "NOTICE",
-                                   "--state", str(tmp_path / "state")])
-  original_get_conf = MockController.get_conf
-  handlers = {}
-  settings = {"ConfluxEnabled": "auto"}
+  config = tmp_path / "vanguards.conf"
+  config.write_text("[Global]\nenable_bandguards = False\n")
+  monkeypatch.setattr(vanguards.config, "ENABLE_BANDGUARDS", True)
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--config", str(config),
+                                   "--disable_vanguards", "--disable_rendguard"])
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  subscribed = []
+  monkeypatch.setattr(MockController, "add_event_listener",
+                      lambda controller, handler, *events: subscribed.extend(events))
+  vanguards.main.main()
+  assert not vanguards.config.ENABLE_BANDGUARDS
+  assert "CIRC_BW" not in subscribed and "NETWORK_LIVENESS" not in subscribed
 
-  def get_conf(controller, key, default=None):
-    if key in settings:
-      return settings[key]
-    return original_get_conf(controller, key, default)
+def test_managed_reload_only_reapplies_guard_settings(monkeypatch, tmp_path):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
+  monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
+  handlers = []
+  writes = []
 
   def subscribe(controller, handler, *events):
-    for event in events:
-      handlers.setdefault(event, []).append(handler)
+    if "SIGNAL" in events:
+      handlers.append(handler)
 
-  monkeypatch.setattr(MockController, "get_conf", get_conf)
-  monkeypatch.setattr(MockController, "set_conf",
-                      lambda controller, key, value: settings.update({key: value}))
+  get_conf = MockController.get_conf
+  monkeypatch.setattr(MockController, "get_conf", lambda controller, key, default=None:
+                      "1" if key == "ConfluxEnabled" else get_conf(controller, key, default))
   monkeypatch.setattr(MockController, "add_event_listener", subscribe)
-  vanguards.main.main()
-  assert settings["ConfluxEnabled"] == "0"
-  assert "Onion services do not use Conflux" in caplog.text
-  settings["ConfluxEnabled"] = "1"
-  reload_event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
-  for handler in handlers["SIGNAL"]:
-    handler(reload_event)
-  assert settings["ConfluxEnabled"] == "0"
+  monkeypatch.setattr(MockController, "set_conf", lambda controller, key, value: writes.append(key))
+  state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
+  assert vanguards.main.control_loop(state) == "closed"
+  writes.clear()
+  event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
+  for handler in handlers:
+    handler(event)
+  assert set(writes) == {"HSLayer2Nodes", "HSLayer3Nodes", "NumEntryGuards", "NumDirectoryGuards"}
 
 def test_bandguards_stays_active_while_consensus_is_unavailable(monkeypatch, tmp_path):
   vanguards.config.apply_config(DEFAULT_CONFIG)

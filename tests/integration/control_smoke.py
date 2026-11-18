@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from threading import Event
 import time
 
 import stem.connection
@@ -39,7 +40,7 @@ def check_endpoint(connect, options, tor, work):
             lambda event: None, "CIRC", "CIRC_MINOR", "CIRC_BW", "ORCONN",
             "BW", "NETWORK_LIVENESS", "NEWCONSENSUS", "SIGNAL", "NOTICE", "WARN", "ERR",
         )
-        controller.set_conf("ConfluxEnabled", "auto")
+        assert controller.get_conf("ConfluxEnabled") == "1"
         original_guards = controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes"))
 
     state_path = work / "vanguards.state"
@@ -63,16 +64,16 @@ def check_endpoint(connect, options, tor, work):
                     raise RuntimeError("Addon did not stay active and retry without consensus")
                 with wait_for_control(connect, tor) as controller:
                     controller.authenticate()
-                    assert controller.get_conf("ConfluxEnabled") == "0"
+                    controller.set_caching(False)
+                    assert controller.get_conf("ConfluxEnabled") == "1"
+                    reloaded = Event()
+                    controller.add_event_listener(
+                        lambda event: reloaded.set() if event.signal == "RELOAD" else None,
+                        "SIGNAL",
+                    )
                     controller.signal("RELOAD")
-                    deadline = time.monotonic() + 10
-                    while addon.poll() is None and time.monotonic() < deadline:
-                        if log_path.read_text().count("Set ConfluxEnabled=0") >= 2:
-                            break
-                        time.sleep(0.1)
-                    else:
-                        raise RuntimeError("Bandguards did not restore ConfluxEnabled after reload")
-                    assert controller.get_conf("ConfluxEnabled") == "0"
+                    assert reloaded.wait(10), "Tor did not reload"
+                    assert controller.get_conf("ConfluxEnabled") == "1"
                     assert controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes")) == original_guards
             finally:
                 if addon.poll() is None:
@@ -94,7 +95,7 @@ def main():
         torrc.write_text(
             f"DataDirectory {work / 'tor'}\n"
             f"CacheDirectory {work / 'cache'}\n"
-            "DisableNetwork 1\nSocksPort 0\nCookieAuthentication 1\n"
+            "DisableNetwork 1\nSocksPort 0\nCookieAuthentication 1\nConfluxEnabled 1\n"
             f"ControlSocket {socket_path}\nControlPort auto\n"
             f"ControlPortWriteToFile {port_file}\n"
         )

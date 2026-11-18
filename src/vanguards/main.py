@@ -19,25 +19,6 @@ from .logger import plog
 
 _MIN_TOR_VERSION_FOR_BW = stem.version.Version("0.3.4.10")
 
-def disable_conflux(controller, event=None):
-  if event is not None and event.signal != "RELOAD":
-    return
-  try:
-    try:
-      enabled = controller.get_conf("ConfluxEnabled")
-    except stem.InvalidArguments:
-      return
-    if enabled in (None, "0"):
-      return
-    controller.set_conf("ConfluxEnabled", "0")
-  except stem.ControllerError:
-    if event is None:
-      raise
-    plog("WARN", "Bandguards could not disable Conflux after Tor reloaded.")
-    return
-  plog("NOTICE", "Set ConfluxEnabled=0 to avoid incompatible Bandguards "
-       "accounting. Onion services do not use Conflux.")
-
 def main():
   try:
     run_main()
@@ -245,10 +226,6 @@ def control_loop(state):
   if config.ENABLE_BANDGUARDS:
     bandwidths = bandguards.BandwidthStats(controller)
     supports_circ_bw = controller.get_version() >= _MIN_TOR_VERSION_FOR_BW
-    if supports_circ_bw:
-      controller.add_event_listener(functools.partial(disable_conflux, controller),
-                                    stem.control.EventType.SIGNAL)
-      disable_conflux(controller)
     bandwidths.attach_circuits(supports_circ_bw)
 
     controller.add_event_listener(

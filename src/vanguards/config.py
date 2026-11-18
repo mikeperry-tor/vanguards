@@ -123,7 +123,7 @@ def setup_options():
   parser.add_argument("--disable_bandguards", dest="bandguards_enabled",
                       action="store_false",
                       help="Disable circuit side channel checks (may help performance)")
-  parser.set_defaults(bandguards_eabled=ENABLE_BANDGUARDS)
+  parser.set_defaults(bandguards_enabled=ENABLE_BANDGUARDS)
 
   parser.add_argument("--disable_logguard", dest="logguard_enabled",
                       action="store_false",

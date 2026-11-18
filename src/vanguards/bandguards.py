@@ -106,6 +106,7 @@ class BandwidthStats:
     self.max_fake_id = -1
     self.disconnected_circs = False
     self.disconnected_conns = False
+    self.warned_conflux = False
     self._orconn_init(controller)
     self._network_liveness_init(controller)
 
@@ -361,7 +362,8 @@ class BandwidthStats:
       overhead_read = int(event.keyword_args["OVERHEAD_READ"])
       overhead_written = int(event.keyword_args["OVERHEAD_WRITTEN"])
 
-      if delivered_read + overhead_read > event.read*_CELL_DATA_RATE:
+      if self.circs[event.id].purpose != "CONFLUX_LINKED" and \
+         delivered_read + overhead_read > event.read*_CELL_DATA_RATE:
         plog("ERROR",
              "Application read data exceeds cell data:"+event.raw_content());
       if delivered_written + overhead_written > event.written*_CELL_DATA_RATE:
@@ -439,9 +441,14 @@ class BandwidthStats:
     self.check_circ_ages(now)
 
   def check_circuit_limits(self, circ):
-    # A Conflux leg established before we disabled Conflux can still carry
-    # traffic. Its reordering queue makes the dropped-cell count ambiguous.
-    dropped_cells = 0 if circ.purpose == "CONFLUX_LINKED" else circ.dropped_read_cells()
+    # Conflux's reordering queue makes per-leg dropped-cell counts ambiguous.
+    if circ.purpose == "CONFLUX_LINKED":
+      dropped_cells = 0
+      if not self.warned_conflux:
+        plog("WARN", "Bandguards cannot check for dropped cells on linked Conflux exit circuits.")
+        self.warned_conflux = True
+    else:
+      dropped_cells = circ.dropped_read_cells()
     if dropped_cells > circ.dropped_cells_allowed:
       # Workaround for Tor bug #29699 (see also
       # https://github.com/mikeperry-tor/vanguards/issues/37).
