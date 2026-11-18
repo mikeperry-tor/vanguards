@@ -9,7 +9,7 @@ import pytest
 
 from stem.response import ControlMessage
 
-from vanguards.control import get_consensus_weights
+from vanguards.control import read_consensus
 
 import vanguards.vanguards
 from vanguards.vanguards import VanguardState
@@ -129,11 +129,12 @@ def sanity_check(state):
 class MockController:
   def __init__(self):
     self.data_dir = "tests"
+    self.cache_dir = None
     self.exclude_nodes = None
     self.exclude_unknown = "1"
     self.got_set_conf = False
     self.got_save_conf = False
-    self.get_info_vals = {}
+    self.get_info_vals = {"consensus/valid-after": "2018-04-21 18:00:00"}
     self._logguard = None
 
   def signal(self, sig):
@@ -145,13 +146,16 @@ class MockController:
                    document_handler =
                       stem.descriptor.DocumentHandler.ENTRIES))
 
-  def get_conf(self, key):
+  def get_conf(self, key, default=None):
     if key == "DataDirectory":
       return self.data_dir
+    if key == "CacheDirectory":
+      return self.cache_dir
     if key == "ExcludeNodes":
       return self.exclude_nodes
     if key == "GeoIPExcludeUnknown":
       return self.exclude_unknown
+    return default
 
   def set_conf(self, key, val):
     self.got_set_conf = True
@@ -168,7 +172,9 @@ class MockController:
     else:
       return default
 
-@pytest.mark.parametrize("missing", ["file", None, "Wme", "Wed", "zero-exits", "no-relays"])
+@pytest.mark.parametrize("missing", ["file", None, "Wme", "Wed", "zero-exits",
+                                     "no-relays", "unknown-type", "stale", "relay-bandwidth",
+                                     "relay-identity", "relay-address"])
 def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
   filename = "cached-microdesc-consensus"
   valid = (Path("tests") / filename).read_text()
@@ -182,12 +188,22 @@ def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
   previous_state = state_file.read_bytes()
   previous_counts = state.rendguard.use_counts
   layers = (state.layer2_guardset(), state.layer3_guardset())
-  get_routers = controller.get_network_statuses
-
   if missing == "file":
     cache.unlink()
+  elif missing == "unknown-type":
+    cache.write_text("@type unsupported 1.0\n")
   elif missing == "no-relays":
-    controller.get_network_statuses = lambda: []
+    cache.write_text(valid[:valid.index("\nr ")] + valid[valid.index("\ndirectory-footer"):])
+  elif missing == "stale":
+    cache.write_text(valid.replace("valid-after 2018-04-21 18:00:00",
+                                   "valid-after 2018-04-21 17:00:00"))
+  elif missing == "relay-bandwidth":
+    first_bandwidth = valid.index("\nw ")
+    cache.write_text(valid[:first_bandwidth] + valid[valid.index("\n", first_bandwidth + 1):])
+  elif missing in ("relay-identity", "relay-address"):
+    first_relay = valid.split("\nr ", 1)[1].split("\n", 1)[0]
+    field = 1 if missing == "relay-identity" else 4
+    cache.write_text(valid.replace(first_relay, first_relay.replace(first_relay.split()[field], "?"), 1))
   else:
     lines = []
     for line in valid.splitlines():
@@ -213,10 +229,39 @@ def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
   assert (state.layer2_guardset(), state.layer3_guardset()) == layers
 
   cache.write_text(valid)
-  controller.get_network_statuses = get_routers
   state.new_consensus_event(controller, object())
   assert controller.got_set_conf
   assert state.rendguard.use_counts is not previous_counts
+
+def test_consensus_uses_tor_cache_directory(tmp_path):
+  shutil.copy("tests/cached-microdesc-consensus", tmp_path)
+  controller = MockController()
+  controller.data_dir = str(tmp_path / "unused")
+  controller.cache_dir = str(tmp_path)
+  state = VanguardState(str(tmp_path / "state"))
+  state.new_consensus_event(controller, None)
+  assert state.layer2 and controller.got_set_conf
+
+def test_consensus_uses_active_ns_flavor(tmp_path, monkeypatch):
+  microdesc = Path("tests/cached-microdesc-consensus").read_text()
+  (tmp_path / "cached-microdesc-consensus").write_text("unused cache")
+  # NS router rows include a descriptor digest after the identity digest.
+  lines = [line.split() for line in microdesc.splitlines() if line.startswith("r ")]
+  rows = [" ".join(row[:3] + [row[2]] + row[3:]) + "\ns Fast Stable\nw Bandwidth=100"
+          for row in lines[:8]]
+  (tmp_path / "cached-consensus").write_text(
+      "network-status-version 3\nvote-status consensus\nconsensus-method 26\n"
+      "valid-after 2018-04-21 18:00:00\n" + "\n".join(rows) +
+      "\ndirectory-footer\nbandwidth-weights Wmm=10000\n")
+  controller = MockController()
+  controller.data_dir = str(tmp_path)
+  get_conf = controller.get_conf
+  monkeypatch.setattr(controller, "get_conf",
+                      lambda key: "0" if key == "UseMicrodescriptors" else get_conf(key))
+  state = VanguardState(str(tmp_path / "state"))
+  state.new_consensus_event(controller, None)
+  assert controller.got_set_conf
+  assert len(state.layer3) == 8
 
 def test_consensus_only_requires_weights_for_relays_in_pool():
   state = VanguardState("unused")
@@ -232,7 +277,7 @@ def test_new_vanguards():
   routers = list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
                  document_handler =
                     stem.descriptor.DocumentHandler.ENTRIES))
-  weights = get_consensus_weights("tests/cached-microdesc-consensus")
+  weights = read_consensus("tests/cached-microdesc-consensus").bandwidth_weights
 
   # - Perform basic rank checks from sort_and_index
   (sorted_r, dict_r) = state.sort_and_index_routers(routers)
@@ -270,7 +315,7 @@ def test_excludenodes():
   routers = list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
                  document_handler =
                     stem.descriptor.DocumentHandler.ENTRIES))
-  weights = get_consensus_weights("tests/cached-microdesc-consensus")
+  weights = read_consensus("tests/cached-microdesc-consensus").bandwidth_weights
   (sorted_r, dict_r) = state.sort_and_index_routers(routers)
 
   state.consensus_update(routers, weights, ExcludeNodes(controller))

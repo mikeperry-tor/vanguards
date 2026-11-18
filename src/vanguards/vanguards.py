@@ -155,6 +155,8 @@ class VanguardState:
 
     for r in sorted_r:
       if r.measured == None:
+        if r.bandwidth is None:
+          raise stem.DescriptorUnavailable("Consensus contains a relay without bandwidth")
         # FIXME: Hrmm...
         r.measured = r.bandwidth
     sorted_r.sort(key = lambda x: x.measured, reverse = True)
@@ -215,26 +217,46 @@ class VanguardState:
       plog("WARN", "Skipping consensus update: %s", str(exc))
 
   def _update_from_consensus(self, controller):
-    routers = controller.get_network_statuses()
-
     exclude_nodes = ExcludeNodes(controller)
 
-    data_dir = controller.get_conf("DataDirectory")
-    if data_dir == None:
-      plog("ERROR",
-           "You must set a DataDirectory location option in your torrc.")
-      sys.exit(1)
+    try:
+      cache_dir = controller.get_conf("CacheDirectory")
+    except stem.InvalidArguments:
+      cache_dir = None
+    if not cache_dir:
+      cache_dir = controller.get_conf("DataDirectory")
+    if cache_dir is None:
+      raise stem.DescriptorUnavailable(
+          "Set an absolute CacheDirectory or DataDirectory in torrc that the addon can read")
 
-    consensus_file = os.path.join(controller.get_conf("DataDirectory"),
-                             "cached-microdesc-consensus")
+    microdesc = controller.get_conf("UseMicrodescriptors") != "0"
+    cache_name = "cached-microdesc-consensus" if microdesc else "cached-consensus"
+    consensus_file = os.path.join(cache_dir, cache_name)
 
     try:
-      weights = control.get_consensus_weights(consensus_file)
+      consensus = control.read_consensus(consensus_file)
     except IOError as e:
       raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
+    except (StopIteration, TypeError, ValueError):
+      raise stem.DescriptorUnavailable("Cannot parse consensus at " + consensus_file)
+
+    if consensus.is_microdescriptor != microdesc:
+      raise stem.DescriptorUnavailable("Unexpected consensus flavor in " + consensus_file)
+    active = controller.get_info("consensus/valid-after", "")
+    if not active or active != str(consensus.valid_after):
+      raise stem.DescriptorUnavailable("Cached consensus does not match Tor's active consensus")
+    # Tor's control response includes Valid for every relay in method 24+
+    # consensuses, even if the cached router row omits the flag.
+    implies_valid = (consensus.consensus_method or 0) >= 24
+    for router in consensus.routers.values():
+      if not router.fingerprint or not router.address:
+        raise stem.DescriptorUnavailable("Consensus contains an invalid relay identity or address")
+      if implies_valid and "Valid" not in router.flags:
+        router.flags.append("Valid")
 
     try:
-      self.consensus_update(routers, weights, exclude_nodes)
+      self.consensus_update(consensus.routers.values(), consensus.bandwidth_weights,
+                            exclude_nodes)
     except NoNodesRemain:
       raise stem.DescriptorUnavailable("No eligible relays in the consensus")
     except UnusableWeight as exc:
