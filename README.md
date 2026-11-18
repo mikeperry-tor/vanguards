@@ -16,6 +16,11 @@ For details about the defenses themselves, please see
 For additional security information, please see
 [README\_SECURITY.md](https://github.com/mikeperry-tor/vanguards/blob/master/README_SECURITY.md).
 
+This checkout is tested on CPython 3.11 through 3.15 with Stem 1.8.2. The
+private live test uses C Tor 0.4.9.17 on Linux ARM64 and exercises both
+Tor-selected and addon-managed guard layers. See [README_TESTS.md](README_TESTS.md)
+for the test commands and scope.
+
 # Installation Methods
 
 There are several ways to use this addon.

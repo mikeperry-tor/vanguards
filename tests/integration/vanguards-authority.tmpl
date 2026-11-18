@@ -1,0 +1,11 @@
+${include:authority.tmpl}
+# Allow the authorities to bootstrap the clients before relays have published.
+TestingDirAuthVoteGuard test000a,test001a,test002a,test003g,test004g,test005g,test006g,test021d,test022d,test023d
+TestingDirAuthVoteGuardIsStrict 1
+TestingDirAuthVoteExit test000a,test001a,test002a,test017e,test018e,test019e,test020e,test021d,test022d,test023d
+TestingDirAuthVoteExitIsStrict 1
+# Keep the short-lived fixture's middle pool independent of startup timing
+# and bandwidth measurements.
+AuthDirVoteStableGuaranteeMinUptime 0 seconds
+AuthDirVoteStableGuaranteeMTBF 0 seconds
+AuthDirFastGuarantee 1 byte
