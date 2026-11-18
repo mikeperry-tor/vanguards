@@ -826,3 +826,20 @@ def test_coverage():
   state.circbw_event(circ_bw(circ_id, _CELL_PAYLOAD_SIZE, _CELL_PAYLOAD_SIZE,
                              _CELL_PAYLOAD_SIZE, _CELL_PAYLOAD_SIZE, 0, 0))
 
+
+def test_existing_conflux_leg_retains_volume_limit(monkeypatch, caplog):
+  monkeypatch.setattr(vanguards.logger, "loglevel", "WARN")
+  controller = MockController()
+  stats = BandwidthStats(controller)
+  controller.bwstats = stats
+  stats.circ_event(built_circ(42, "CONFLUX_LINKED"))
+  stats.circbw_event(circ_bw(42, _CELL_PAYLOAD_SIZE, 0, 0, 0, 0, 0))
+  # A later receive can drain previously queued cells from the linked set.
+  stats.circbw_event(circ_bw(42, _CELL_PAYLOAD_SIZE, 0, 2 * 498, 0, 0, 0))
+  assert controller.closed_circ is None
+  assert "Application read data exceeds cell data" not in caplog.text
+
+  monkeypatch.setattr("vanguards.bandguards.CIRC_MAX_MEGABYTES", 1)
+  stats.circbw_event(circ_bw(42, 2 * _BYTES_PER_MB, 0, 0, 0, 0, 0))
+  assert controller.closed_circ == "42"
+  assert caplog.text.count("Bandguards cannot check for dropped cells on linked Conflux") == 1
