@@ -312,6 +312,42 @@ def test_consensus_only_requires_weights_for_relays_in_pool():
   state.consensus_update([relay], {"Wmm": 10000}, None)
   assert state.rendguard.use_counts[relay.fingerprint].weight == 1
 
+def test_insufficient_guard_candidates_preserve_both_layers(tmp_path, monkeypatch):
+  state = VanguardState(str(tmp_path / "state"))
+  relays = [SimpleNamespace(fingerprint=str(index), flags=["Fast", "Stable", "Valid"],
+                           measured=100) for index in range(9)]
+  weights = {"Wmm": 10000}
+  exclusions = SimpleNamespace(router_is_excluded=lambda relay: False)
+  consensus = SimpleNamespace(routers={relay.fingerprint: relay for relay in relays},
+                              bandwidth_weights=weights)
+  monkeypatch.setattr(VanguardState, "_read_tor_consensus", lambda self, controller: consensus)
+  monkeypatch.setattr(vanguards.vanguards, "ExcludeNodes", lambda controller: exclusions)
+  controller = MockController()
+  state.new_consensus_event(controller, None)
+  old_layers = (state.layer2, state.layer3)
+  for guard in state.layer2 + state.layer3:
+    guard.expires_at = 0
+
+  relays[7].measured = 0
+  exclusions.router_is_excluded = lambda relay: relay.fingerprint == "8"
+  with pytest.raises(stem.DescriptorUnavailable, match="Too few eligible relays to fill guard layer 3"):
+    state.consensus_update(relays, weights, exclusions)
+  assert state.layer2 is old_layers[0] and state.layer3 is old_layers[1]
+
+  controller.got_set_conf = False
+  assert state.new_consensus_event(controller, object())
+  assert not controller.got_set_conf
+  assert state.layer2 is old_layers[0] and state.layer3 is old_layers[1]
+  assert state.rendguard.use_counts["7"].weight == 0
+
+  state.signal_event(controller, SimpleNamespace(signal="RELOAD"))
+  assert controller.got_set_conf
+  assert state.layer2 is old_layers[0] and state.layer3 is old_layers[1]
+
+  relays[7].measured = 100
+  state.consensus_update(relays, weights, exclusions)
+  assert {guard.idhex for guard in state.layer3} == {str(index) for index in range(8)}
+
 def test_rendguard_excludes_middle_only_relays_from_rendezvous_weights():
   state = VanguardState("unused")
   state.enable_vanguards = False
