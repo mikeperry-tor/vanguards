@@ -22,7 +22,25 @@ next
 - Always close PATH_BIAS_TESTING circutis with invalid cells. #68
 - Eliminate clearly invalid cases of allowed dropped cells. #69
 - Use 4 Layer2 guards, to match upcoming C tor's vanguards-lite. #73.
-
+- Support Python 3.11+ and update CI, addressing parser and startup issues
+  from PR#105 and issue #106.
+- Address missing relay weights and data directory issues, fixing the
+  crash reported in #108.
+- Handle non-usable consensus failures better: retry transient failures
+  and retain last-usable relay weights. #35.
+- Ensure Tor proprly handles explicit onion guard layers and reapplies
+  them after transient consensus failures and reloads. #40.
+- Skip dropped-cell inference on linked Conflux exit circuits, where reordering
+  can make valid traffic look like drops. Other circuit limits still apply. #90.
+- Keep the parallel launcher from using an older installed CLI when a checkout
+  launcher is available. Give its Rendguard worker a separate ``.rendguard``
+  state file to avoid overwriting the guard worker's state. #62.
+- Correct the control port help and man page to document the existing local
+  socket and port defaults.
+- Weight calculation improvements for Rendguards.
+- Honor ``enable_bandguards`` in the configuration file. Track circuits that
+  are already open when Bandguards attaches, and retry a failed circuit
+  snapshot while continuing to monitor new circuits.
 
 0.3.1
 -----
