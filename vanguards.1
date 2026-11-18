@@ -36,7 +36,8 @@ The IP address of the Tor Control Port to connect to
 (default: 127.0.0.1)
 .TP
 \fB\-\-control_port\fR CONTROL_PORT
-The Tor Control Port to connect to (default: 9051)
+The Tor Control Port to connect to. With no endpoint specified, Vanguards
+tries /run/tor/control, then local ports 9051 and 9151 in that order.
 .TP
 \fB\-\-control_socket\fR CONTROL_SOCKET
 The Tor Control Socket path to connect to

@@ -1,52 +1,21 @@
-#!/bin/bash -e
+#!/bin/bash
+set -e
 
-SYS_PYTHON=$(which pypy3 || which pypy || which pypy2)
+repo_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+destination=${1:-vanguardenv}
 
-if [ -z $1 ]
-then
-  DEST=vanguardenv
+if [ -f "$destination/pyvenv.cfg" ]; then
+  if [ -n "${PYTHON:-}" ]; then
+    printf 'Choose a new destination when selecting PYTHON.\n' >&2
+    exit 1
+  fi
 else
-  DEST=$1
+  "${PYTHON:-python3}" -m venv "$destination"
 fi
 
-mkdir -p $DEST
+"$destination/bin/python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else "Vanguards requires Python 3.11 or later. Choose a new destination.")'
+"$destination/bin/python" -m pip install --require-hashes -r "$repo_dir/requirements.txt"
+"$destination/bin/python" -m pip install --no-deps "$repo_dir"
 
-# 1. Install python if needed
-if [ -z "$(which $SYS_PYTHON)" ]
-then
-  echo "We need pypy or pypy3 to be in the path."
-  echo
-  echo "If you are on a Debian or Ubuntu system, you can try: "
-  echo " sudo apt-get install pypy virtualenv"
-  echo
-  echo "If there is no pypy for your arch, edit this script to set"
-  echo "SYS_PYTHON=\"python\""
-  exit 1
-fi
-
-if [ -z "$(which virtualenv)" ]
-then
-  echo "We need virtualenv to be in the path. If you are on a debian system, try:"
-  echo " sudo apt-get install virtualenv"
-  exit 1
-fi
-
-# 2. Initialize virtualenv
-if [ ! -f ${DEST}/bin/activate ]
-then
-  virtualenv --never-download -p $SYS_PYTHON $DEST
-fi
-source ${DEST}/bin/activate
-
-# 3. Install stem+setuptools
-pip install --require-hashes -r requirements.txt
-
-$(basename $SYS_PYTHON) setup.py install
-
-# 4. Inform user what to do
-echo
-echo "If we got this far, everything should be ready!"
-echo
-echo "Run 'source ${DEST}/bin/activate' to start the environment."
-echo
-echo "Then run 'vanguards' or './vanguards_parallel.sh'"
+printf 'Installed Vanguards in %s.\n' "$destination"
+printf 'Run %q/bin/vanguards --help to see the available options.\n' "$destination"

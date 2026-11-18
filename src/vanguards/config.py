@@ -93,8 +93,8 @@ def setup_options():
                     CONTROL_IP+")")
   parser.add_argument("--control_port", type=str, dest="control_port",
                       default=CONTROL_PORT,
-                      help="The Tor Control Port to connect to (default: "+
-                      "tries both 9050 and 9151)")
+                      help="The Tor Control Port to connect to (tries 9051, "+
+                      "then 9151 when no port is specified)")
 
   parser.add_argument("--control_socket", dest="control_socket",
                       default=CONTROL_SOCKET,

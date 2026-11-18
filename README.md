@@ -42,35 +42,35 @@ Then, run all of the following as the `debian-tor` user.
 virtualenv download packages from PYPI without verification.**
 
 1. Retrieve this repository and optionally verify a signed git version tag.
-2. [Install Stem](https://stem.torproject.org/download.html)
-3. Run **./src/vanguards.py**
+2. Use Python 3.11 or later and [install Stem](https://stem.torproject.org/download.html) 1.8.0 or later.
+3. Run `python3 src/vanguards.py`.
 
-By default, vanguards will try to connect to "/run/tor/control", and if that
-fails, will try control port 9051 (System Tor), and then 9151 (Tor Browser).
+By default, Vanguards first tries `/run/tor/control`, then asks Stem to try
+local control ports 9051 and 9151 in that order.
 
 If your control port is on an alternate IP and Port, specify that with
-**--control_host _IP_ --control_port _portnum_**.
+**--control_ip _IP_ --control_port _portnum_**.
 
 If you are using a different control socket path, specify its full path with
 **--control_socket /path/to/socket**.
 
-Note that **./src/vanguards.py** has several other options under **--help**.
+Use `python3 src/vanguards.py --help` to see the other options.
 
-## Using VirtualEnv
+## Installing this checkout in a virtual environment
 
-**This option tells virtualenv not to download packages, and only downloads
-pip packages with --require-hashes. It should be safe.**
-
-To install Stem and Vanguards into their own python virtualenv, run:
+Use Python 3.11 or later. The helper creates a virtual environment, installs
+the hash-pinned runtime dependency, and builds and installs this checkout.
+The build backend is resolved separately by pip.
 
 ```
-torsocks ./setup.sh
-source vanguardenv/bin/activate
-vanguards
+./setup.sh
+vanguardenv/bin/vanguards --help
 ```
 
-If you do not want your environment to be in the vanguardenv subdirectory, you
-can specify a different directory as an argument to **setup.sh**.
+Pass a different destination as the first argument. To select an interpreter
+with `PYTHON`, use a new destination. Running the helper again without `PYTHON`
+reuses the existing environment. To install directly, run
+`python -m pip install .` inside your virtual environment.
 
 ## Pip
 
@@ -79,13 +79,6 @@ latest release via pip **without any verification**, do:
 
 ```
 torsocks pip install vanguards
-```
-
-If your distribution provides pypy3 (see
-[Performance Tuning](#performance-tuning)), you can do:
-
-```
-torsocks pypy3 -m pip install vanguards
 ```
 
 # How to use the addon
@@ -125,7 +118,7 @@ Tor Browser or with Onionshare.
 
 To use it with Tor Browser, all you have to do is start Tor Browser, and then run:
 ```
-  ./src/vanguards.py
+  python3 src/vanguards.py
 ```
 
 If you also have a system Tor, you will need to specify Tor Browser's control
@@ -136,26 +129,7 @@ both onionshare and the vanguards addon to it.
 
 ## Performance Tuning
 
-For very high traffic onion services, we recommend using
-[PyPy](https://pypy.org) instead of CPython. PyPy contains a JIT that should
-make this addon run considerably faster.
-
-The easiest way to use PyPy is to do **sudo apt-get install pypy3** or
-equivalent before running **./setup.sh** as per above. The setup.sh script will
-then see that pypy is installed, and use it by default in the resulting
-virtualenv.
-
-To switch to pypy after running **setup.sh**, simply remove the vanguardenv
-directory and run **setup.sh** again.
-
-If you want to use pypy outside of a virtualenv, install Stem 1.7.0 or later
-on your system, and then run the addon directly from the source tree with:
-
-```
-  pypy3 ./src/vanguards.py
-```
-
-Additionally, you can try running vanguards components in parallel, so that
+For high-traffic onion services, you can try running Vanguards components in parallel, so that
 the system does not bottleneck on one CPU core. A simple test script called
 [vanguards\_parallel.sh](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards_parallel.sh)
 is available to try this. If it helps,
@@ -166,7 +140,7 @@ much, you can run the following once per hour from cron to update your torrc
 with fresh layer2 and layer3 guards:
 
 ```
-  ./src/vanguards.py --one_shot_vanguards
+  python3 src/vanguards.py --one_shot_vanguards
 ```
 
 # What do the logs mean?
