@@ -240,6 +240,16 @@ def test_consensus_only_requires_weights_for_relays_in_pool():
   state.consensus_update([relay], {"Wmm": 10000}, None)
   assert state.rendguard.use_counts[relay.fingerprint].weight == 1
 
+def test_rendguard_excludes_middle_only_relays_from_rendezvous_weights():
+  state = VanguardState("unused")
+  state.enable_vanguards = False
+  eligible = SimpleNamespace(fingerprint="eligible", flags=["Fast", "Valid"], measured=100)
+  middle_only = SimpleNamespace(fingerprint="middle_only",
+                                flags=["Fast", "Valid", "MiddleOnly"], measured=100)
+  state.consensus_update([eligible, middle_only], {"Wmm": 10000}, None)
+  assert state.rendguard.use_counts[eligible.fingerprint].weight == 1
+  assert state.rendguard.use_counts[middle_only.fingerprint].weight == 0
+
 def test_new_vanguards():
   state = VanguardState("tests/state.mock2")
 

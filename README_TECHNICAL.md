@@ -138,7 +138,8 @@ help them mount guard discovery and other attacks.
 This subsystem emits warnings and optionally closes the circuit when a
 rendezvous point is chosen too often compared to its consensus weight (the
 "too often" limit is set by the **rend_use_max_use_to_bw_ratio** config
-option, which defaults to 5X of a relay's consensus weight).
+option, which defaults to 5X of a relay's consensus weight). Rendguard
+excludes `MiddleOnly` relays from the rendezvous weight calculation.
 
 We assign an aggregate weight of **rend_use_max_consensus_weight_churn**
 (default: 1% of consensus total) for relays that are not in our current
