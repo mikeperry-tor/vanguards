@@ -1,0 +1,29 @@
+coverage:
+  paths:
+    - coverage/lcov.info
+  badge:
+    path: coverage/coverage.svg
+    label: unit line coverage
+
+diff:
+  if: github.event_name == 'pull_request'
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+
+comment:
+  if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == env.GITHUB_REPOSITORY
+  updatePrevious: true
+
+summary:
+  if: true
+  message: >-
+    Source-tree unit line coverage on CPython 3.13. Download unit-line-coverage
+    for the HTML report, LCOV data, and badge. Pull request comparisons need a
+    retained default-branch baseline.
+
+report:
+  if: github.event_name == 'push' && is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+
+viewer: artifact
