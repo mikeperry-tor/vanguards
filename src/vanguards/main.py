@@ -130,20 +130,28 @@ def control_loop(state):
   pending_reload = None
   fatal_error = None
   reload_lock = Lock()
-  next_consensus_retry = 0
+  next_consensus_retry = None
+  deferred_reload = None
+
+  def reapply_guards(event):
+    nonlocal deferred_reload, fatal_error
+    try:
+      if state.signal_event(controller, event):
+        deferred_reload = (event, time.monotonic() + _CONSENSUS_RETRY_SECONDS)
+      else:
+        deferred_reload = None
+    except SystemExit as exc:
+      fatal_error = exc
 
   def reload_guards(event):
-    nonlocal fatal_error, pending_reload
+    nonlocal pending_reload
     if event.signal != "RELOAD":
       return
     with reload_lock:
       if not consensus_ready:
         pending_reload = event
         return
-    try:
-      state.signal_event(controller, event)
-    except SystemExit as exc:
-      fatal_error = exc
+    reapply_guards(event)
 
   if config.ENABLE_VANGUARDS and not config.ONE_SHOT_VANGUARDS:
     controller.add_event_listener(reload_guards, stem.control.EventType.SIGNAL)
@@ -156,7 +164,7 @@ def control_loop(state):
       state.new_consensus_event(controller, None, require_guards=config.ONE_SHOT_VANGUARDS)
       with reload_lock:
         if pending_reload is not None:
-          state.signal_event(controller, pending_reload)
+          reapply_guards(pending_reload)
           pending_reload = None
         consensus_ready = True
     except stem.DescriptorUnavailable as e:
@@ -165,6 +173,7 @@ def control_loop(state):
         plog("ERROR", "Cannot configure guards: %s", str(e))
         sys.exit(1)
       plog("NOTICE", "Waiting for Tor consensus data: %s", str(e))
+      next_consensus_retry = time.monotonic()
 
   if config.ONE_SHOT_VANGUARDS:
     try:
@@ -180,24 +189,27 @@ def control_loop(state):
   # our thread anymore.
 
   def refresh_consensus(event):
-    nonlocal consensus_ready, fatal_error, pending_reload
+    nonlocal consensus_ready, fatal_error, next_consensus_retry, pending_reload
     try:
       if state.new_consensus_event(controller, event):
         with reload_lock:
           consensus_ready = True
           pending_reload = None
+        next_consensus_retry = None
+      else:
+        next_consensus_retry = time.monotonic() + _CONSENSUS_RETRY_SECONDS
     except SystemExit as exc:
       # A fatal setup error must exit from the main thread.
       fatal_error = exc
 
-  def retry_initial_consensus(event):
-    nonlocal next_consensus_retry
+  def retry_consensus_work(event):
+    if next_consensus_retry is None and deferred_reload is None:
+      return
     now = time.monotonic()
-    if not consensus_ready and now >= next_consensus_retry:
-      next_consensus_retry = now + _CONSENSUS_RETRY_SECONDS
+    if next_consensus_retry is not None and now >= next_consensus_retry:
       refresh_consensus(event)
-    if consensus_ready:
-      controller.remove_event_listener(retry_initial_consensus)
+    if fatal_error is None and deferred_reload is not None and now >= deferred_reload[1]:
+      reapply_guards(deferred_reload[0])
 
   def rendguard_event(event):
     if consensus_ready:
@@ -295,8 +307,7 @@ def control_loop(state):
   # thread here.
   if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
     controller.add_event_listener(refresh_consensus, stem.control.EventType.NEWCONSENSUS)
-    if not consensus_ready:
-      controller.add_event_listener(retry_initial_consensus, stem.control.EventType.BW)
+    controller.add_event_listener(retry_consensus_work, stem.control.EventType.BW)
 
   # Blah...
   while fatal_error is None and controller.is_alive():
