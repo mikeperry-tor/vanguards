@@ -378,7 +378,8 @@ class VanguardState:
         controller.set_conf("HSLayer3Nodes", self.layer3_guardset())
     except stem.InvalidArguments:
       plog("ERROR",
-           "Vanguards requires Tor 0.3.3.x (and ideally 0.3.4.x or newer).")
+           "Tor rejected an explicit guard layer setting (HSLayer2Nodes or HSLayer3Nodes). "
+           "Check the Tor configuration and use a maintained C Tor release from 0.4.9 onward.")
       sys.exit(1)
 
   def write_to_file(self, outfile):

@@ -296,8 +296,8 @@ def _run_control_session(controller, state):
                    functools.partial(bandguards.BandwidthStats.circbw_event, bandwidths),
                                     stem.control.EventType.CIRC_BW)
     else:
-      plog("NOTICE", "In order for bandwidth-based protections to be "+
-                      "enabled, you must use Tor 0.3.4.10 or newer.")
+      plog("NOTICE", "Tor is too old for Bandguards circuit bandwidth events. "
+                     "Use a maintained C Tor release from 0.4.9 onward.")
 
 
   if config.ENABLE_CBTVERIFY:
