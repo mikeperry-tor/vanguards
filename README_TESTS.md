@@ -37,9 +37,10 @@ docker run --rm --network none \
   vanguards-integration-local tests/integration/control_smoke.py
 ```
 
-This checks Unix and TCP control authentication, option and event availability,
-and the launcher's retry when no consensus is available. The fixture runs
-before bootstrap.
+This checks Unix and TCP control authentication and option and event availability
+before bootstrap. On both endpoints, one-shot operation fails without writing
+state and the long-running monitors stay active and retry while no usable
+consensus is available.
 
 ## Private onion-service qualification
 
@@ -66,3 +67,14 @@ layers, including four throttled transfers per mode. It verifies circuit
 bandwidth events, reload, reconnect, persisted state, and one-shot configuration.
 The container discards its test identities and run data. Remove the temporary
 Chutney checkout after the run.
+
+## GitHub Actions
+
+CI runs the tox wheel tests on Linux with CPython 3.11 through 3.15. It also
+runs both Docker fixtures on Linux ARM64 with container networking disabled.
+
+The coverage job measures source-tree unit line coverage on CPython 3.13.
+Find the Octocov summary in the workflow run and download the
+`unit-line-coverage` artifact for the HTML report, LCOV data, and SVG badge.
+Pull request comparisons use a retained default-branch baseline. Octocov
+updates the coverage comment for pull requests from the same repository.
