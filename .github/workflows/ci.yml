@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Wheel tests (CPython ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test the installed wheel
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: |
+          python -m pip install tox==4.67.15
+          python -m tox -e "py${PYTHON_VERSION/./}"
+
+  tor:
+    name: Tor integration (Linux ARM64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run the control smoke test
+        run: |
+          docker build --target control -f tests/integration/Dockerfile -t vanguards-integration-local .
+          docker run --rm --network none \
+            --mount "type=bind,source=$PWD/src,target=/checkout/src,readonly" \
+            --mount "type=bind,source=$PWD/tests/integration,target=/checkout/tests/integration,readonly" \
+            vanguards-integration-local tests/integration/control_smoke.py
+      - name: Run the private onion-service test
+        run: |
+          chutney_dir=$(mktemp -d)
+          trap 'rm -rf -- "$chutney_dir"' EXIT
+          git clone https://github.com/torproject/chutney.git "$chutney_dir"
+          git -C "$chutney_dir" checkout --detach 62b54a55215c94eb14adc22c5acd17b2ada04b76
+          docker build --target onion -f tests/integration/Dockerfile -t vanguards-onion-local .
+          docker run --rm --network none -e PYTHONPATH=/checkout/src \
+            --mount "type=bind,source=$PWD/src,target=/checkout/src,readonly" \
+            --mount "type=bind,source=$PWD/tests/integration,target=/checkout/tests/integration,readonly" \
+            --mount "type=bind,source=$chutney_dir,target=/chutney,readonly" \
+            vanguards-onion-local tests/integration/onion_service.py
+
+  coverage:
+    name: Unit line coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write # Store and replace Octocov baseline artifacts.
+      pull-requests: write # Update the coverage comment on same-repository PRs.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install coverage and test dependencies
+        run: |
+          python -m pip install --require-hashes -r requirements.txt -r test-requirements.txt
+          python -m pip install coverage==7.17.3
+      - name: Collect unit line coverage
+        id: collect
+        env:
+          COVERAGE_FILE: ${{ runner.temp }}/vanguards-coverage
+        run: |
+          mkdir -p coverage
+          PYTHONPATH=src python -m coverage run --source=src -m pytest tests/
+          python -m coverage lcov -o coverage/lcov.info
+          python -m coverage html -d coverage/html
+          grep -q '^SF:src/vanguards/' coverage/lcov.info
+          grep -q '^DA:' coverage/lcov.info
+      - name: Report coverage with Octocov
+        uses: k1LoW/octocov-action@a167dc0dee441b7ffc45e1b862ab55ec0d87f278 # v1.5.2
+        with:
+          version: v0.83.5
+          checksum: 3aa6973a8e68036b640dac6ef0c5456dda12289c7abbdaf7b919a036555d8e9c
+      - name: Verify the coverage badge
+        run: test -s coverage/coverage.svg
+      - name: Upload the coverage report and badge
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-line-coverage
+          path: coverage/
+          if-no-files-found: error
