@@ -23,6 +23,15 @@ python -m pytest tests/
 With tox installed, run `tox` to test the wheel on CPython 3.11 through 3.15.
 Use `tox -e py313` to select one interpreter.
 
+## PyPy
+
+Use the [PyPy checkout installer](README.md#pypy), then substitute the
+environment's Python for `python` in the source and installed-package test
+commands above. Both unit test modes passed on Debian 13 ARM64 with PyPy
+7.3.19 (Python 3.11.11) and Stem 1.8.2. A control smoke test also passed with
+Tor 0.4.9.15 and networking disabled. The private onion-service fixture and
+GitHub Actions matrix use CPython.
+
 ## Tor control smoke test
 
 From a checkout with Docker available, build the test image and run the control

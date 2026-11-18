@@ -149,12 +149,64 @@ both onionshare and the vanguards addon to it.
 
 ## Performance Tuning
 
+### PyPy
+
+For a busy onion service, [PyPy](https://pypy.org/download.html) is an
+alternative interpreter with a JIT. Use a PyPy build that implements Python
+3.11 or later. On Debian 13, install both the interpreter and its `venv`
+support. From the Vanguards checkout, create a separate environment with
+`setup.sh`.
+
+```sh
+sudo apt install pypy3 pypy3-venv
+pypy3 --version
+PYTHON=pypy3 ./setup.sh vanguardenv-pypy
+vanguardenv-pypy/bin/vanguards --help
+```
+
+If Stem is already installed for your PyPy interpreter, you can run the
+checkout directly with `pypy3 src/vanguards.py`.
+
+PyPy used less CPU in a warmed Bandguards event replay on Debian 13 ARM64
+than CPython 3.13, with higher peak memory use and slower CLI startup.
+Measure CPU and memory under your own workload. See
+[README_TESTS.md](README_TESTS.md#pypy) for the tested configuration.
+
+### CPython's experimental JIT
+
+CPython introduced an experimental JIT in 3.13. The official CPython 3.14
+macOS and Windows installers include it, disabled by default. Build options
+determine availability on Linux and in third-party packages. To include it in
+a source build with runtime opt-in, configure CPython with
+`--enable-experimental-jit=yes-off`.
+[Python 3.14 release notes](https://docs.python.org/3.14/whatsnew/3.14.html#binary-releases-for-the-experimental-just-in-time-compiler) ·
+[CPython build options](https://docs.python.org/3.14/using/configure.html#cmdoption-enable-experimental-jit)
+
+Use the exact interpreter you want to test. This example creates a fresh
+environment with `python3.14`. The same opt-in works with JIT-capable
+CPython 3.15 builds. `True True` means the interpreter includes the JIT and
+has enabled it for this process.
+
+```sh
+PYTHON=python3.14 ./setup.sh vanguardenv-jit
+PYTHON_JIT=1 vanguardenv-jit/bin/python -c \
+  'import sys; print(sys._jit.is_available(), sys._jit.is_enabled())'
+PYTHON_JIT=1 vanguardenv-jit/bin/vanguards --help
+```
+
+Set `PYTHON_JIT=1` when you start the addon. Compare it with `PYTHON_JIT=0`
+using the same interpreter and workload. Vanguards' test matrix uses standard
+CPython builds.
+
+### Parallel operation
+
 For high-traffic onion services, you can try running Vanguards components in parallel, so that
 the system does not bottleneck on one CPU core. A simple test script called
 [vanguards\_parallel.sh](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards_parallel.sh)
 is available to try this. In a checkout, the script runs its source launcher
-with `python3` and requires Stem in that Python environment. A standalone
-copy uses the `vanguards` command on `PATH`, which should be installed from
+with `python3` and requires Stem in that Python environment. Activate your
+chosen virtual environment before running it. A standalone copy uses the
+`vanguards` command on `PATH`, which should be installed from
 the same checkout as the script. The guard process keeps using the configured
 state file. Rendguard stores its counts in that path with `.rendguard`
 appended, such as `vanguards.state.rendguard` with default settings. A new
