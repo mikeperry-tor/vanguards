@@ -109,6 +109,10 @@ and then run:
 vanguards --control_port 9099     # (or --control_socket /path/to/socket).
 ```
 
+Use `--disable_vanguards` to leave guard configuration to Tor while running
+the enabled monitoring and circuit defenses. The addon leaves guard settings
+alone when Tor reloads in this mode.
+
 ## Client use
 
 It is also possible to use the vanguards addon as a regular Tor client with

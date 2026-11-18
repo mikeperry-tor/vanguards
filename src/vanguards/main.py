@@ -249,6 +249,7 @@ def control_loop(state):
                    functools.partial(vanguards.VanguardState.new_consensus_event,
                                      state, controller),
                                     stem.control.EventType.NEWCONSENSUS)
+  if config.ENABLE_VANGUARDS:
     controller.add_event_listener(
                    functools.partial(vanguards.VanguardState.signal_event,
                                      state, controller),
