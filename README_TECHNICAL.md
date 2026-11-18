@@ -196,11 +196,11 @@ that this causes a change in the public [Guard relay bandwidth history or descri
 value](https://metrics.torproject.org/rs.html#search/flag:Guard), which allows
 Guard discovery.
 
-   The Bandguards component uses [new control port features](https://gitlab.torproject.org/tpo/core/tor/-/issues/25903) and [improved connection tracking in Tor](https://gitlab.torproject.org/tpo/core/tor/-/issues/25573) to measure
-the quantity of traffic that Tor decides to drop from a circuit, to protect against
-all such attacks that rely on dropped cells.
-
-   The allowed dropped cell count is 0, and cannot be configured.
+   Bandguards uses Tor's [circuit bandwidth counters](https://gitlab.torproject.org/tpo/core/tor/-/issues/25903)
+   to detect unaccounted traffic on tracked circuits. It loads existing circuits
+   when it connects and measures traffic from events received on that connection.
+   The dropped-cell allowance is zero. Some circuits that are still building
+   produce a log message without a close.
 
    Note that if your guard is malicious, it can ignore the DESTROY cell
 
