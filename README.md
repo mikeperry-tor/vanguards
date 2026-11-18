@@ -139,7 +139,13 @@ both onionshare and the vanguards addon to it.
 For high-traffic onion services, you can try running Vanguards components in parallel, so that
 the system does not bottleneck on one CPU core. A simple test script called
 [vanguards\_parallel.sh](https://github.com/mikeperry-tor/vanguards/blob/master/vanguards_parallel.sh)
-is available to try this. If it helps,
+is available to try this. In a checkout, the script runs its source launcher
+with `python3` and requires Stem in that Python environment. A standalone
+copy uses the `vanguards` command on `PATH`, which should be installed from
+the same checkout as the script. The guard process keeps using the configured
+state file. Rendguard stores its counts in that path with `.rendguard`
+appended, such as `vanguards.state.rendguard` with default settings. A new
+Rendguard file starts with fresh counts. If parallel operation helps,
 [please let us know](https://github.com/mikeperry-tor/vanguards/issues/62)!
 
 Vanguards by itself should not require much overhead, but if even that is too
