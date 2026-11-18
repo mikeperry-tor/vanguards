@@ -103,3 +103,49 @@ jobs:
           name: unit-line-coverage
           path: coverage/
           if-no-files-found: error
+
+  publish-badge:
+    name: Publish master coverage badge
+    needs: [unit, tor, coverage]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: master-coverage-badge
+      queue: max
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: unit-line-coverage
+          path: ${{ runner.temp }}/badge-report
+      - name: Publish the badge for the current master revision
+        shell: bash
+        run: |
+          badge_ref=$(git ls-remote origin refs/heads/badges)
+          if [ -n "$badge_ref" ]; then
+            git fetch origin refs/heads/badges
+            git switch --force-create badges FETCH_HEAD
+          else
+            git switch --orphan badges
+          fi
+
+          cp "$RUNNER_TEMP/badge-report/coverage.svg" coverage.svg
+          printf '%s\n' "$GITHUB_SHA" > source-revision.txt
+          git add -- coverage.svg source-revision.txt
+          if git diff --cached --quiet; then exit 0; fi
+
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Publish default line coverage for $GITHUB_SHA"
+
+          master_sha=$(git ls-remote --exit-code origin refs/heads/master | cut -f1)
+          if [ "$master_sha" != "$GITHUB_SHA" ]; then
+            echo 'Master has advanced. A newer run can publish its badge.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git push origin HEAD:refs/heads/badges

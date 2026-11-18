@@ -1,5 +1,8 @@
 # The Vanguards Onion Service Addon
 
+[![CI](https://github.com/mikeperry-tor/vanguards/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/mikeperry-tor/vanguards/actions/workflows/ci.yml)
+[![Default line coverage](https://raw.githubusercontent.com/mikeperry-tor/vanguards/badges/coverage.svg)](README_TESTS.md#github-actions)
+
 Even after deployment of the [new v3 onion service
 protocol](https://gitweb.torproject.org/torspec.git/tree/proposals/224-rend-spec-ng.txt),
 the attacks facing onion services are wide-ranging, and still require

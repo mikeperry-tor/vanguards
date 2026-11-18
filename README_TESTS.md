@@ -80,5 +80,9 @@ runs both Docker fixtures on Linux ARM64 with container networking disabled.
 The coverage job measures source-tree unit line coverage on CPython 3.13.
 Find the Octocov summary in the workflow run and download the
 `unit-line-coverage` artifact for the HTML report, LCOV data, and SVG badge.
+
+After a successful push workflow on `master`, CI publishes the README coverage
+badge and its source revision to the `badges` branch.
+
 Pull request comparisons use a retained default-branch baseline. Octocov
 updates the coverage comment for pull requests from the same repository.
