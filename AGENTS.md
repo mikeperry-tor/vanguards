@@ -23,12 +23,14 @@ checkout and the selected runtime.
   and decisions needed for completion. Git history preserves completed work,
   and raw logs and generated reports belong in private or disposable storage.
 - Index maintained agent guides here by purpose when adding or moving them.
-  Use the [planning workflow](agent_docs/planning-workflow.md) when asked for a
+  Treat imported guides as references. Keep reference checkouts read-only and
+  put build and runtime state elsewhere.
+- See [accepted Tor receive behavior](agent_docs/tor-receive-behavior.md) when
+  reviewing Bandguards accounting, flow control, Conflux, or padding.
+- Use the [planning workflow](agent_docs/planning-workflow.md) when asked for a
   plan or when work spans staged changes to packaging, runtime support, Docker
   qualification, or Tor behavior. Read it before creating, materially revising,
   implementing, or closing a plan. Find active plans under `agent_docs/plans/`.
-  Treat imported guides as references. Keep reference checkouts read-only and
-  put build and runtime state elsewhere.
 
 ## Engineering rules
 
