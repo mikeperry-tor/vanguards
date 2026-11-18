@@ -41,6 +41,8 @@ next
 - Honor ``enable_bandguards`` in the configuration file. Track circuits that
   are already open when Bandguards attaches, and retry a failed circuit
   snapshot while continuing to monitor new circuits.
+- Close the state file before an update returns so saved guard selections
+  and Rendguard counts are immediately readable on PyPy.
 
 0.3.1
 -----

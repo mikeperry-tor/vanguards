@@ -328,7 +328,8 @@ class VanguardState:
       self._guards_deferred = True
 
     try:
-      self.write_to_file(open(self.state_file, "wb"))
+      with open(self.state_file, "wb") as state_file:
+        self.write_to_file(state_file)
     except IOError as e:
       plog("ERROR", "Cannot write state to "+self.state_file+": "+str(e))
       sys.exit(1)
