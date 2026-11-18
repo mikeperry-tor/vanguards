@@ -12,7 +12,7 @@ from ipaddress import ip_network as net
 import stem
 
 from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
-from .NodeSelection import FlagsRestriction, NoNodesRemain
+from .NodeSelection import FlagsRestriction, NoNodesRemain, UnusableWeight
 from .logger import plog
 
 from . import control
@@ -42,7 +42,6 @@ MIN_LAYER3_LIFETIME_HOURS = 1
 MAX_LAYER3_LIFETIME_HOURS = 48
 
 _SEC_PER_HOUR = (60*60)
-_REQUIRED_WEIGHTS = ("Wmm", "Wmg", "Wme", "Wmd", "Wee", "Wed")
 
 class GuardNode:
   def __init__(self, idhex, chosen_at, expires_at):
@@ -163,12 +162,6 @@ class VanguardState:
     return (sorted_r, dict_r)
 
   def consensus_update(self, routers, weights, exclude):
-    # Validate both the middle and exit weights before changing either defense.
-    missing = [key for key in _REQUIRED_WEIGHTS if weights.get(key, -1) < 0]
-    if missing:
-      raise stem.DescriptorUnavailable("Missing or invalid consensus weights: " +
-                                       ", ".join(missing))
-
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
 
     rend_nodes = BwWeightedGenerator(sorted_r,
@@ -249,6 +242,8 @@ class VanguardState:
       self.consensus_update(routers, weights, exclude_nodes)
     except NoNodesRemain:
       raise stem.DescriptorUnavailable("No eligible relays in the consensus")
+    except UnusableWeight as exc:
+      raise stem.DescriptorUnavailable("Missing or invalid consensus weight: " + str(exc))
 
     if self.enable_vanguards:
       self.configure_tor(controller)

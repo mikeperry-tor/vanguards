@@ -3,6 +3,7 @@ import time
 import os
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -231,6 +232,13 @@ def test_consensus_uses_tor_cache_directory(tmp_path):
   state = VanguardState(str(tmp_path / "state"))
   state.new_consensus_event(controller, None)
   assert state.layer2 and controller.got_set_conf
+
+def test_consensus_only_requires_weights_for_relays_in_pool():
+  state = VanguardState("unused")
+  state.enable_vanguards = False
+  relay = SimpleNamespace(fingerprint="middle", flags=["Fast", "Valid"], measured=100)
+  state.consensus_update([relay], {"Wmm": 10000}, None)
+  assert state.rendguard.use_counts[relay.fingerprint].weight == 1
 
 def test_new_vanguards():
   state = VanguardState("tests/state.mock2")
