@@ -170,12 +170,12 @@ def control_loop(state):
   # update rendguard counts
   if config.ENABLE_VANGUARDS or config.ENABLE_RENDGUARD:
     try:
-      state.new_consensus_event(controller, None)
+      state.new_consensus_event(controller, None, require_guards=config.ONE_SHOT_VANGUARDS)
       with reload_lock:
+        if pending_reload is not None:
+          state.signal_event(controller, pending_reload)
+          pending_reload = None
         consensus_ready = True
-        early_reload, pending_reload = pending_reload, None
-      if early_reload is not None:
-        state.signal_event(controller, early_reload)
     except stem.DescriptorUnavailable as e:
       if config.ONE_SHOT_VANGUARDS:
         controller.close()

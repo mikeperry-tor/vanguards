@@ -163,7 +163,7 @@ class VanguardState:
     for r in sorted_r: dict_r[r.fingerprint] = r
     return (sorted_r, dict_r)
 
-  def consensus_update(self, routers, weights, exclude):
+  def consensus_update(self, routers, weights, exclude, *, update_guards=True):
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
 
     rend_nodes = BwWeightedGenerator(sorted_r,
@@ -178,7 +178,7 @@ class VanguardState:
       if total <= 0:
         raise stem.DescriptorUnavailable("Consensus has zero rendezvous weight")
 
-    if self.enable_vanguards:
+    if self.enable_vanguards and update_guards:
       guard_nodes = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
                              [FlagsRestriction(["Fast", "Stable", "Valid"],
@@ -208,9 +208,9 @@ class VanguardState:
     # Transfer and scale RP use counts to this consensus
     self.rendguard.xfer_use_counts(rend_nodes)
 
-  def new_consensus_event(self, controller, event):
+  def new_consensus_event(self, controller, event, *, require_guards=False):
     try:
-      self._update_from_consensus(controller)
+      self._update_from_consensus(controller, require_guards)
       return True
     except stem.DescriptorUnavailable as exc:
       if event is None:
@@ -218,9 +218,7 @@ class VanguardState:
       plog("WARN", "Skipping consensus update: %s", str(exc))
       return False
 
-  def _update_from_consensus(self, controller):
-    exclude_nodes = ExcludeNodes(controller)
-
+  def _read_tor_consensus(self, controller):
     try:
       cache_dir = controller.get_conf("CacheDirectory")
     except stem.InvalidArguments:
@@ -255,16 +253,54 @@ class VanguardState:
         raise stem.DescriptorUnavailable("Consensus contains an invalid relay identity or address")
       if implies_valid and "Valid" not in router.flags:
         router.flags.append("Valid")
+    return consensus
+
+  def _check_vanguards_lite(self, controller, consensus=None):
+    try:
+      enabled = controller.get_conf("VanguardsLiteEnabled")
+    except stem.InvalidArguments:
+      return  # Tor releases before Vanguards Lite still honor explicit layers.
+    if enabled == "auto":
+      if consensus is None:
+        consensus = self._read_tor_consensus(controller)
+      # Stem 1.8 sorts parameter names, while Tor sorts full key=value tokens.
+      # Read this key directly from the already matched consensus document.
+      params = consensus.get_bytes().partition(b"\nparams ")[2].split(b"\n", 1)[0]
+      key = b"vanguards-lite-enabled="
+      for param in params.split():
+        if param.startswith(key):
+          try:
+            enabled = "1" if int(param[len(key):]) > 0 else "0"
+          except ValueError:
+            raise stem.DescriptorUnavailable("Invalid vanguards-lite-enabled consensus parameter")
+          break
+    if enabled == "0":
+      raise stem.DescriptorUnavailable(
+          "Tor will ignore explicit guard layers. Set VanguardsLiteEnabled 1 in torrc")
+
+  def _update_from_consensus(self, controller, require_guards=False):
+    consensus = self._read_tor_consensus(controller)
+    update_guards = self.enable_vanguards
+    if self.enable_vanguards:
+      try:
+        self._check_vanguards_lite(controller, consensus)
+      except stem.DescriptorUnavailable as exc:
+        if require_guards:
+          raise
+        plog("WARN", "Skipping guard update: %s", str(exc))
+        update_guards = False
+    exclude_nodes = ExcludeNodes(controller)
 
     try:
       self.consensus_update(consensus.routers.values(), consensus.bandwidth_weights,
-                            exclude_nodes)
+                            exclude_nodes, update_guards=update_guards)
     except NoNodesRemain:
       raise stem.DescriptorUnavailable("No eligible relays in the consensus")
     except UnusableWeight as exc:
       raise stem.DescriptorUnavailable("Missing or invalid consensus weight: " + str(exc))
 
-    if self.enable_vanguards:
+    self._guards_deferred = self.enable_vanguards and not update_guards
+    if update_guards:
       self.configure_tor(controller)
 
     try:
@@ -275,8 +311,17 @@ class VanguardState:
 
   def signal_event(self, controller, event):
     if event.signal == "RELOAD":
+      try:
+        if getattr(self, "_guards_deferred", False):
+          self._update_from_consensus(controller, require_guards=True)
+        else:
+          self._check_vanguards_lite(controller)
+          self.configure_tor(controller)
+      except stem.DescriptorUnavailable as exc:
+        self._guards_deferred = True
+        plog("WARN", "Skipping guard reapplication: %s", str(exc))
+        return
       plog("NOTICE", "Tor got SIGHUP. Reapplying vanguards.")
-      self.configure_tor(controller)
 
   def configure_tor(self, controller):
     if NUM_LAYER1_GUARDS:

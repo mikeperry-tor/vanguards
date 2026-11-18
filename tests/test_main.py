@@ -458,7 +458,7 @@ def test_fatal_consensus_callback_exits_the_control_loop(monkeypatch, tmp_path):
   state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
   returned = []
 
-  def update(controller, event):
+  def update(controller, event, *, require_guards=False):
     if event is None:
       raise stem.DescriptorUnavailable("No consensus yet")
     raise SystemExit(1)
@@ -479,19 +479,22 @@ def test_reload_during_initial_consensus_is_reapplied(monkeypatch, tmp_path):
   state = vanguards.main.vanguards.VanguardState(str(tmp_path / "state"))
   signals = []
   reapplied = []
+  reload_lock = vanguards.main.Lock()
+  monkeypatch.setattr(vanguards.main, "Lock", lambda: reload_lock)
   reload_event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
 
   def subscribe(controller, handler, *events):
     if "SIGNAL" in events:
       signals.append(handler)
 
-  def update(controller, event):
+  def update(controller, event, *, require_guards=False):
     signals[0](reload_event)
     assert not reapplied
 
   monkeypatch.setattr(MockController, "add_event_listener", subscribe)
   monkeypatch.setattr(state, "new_consensus_event", update)
-  monkeypatch.setattr(state, "signal_event", lambda controller, event: reapplied.append(event))
+  monkeypatch.setattr(state, "signal_event",
+                      lambda controller, event: reapplied.append((event, reload_lock.locked())))
   monkeypatch.setattr(vanguards.main.time, "sleep", lambda _: None)
   assert vanguards.main.control_loop(state) == "closed"
-  assert reapplied == [reload_event]
+  assert reapplied == [(reload_event, True)]
