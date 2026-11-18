@@ -13,7 +13,7 @@ from vanguards.control import read_consensus
 
 import vanguards.vanguards
 from vanguards.vanguards import VanguardState
-from vanguards.vanguards import ExcludeNodes
+from vanguards.vanguards import ExcludeNodes, GuardNode
 from vanguards.vanguards import _SEC_PER_HOUR
 
 from vanguards.vanguards import NUM_LAYER3_GUARDS
@@ -262,6 +262,48 @@ def test_consensus_uses_active_ns_flavor(tmp_path, monkeypatch):
   state.new_consensus_event(controller, None)
   assert controller.got_set_conf
   assert len(state.layer3) == 8
+
+@pytest.mark.parametrize("mode", ["0", "auto"])
+def test_managed_guards_require_effective_vanguards_lite(tmp_path, monkeypatch, mode):
+  cache = Path("tests/cached-microdesc-consensus").read_text()
+  (tmp_path / "cached-microdesc-consensus").write_text(
+      cache.replace("usecreatefast=0\n", "usecreatefast=0 vanguards-lite-enabled-more=1 "
+                    "vanguards-lite-enabled=0\n", 1))
+  controller = MockController()
+  controller.data_dir = str(tmp_path)
+  get_conf = controller.get_conf
+  monkeypatch.setattr(controller, "get_conf",
+                      lambda key: mode if key == "VanguardsLiteEnabled" else get_conf(key))
+  state_file = tmp_path / "state"
+  state = VanguardState(str(state_file))
+
+  with pytest.raises(stem.DescriptorUnavailable, match="Tor will ignore explicit guard layers"):
+    state.new_consensus_event(controller, None, require_guards=True)
+  state.signal_event(controller, SimpleNamespace(signal="RELOAD"))
+  assert not controller.got_set_conf and not state_file.exists()
+
+  state.new_consensus_event(controller, None)
+  assert state.rendguard.use_counts and state_file.is_file()
+  assert not controller.got_set_conf and not state.layer2 and not state.layer3
+
+  state.layer2 = [GuardNode("old-layer2", 0, 0)]
+  state.layer3 = [GuardNode("old-layer3", 0, 0)]
+  state.new_consensus_event(controller, object())
+  assert state.layer2_guardset() == "old-layer2" and state.layer3_guardset() == "old-layer3"
+  state = VanguardState.read_from_file(str(state_file))
+  mode = "1"
+  state.signal_event(controller, SimpleNamespace(signal="RELOAD"))
+  assert controller.got_set_conf
+  assert "old-" not in state.layer2_guardset() + state.layer3_guardset()
+  sanity_check(state)
+
+  expired = state.layer2[0]
+  expired.expires_at = 0
+  mode = "0"
+  state.signal_event(controller, SimpleNamespace(signal="RELOAD"))
+  mode = "1"
+  state.signal_event(controller, SimpleNamespace(signal="RELOAD"))
+  assert expired not in state.layer2
 
 def test_consensus_only_requires_weights_for_relays_in_pool():
   state = VanguardState("unused")
