@@ -74,8 +74,9 @@ Guard selection and Rendguard use the consensus bandwidth weights. A running
 addon logs and skips a consensus update if it cannot read the cache, if the
 weights are unusable, or if the initial candidate pool is empty. The last
 accepted guard and rendezvous state stays in use until a usable consensus
-arrives. During long-running startup, the addon retries until it can load a
-usable consensus or reaches its retry limit.
+arrives. A long-running addon keeps Bandguards and the other independent
+monitors active while waiting for the first usable consensus. Guard updates
+and Rendguard resume when it arrives.
 
 Each of these options is assigned its own set of nodes, which are rotated
 based on the randomized selection algorithm specified in [the Mesh Vanguards

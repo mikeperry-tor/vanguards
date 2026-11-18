@@ -209,10 +209,12 @@ class VanguardState:
   def new_consensus_event(self, controller, event):
     try:
       self._update_from_consensus(controller)
+      return True
     except stem.DescriptorUnavailable as exc:
       if event is None:
         raise
       plog("WARN", "Skipping consensus update: %s", str(exc))
+      return False
 
   def _update_from_consensus(self, controller):
     routers = controller.get_network_statuses()

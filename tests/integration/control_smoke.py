@@ -30,6 +30,7 @@ def check_endpoint(connect, options, tor, work):
         controller.authenticate()
         assert str(controller.get_version()) == "0.4.9.17"
         assert controller.get_conf("DataDirectory") == str(work / "tor")
+        assert controller.get_conf("CacheDirectory") == str(work / "cache")
         assert controller.get_conf("DisableNetwork") == "1"
         for setting in ("HSLayer2Nodes", "HSLayer3Nodes", "VanguardsLiteEnabled",
                         "NumEntryGuards", "NumDirectoryGuards", "ProtocolWarnings"):
@@ -38,15 +39,49 @@ def check_endpoint(connect, options, tor, work):
             lambda event: None, "CIRC", "CIRC_MINOR", "CIRC_BW", "ORCONN",
             "BW", "NETWORK_LIVENESS", "NEWCONSENSUS", "SIGNAL", "NOTICE", "WARN", "ERR",
         )
+        controller.set_conf("ConfluxEnabled", "auto")
+        original_guards = controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes"))
 
     state_path = work / "vanguards.state"
-    result = subprocess.run(
-        [sys.executable, "/checkout/src/vanguards.py", *options,
-         "--state", str(state_path), "--retry_limit", "1"],
-        cwd=work, capture_output=True, text=True, timeout=15,
-    )
-    missing = f"Cannot read {work / 'tor' / 'cached-microdesc-consensus'}:"
-    assert result.returncode == 1 and missing in result.stdout, result
+    command = [sys.executable, "/checkout/src/vanguards.py", *options,
+               "--state", str(state_path), "--retry_limit", "1"]
+    missing = f"Cannot read {work / 'cache' / 'cached-microdesc-consensus'}:"
+    result = subprocess.run(command + ["--one_shot_vanguards"], cwd=work,
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 1 and missing in result.stdout
+    log_path = work / "addon.log"
+    with log_path.open("w") as log:
+        with subprocess.Popen(command, cwd=work, stdout=log, stderr=log) as addon:
+            try:
+                deadline = time.monotonic() + 10
+                while addon.poll() is None and time.monotonic() < deadline:
+                    diagnostics = log_path.read_text()
+                    if missing in diagnostics and "Skipping consensus update:" in diagnostics:
+                        break
+                    time.sleep(0.1)
+                else:
+                    raise RuntimeError("Addon did not stay active and retry without consensus")
+                with wait_for_control(connect, tor) as controller:
+                    controller.authenticate()
+                    assert controller.get_conf("ConfluxEnabled") == "0"
+                    controller.signal("RELOAD")
+                    deadline = time.monotonic() + 10
+                    while addon.poll() is None and time.monotonic() < deadline:
+                        if log_path.read_text().count("Set ConfluxEnabled=0") >= 2:
+                            break
+                        time.sleep(0.1)
+                    else:
+                        raise RuntimeError("Bandguards did not restore ConfluxEnabled after reload")
+                    assert controller.get_conf("ConfluxEnabled") == "0"
+                    assert controller.get_conf_map(("HSLayer2Nodes", "HSLayer3Nodes")) == original_guards
+            finally:
+                if addon.poll() is None:
+                    addon.send_signal(signal.SIGINT)
+                    try:
+                        addon.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        addon.kill()
+                        addon.wait()
     assert not state_path.exists()
 
 
@@ -58,6 +93,7 @@ def main():
         port_file = work / "control-port"
         torrc.write_text(
             f"DataDirectory {work / 'tor'}\n"
+            f"CacheDirectory {work / 'cache'}\n"
             "DisableNetwork 1\nSocksPort 0\nCookieAuthentication 1\n"
             f"ControlSocket {socket_path}\nControlPort auto\n"
             f"ControlPortWriteToFile {port_file}\n"
@@ -86,7 +122,7 @@ def main():
                     except subprocess.TimeoutExpired:
                         tor.kill()
     print("Tor 0.4.9.17 accepted Unix and TCP control and rejected invalid auth. "
-          "Both launchers took the missing-consensus retry path without writing state.")
+          "The addon stayed active before consensus and one-shot mode failed without writing state.")
 
 
 if __name__ == "__main__":
