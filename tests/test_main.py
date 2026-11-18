@@ -3,6 +3,7 @@ import stem
 import getpass
 import os
 import shutil
+import pytest
 
 import stem.connection
 import stem.control
@@ -363,3 +364,25 @@ def test_oneshot():
     assert GOT_SAVE_CONF
 
   os.remove("vanguards.state.test")
+
+def test_oneshot_does_not_save_without_consensus(monkeypatch, tmp_path, caplog):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--one_shot_vanguards", "--state", str(tmp_path / "state")])
+  monkeypatch.setattr(sys.modules[__name__], "DATA_DIR", str(tmp_path))
+  monkeypatch.setattr(sys.modules[__name__], "GOT_SAVE_CONF", False)
+  with pytest.raises(SystemExit) as error:
+    vanguards.main.main()
+  assert error.value.code == 1
+  assert "Cannot configure guards" in caplog.text
+  assert not GOT_SAVE_CONF
+  assert not (tmp_path / "state").exists()
+
+def test_oneshot_requires_addon_guard_management(monkeypatch):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(vanguards.config, "ENABLE_VANGUARDS", True)
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--one_shot_vanguards", "--disable_vanguards"])
+  monkeypatch.setattr(sys.modules[__name__], "GOT_SAVE_CONF", False)
+  with pytest.raises(SystemExit) as error:
+    vanguards.main.main()
+  assert error.value.code == 1
+  assert not GOT_SAVE_CONF

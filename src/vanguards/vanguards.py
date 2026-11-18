@@ -12,7 +12,7 @@ from ipaddress import ip_network as net
 import stem
 
 from .NodeSelection import BwWeightedGenerator, NodeRestrictionList
-from .NodeSelection import FlagsRestriction
+from .NodeSelection import FlagsRestriction, NoNodesRemain
 from .logger import plog
 
 from . import control
@@ -42,6 +42,7 @@ MIN_LAYER3_LIFETIME_HOURS = 1
 MAX_LAYER3_LIFETIME_HOURS = 48
 
 _SEC_PER_HOUR = (60*60)
+_REQUIRED_WEIGHTS = ("Wmm", "Wmg", "Wme", "Wmd", "Wee", "Wed")
 
 class GuardNode:
   def __init__(self, idhex, chosen_at, expires_at):
@@ -162,14 +163,35 @@ class VanguardState:
     return (sorted_r, dict_r)
 
   def consensus_update(self, routers, weights, exclude):
+    # Validate both the middle and exit weights before changing either defense.
+    missing = [key for key in _REQUIRED_WEIGHTS if weights.get(key, -1) < 0]
+    if missing:
+      raise stem.DescriptorUnavailable("Missing or invalid consensus weights: " +
+                                       ", ".join(missing))
+
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
-    ng = BwWeightedGenerator(sorted_r,
+
+    rend_nodes = BwWeightedGenerator(sorted_r,
+                       NodeRestrictionList(
+                             [FlagsRestriction(["Fast", "Valid"],
+                                               ["Authority"])]),
+                             weights, BwWeightedGenerator.POSITION_MIDDLE)
+    # Cannibalized circuits can use Exit relays as rendezvous points.
+    rend_nodes.repair_exits()
+    for router in rend_nodes.rstr_routers:
+      total = rend_nodes.exit_total if "Exit" in router.flags else rend_nodes.weight_total
+      if total <= 0:
+        raise stem.DescriptorUnavailable("Consensus has zero rendezvous weight")
+
+    if self.enable_vanguards:
+      guard_nodes = BwWeightedGenerator(sorted_r,
                        NodeRestrictionList(
                              [FlagsRestriction(["Fast", "Stable", "Valid"],
                                                ["Authority"])]),
                              weights, BwWeightedGenerator.POSITION_MIDDLE)
-    gen = ng.generate()
-    if self.enable_vanguards:
+      if guard_nodes.weight_total <= 0:
+        raise stem.DescriptorUnavailable("Consensus has zero guard selection weight")
+
       # Remove any nodes that are now down in the consensus
       self.remove_down_from_layer(self.layer2, dict_r)
       self.remove_down_from_layer(self.layer3, dict_r)
@@ -186,21 +208,20 @@ class VanguardState:
       self.remove_excluded_from_layer(self.layer3, dict_r, exclude)
 
       # Replenish our guard lists with new nodes
-      self.replenish_layers(gen, exclude)
+      self.replenish_layers(guard_nodes.generate(), exclude)
 
-    ng = BwWeightedGenerator(sorted_r,
-                       NodeRestrictionList(
-                             [FlagsRestriction(["Fast", "Valid"],
-                                               ["Authority"])]),
-                             weights, BwWeightedGenerator.POSITION_MIDDLE)
-
-    # Repair Exit-flagged node weights, since they can be chosen
-    # sometimes by other clients as RPs (when cannibalized)
-    ng.repair_exits()
     # Transfer and scale RP use counts to this consensus
-    self.rendguard.xfer_use_counts(ng)
+    self.rendguard.xfer_use_counts(rend_nodes)
 
   def new_consensus_event(self, controller, event):
+    try:
+      self._update_from_consensus(controller)
+    except stem.DescriptorUnavailable as exc:
+      if event is None:
+        raise
+      plog("WARN", "Skipping consensus update: %s", str(exc))
+
+  def _update_from_consensus(self, controller):
     routers = controller.get_network_statuses()
 
     exclude_nodes = ExcludeNodes(controller)
@@ -219,7 +240,10 @@ class VanguardState:
     except IOError as e:
       raise stem.DescriptorUnavailable("Cannot read "+consensus_file+": "+str(e))
 
-    self.consensus_update(routers, weights, exclude_nodes)
+    try:
+      self.consensus_update(routers, weights, exclude_nodes)
+    except NoNodesRemain:
+      raise stem.DescriptorUnavailable("No eligible relays in the consensus")
 
     if self.enable_vanguards:
       self.configure_tor(controller)

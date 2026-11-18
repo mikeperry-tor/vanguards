@@ -2,6 +2,9 @@ import stem
 import time
 import os
 import shutil
+from pathlib import Path
+
+import pytest
 
 from stem.response import ControlMessage
 
@@ -124,6 +127,7 @@ def sanity_check(state):
 
 class MockController:
   def __init__(self):
+    self.data_dir = "tests"
     self.exclude_nodes = None
     self.exclude_unknown = "1"
     self.got_set_conf = False
@@ -142,7 +146,7 @@ class MockController:
 
   def get_conf(self, key):
     if key == "DataDirectory":
-      return "tests"
+      return self.data_dir
     if key == "ExcludeNodes":
       return self.exclude_nodes
     if key == "GeoIPExcludeUnknown":
@@ -162,6 +166,56 @@ class MockController:
       return self.get_info_vals[key]
     else:
       return default
+
+@pytest.mark.parametrize("missing", ["file", None, "Wme", "Wed", "zero-exits", "no-relays"])
+def test_unusable_consensus_preserves_state_and_recovers(tmp_path, missing):
+  filename = "cached-microdesc-consensus"
+  valid = (Path("tests") / filename).read_text()
+  cache = tmp_path / filename
+  cache.write_text(valid)
+  state_file = tmp_path / "vanguards.state"
+  controller = MockController()
+  controller.data_dir = str(tmp_path)
+  state = VanguardState(str(state_file))
+  state.new_consensus_event(controller, None)
+  previous_state = state_file.read_bytes()
+  previous_counts = state.rendguard.use_counts
+  layers = (state.layer2_guardset(), state.layer3_guardset())
+  get_routers = controller.get_network_statuses
+
+  if missing == "file":
+    cache.unlink()
+  elif missing == "no-relays":
+    controller.get_network_statuses = lambda: []
+  else:
+    lines = []
+    for line in valid.splitlines():
+      if line.startswith("bandwidth-weights "):
+        if missing is None:
+          continue
+        words = line.split()
+        if missing == "zero-exits":
+          words = [word.split("=", 1)[0] + "=0" if word.startswith(("Wee=", "Wed="))
+                   else word for word in words]
+        else:
+          words = [word for word in words if not word.startswith(missing + "=")]
+        line = " ".join(words)
+      lines.append(line)
+    cache.write_text("\n".join(lines) + "\n")
+  controller.got_set_conf = False
+  with pytest.raises(stem.DescriptorUnavailable):
+    state.new_consensus_event(controller, None)
+  state.new_consensus_event(controller, object())
+  assert not controller.got_set_conf
+  assert state_file.read_bytes() == previous_state
+  assert state.rendguard.use_counts is previous_counts
+  assert (state.layer2_guardset(), state.layer3_guardset()) == layers
+
+  cache.write_text(valid)
+  controller.get_network_statuses = get_routers
+  state.new_consensus_event(controller, object())
+  assert controller.got_set_conf
+  assert state.rendguard.use_counts is not previous_counts
 
 def test_new_vanguards():
   state = VanguardState("tests/state.mock2")

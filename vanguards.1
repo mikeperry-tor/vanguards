@@ -49,7 +49,8 @@ The Tor Control Port password (optional)
 Reconnect attempt limit on failure (default: Infinite)
 .TP
 \fB\-\-one_shot_vanguards\fR
-Set and write layer2 and layer3 guards to torrc and exit.
+Set and write layer2 and layer3 guards to torrc and exit. Requires addon-managed
+guards and a usable consensus. Exits with an error if guard setup fails.
 .TP
 \fB\-\-disable_vanguards\fR
 Disable setting any layer2 and layer3 guards.

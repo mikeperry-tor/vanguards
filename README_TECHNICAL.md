@@ -70,6 +70,12 @@ protocol](https://gitweb.torproject.org/torspec.git/tree/control-spec.txt) to
 select nodes from the Tor consensus for use with the torrc options HSLayer2Nodes
 and HSLayer3Nodes.
 
+Guard selection and Rendguard use the consensus bandwidth weights. A running
+addon logs and skips a consensus update if it cannot read the cache or if the
+update lacks usable weights. The last accepted guard and rendezvous state
+stays in use until a usable consensus arrives. During long-running startup,
+the addon retries until it can load a usable consensus or reaches its retry limit.
+
 Each of these options is assigned its own set of nodes, which are rotated
 based on the randomized selection algorithm specified in [the Mesh Vanguards
 Proposal](https://gitweb.torproject.org/torspec.git/tree/proposals/292-mesh-vanguards.txt).
