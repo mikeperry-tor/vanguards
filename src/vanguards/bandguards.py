@@ -1,5 +1,7 @@
 """ Simple checks against bandwidth side channels """
 import time
+from datetime import timezone
+from threading import Lock
 import stem
 
 from . import control
@@ -107,6 +109,38 @@ class BandwidthStats:
     self._orconn_init(controller)
     self._network_liveness_init(controller)
 
+  def attach_circuits(self, include_minor):
+    handlers = {"CIRC": self.circ_event}
+    if include_minor:
+      handlers["CIRC_MINOR"] = self.circ_minor_event
+    lock = Lock()
+    pending = []
+
+    def handle(event):
+      with lock:
+        if pending is not None:
+          pending.append(event)
+          return
+      handlers[event.type](event)
+
+    # Subscribe before querying so lifecycle changes during the snapshot
+    # are applied in order before bandwidth accounting starts.
+    self.controller.add_event_listener(handle, *handlers)
+    try:
+      circuits = self.controller.get_circuits()
+    except stem.ControllerError as exc:
+      # Stem's parser errors can include a raw row with SOCKS credentials.
+      plog("WARN", "Cannot load existing circuits for Bandguards: %s",
+           type(exc).__name__)
+      circuits = []
+
+    with lock:
+      for event in circuits:
+        self.circ_event(event, snapshot=True)
+      for event in pending:
+        handlers[event.type](event)
+      pending = None
+
   def _network_liveness_init(self, controller):
     if controller.get_info("network-liveness") != "up":
       self.network_down_since = int(time.time())
@@ -201,7 +235,7 @@ class BandwidthStats:
         return True
     return False # All circuits in use
 
-  def circ_event(self, event):
+  def circ_event(self, event, snapshot=False):
     # Failed circuits mean the network could be down:
     if event.status == stem.CircStatus.FAILED and \
       not self.no_circs_since and self.any_circuits_pending(event.id):
@@ -243,7 +277,11 @@ class BandwidthStats:
         self.circs[event.id].is_hsdir = 1
       elif event.purpose == "HS_SERVICE_INTRO":
         self.circs[event.id].is_serv_intro = 1
-      plog("DEBUG", "Added circ for "+event.raw_content())
+      if snapshot:
+        if event.created is not None:
+          self.circs[event.id].created_at = event.created.replace(tzinfo=timezone.utc).timestamp()
+      else:
+        plog("DEBUG", "Added circ for "+event.raw_content())
 
     # Debugging
     self.circs[event.id].purpose = event.purpose
@@ -262,8 +300,7 @@ class BandwidthStats:
       self.no_circs_since = None
       self.disconnected_circs = False
 
-      if event.purpose[0:9] == "HS_CLIENT" or \
-         event.purpose[0:10] == "HS_SERVICE":
+      if event.path and event.purpose.startswith(("HS_CLIENT", "HS_SERVICE")):
         self.circs[event.id].in_use = 1
         self.circs[event.id].guard_fp = event.path[0][0]
         plog("DEBUG", "Circ "+event.id+" now in-use. %d delivered bytes.",

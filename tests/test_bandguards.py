@@ -120,6 +120,30 @@ def circ_bw(circ_id, read, sent, delivered_read, delivered_sent,
   s = "650 CIRC_BW ID="+str(circ_id)+" READ="+str(int(read))+" WRITTEN="+str(int(sent))+" TIME=2018-05-04T06:08:55.751726 DELIVERED_READ="+str(int(delivered_read))+" OVERHEAD_READ="+str(int(overhead_read))+" DELIVERED_WRITTEN="+str(int(delivered_sent))+" OVERHEAD_WRITTEN="+str(int(overhead_sent))+"\r\n"
   return ControlMessage.from_str(s, "EVENT")
 
+def test_attach_tracks_existing_circuits_and_replays_lifecycle():
+  controller = MockController()
+  stats = BandwidthStats(controller)
+  controller.bwstats = stats
+  existing = built_serv_intro_circ(1)
+  closing = built_general_circ(2)
+
+  def subscribe(handler, *events):
+    assert set(events) == {"CIRC", "CIRC_MINOR"}
+    controller.listener = handler
+
+  def snapshot():
+    controller.listener(closed_circ(2))
+    controller.listener(built_general_circ(3))
+    return [existing, closing]
+
+  controller.add_event_listener = subscribe
+  controller.get_circuits = snapshot
+  stats.attach_circuits(include_minor=True)
+  assert set(stats.circs) == {"1", "3"}
+  assert stats.circs["1"].built and stats.circs["1"].is_serv_intro
+  stats.circbw_event(circ_bw(1, _CELL_PAYLOAD_SIZE, 0, 0, 0, 0, 0))
+  assert controller.closed_circ == "1"
+
 def check_hsdir(state, controller, circ_id):
   read = _CELL_PAYLOAD_SIZE
   while read < CIRC_MAX_HSDESC_KILOBYTES*_BYTES_PER_KB:
