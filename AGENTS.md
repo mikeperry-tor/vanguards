@@ -147,10 +147,9 @@ change. A small, self-contained documentation edit can use focused validation.
 
 - Run focused tests first, then the affected suite. With compatible
   dependencies installed in an isolated environment, the source-tree entry
-  point is `PYTHONPATH=src python3 -m pytest tests/`. The current tox files
-  and pinned requirements target legacy environments. Inspect their commands
-  before running them. `tox-systemonly.ini` invokes a dependency audit that
-  can contact an external service. Record actual versions and baseline failures.
+  point is `PYTHONPATH=src python3 -m pytest tests/`. Use `tox.ini` to exercise
+  the installed package across the supported CPython versions. Record actual
+  versions and baseline failures.
 - Keep unit tests independent of Docker and the public Tor network. Use
   controlled fixtures for event parsing, defense decisions, and failure paths.
   Exercise the production logic responsible for the behavior under test. Where

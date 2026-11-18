@@ -1,47 +1,24 @@
-# How to run the tests
+# Run the tests
 
-This repository is configured to run unit tests on every commit in a pinned
-virtual environment via [Travis CI](https://travis-ci.org/mikeperry-tor/vanguards/).
+The unit suite uses local fixtures. It does not require Docker or a connection
+to the Tor network. Use a virtual environment with Python 3.11 or later.
 
-You can run the tests yourself with the python-tox and python-pytest packages,
-simply by running 'tox' in the root directory of this source tree. This will
-re-create the same test environment run on Travis CI, with the same pinned
-dependency versions.
+To test the source tree, run these commands from the repository root.
 
-To use your distribution's packages instead, run:
-
-```
- tox -c tox-systemonly.ini
+```sh
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install --require-hashes -r requirements.txt -r test-requirements.txt
+PYTHONPATH=src python -m pytest tests/
 ```
 
-or for each python version individually as:
+To test the installed package, also install the checkout in the environment
+and run the suite with the default import path.
 
-```
- TOXENV=py2 tox -c tox-systemonly.ini
- TOXENV=py3 tox -c tox-systemonly.ini
- TOXENV=pypy tox -c tox-systemonly.ini
-```
-
-
-This will run python2, python3, and pypy tests, **as well as check your
-system-installed packages for known vulnerabilities against
-https://pyup.io/safety**.
-
-To run just the tests in the bare source tree against the git checkout in
-combination with system-wide packages, with no installation or known
-vulnerability checks, run:
-
-```
- PYTHONPATH=src python2 -m pytest tests/
- PYTHONPATH=src python3 -m pytest tests/
- PYTHONPATH=src pypy -m pytest tests/ 
+```sh
+python -m pip install --no-deps .
+python -m pytest tests/
 ```
 
-After system-wide installation of the vanguards package, you can run the tests
-without the PYTHONPATH specifier, to check the installed package:
-
-```
- python2 -m pytest tests/
- python3 -m pytest tests/
- pypy -m pytest tests/ 
-```
+With tox installed, run `tox` to test the wheel on CPython 3.11 through 3.15.
+Use `tox -e py313` to select one interpreter.
