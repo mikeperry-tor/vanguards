@@ -30,7 +30,7 @@ fixture. The image build fetches dependencies. The fixture runs with container
 networking disabled and starts Tor with disposable configuration and state.
 
 ```sh
-docker build -f tests/integration/Dockerfile -t vanguards-integration-local .
+docker build --target control -f tests/integration/Dockerfile -t vanguards-integration-local .
 docker run --rm --network none \
   --mount "type=bind,source=$PWD/src,target=/checkout/src,readonly" \
   --mount "type=bind,source=$PWD/tests/integration,target=/checkout/tests/integration,readonly" \
@@ -40,3 +40,29 @@ docker run --rm --network none \
 This checks Unix and TCP control authentication, option and event availability,
 and the launcher's retry when no consensus is available. The fixture runs
 before bootstrap.
+
+## Private onion-service qualification
+
+Use a disposable checkout of the pinned Chutney revision. Run these commands
+from the Vanguards checkout. The test starts its own directory authorities and
+relays, and uses separate v3 onion services for the two guard modes. A Tor
+client exercises both services inside the Docker container.
+
+```sh
+chutney_dir=$(mktemp -d /tmp/vanguards-chutney.XXXXXX)
+git clone https://github.com/torproject/chutney.git "$chutney_dir"
+git -C "$chutney_dir" checkout --detach 62b54a55215c94eb14adc22c5acd17b2ada04b76
+docker build --target onion -f tests/integration/Dockerfile -t vanguards-onion-local .
+docker run --rm --network none -e PYTHONPATH=/checkout/src \
+  --mount "type=bind,source=$PWD/src,target=/checkout/src,readonly" \
+  --mount "type=bind,source=$PWD/tests/integration,target=/checkout/tests/integration,readonly" \
+  --mount "type=bind,source=$chutney_dir,target=/chutney,readonly" \
+  vanguards-onion-local tests/integration/onion_service.py
+```
+
+The fixture uses Tor 0.4.9.17 and synthetic authority votes. It exercises
+`VanguardsLiteEnabled=1` with Tor-selected guards and with explicit addon guard
+layers, including four throttled transfers per mode. It verifies circuit
+bandwidth events, reload, reconnect, persisted state, and one-shot configuration.
+The container discards its test identities and run data. Remove the temporary
+Chutney checkout after the run.
