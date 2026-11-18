@@ -28,6 +28,7 @@ LOG_STEM_ERRORS = (
     "sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')"
 )
 BODY = b"Vanguards integration\n" * 12288
+MIN_PAYLOAD_SAMPLE_BYTES = 4096  # Larger than the rendezvous handshake.
 GUARD_OPTIONS = ("HSLayer2Nodes", "HSLayer3Nodes", "NumEntryGuards", "NumDirectoryGuards")
 BW_FIELDS = {"DELIVERED_READ", "DELIVERED_WRITTEN", "OVERHEAD_READ", "OVERHEAD_WRITTEN"}
 
@@ -72,7 +73,9 @@ def ready(node):
                 return False
             assert str(control.get_version()) == "0.4.9.17"
             routers = list(control.get_network_statuses())
-        doc = next(parse_file(str(node / "cached-microdesc-consensus"),
+            cache_name = ("cached-consensus" if control.get_conf("UseMicrodescriptors") == "0"
+                          else "cached-microdesc-consensus")
+        doc = next(parse_file(str(node / cache_name),
                               document_handler=DocumentHandler.BARE_DOCUMENT))
     except (FileNotFoundError, stem.SocketError, stem.DescriptorUnavailable, StopIteration):
         return False
@@ -123,22 +126,26 @@ def wait_for_refresh(state):
     wait_for("addon consensus refresh and state update", lambda: state.stat().st_mtime_ns != stamp, timeout=35)
 
 
+def tor_log_since(path, offset):
+    with path.open("rb") as log:
+        log.seek(offset)
+        return log.read().decode(errors="replace")
+
+
 def restart_tor(work, service, control, log, state):
     stamp = state.stat().st_mtime_ns
     service_log = service / "info.log"
-    log_start = service_log.stat().st_size
     shutdown_tor(service, control)
     wait_for("addon disconnect detection", lambda: "connection closed" in log.read_text())
+    log_start = service_log.stat().st_size
     start_tor(work, service)
     wait_for("addon reconnect and state update", lambda: state.stat().st_mtime_ns != stamp
              and log.read_text().count("connected to Tor 0.4.9.17") >= 2)
 
-    def descriptor_uploaded():
-        with service_log.open("rb") as tor_log:
-            tor_log.seek(log_start)
-            return b"Uploaded hidden service descriptor (status 200 " in tor_log.read()
-
-    wait_for("restarted service to publish an onion descriptor", descriptor_uploaded, timeout=75)
+    wait_for("restarted service to publish an onion descriptor",
+             lambda: "Uploaded hidden service descriptor (status 200 " in tor_log_since(service_log, log_start),
+             timeout=75)
+    return log_start
 
 
 def start_tor(work, service):
@@ -163,7 +170,33 @@ def save_guards(work, options):
     assert result.returncode == 0 and "Updated vanguards in torrc" in result.stdout, "One-shot SAVECONF failed"
 
 
-def transfer(client, service, control, log, explicit_layers, *, after_reconnect=False):
+def wait_for_restarted_descriptor(service, client_control, onion, restart_log_start):
+    address = onion.removesuffix(".onion")
+    client_key = f"hs/client/desc/id/{address}"
+    service_log = service / "info.log"
+    next_fetch = 0
+
+    def received_restarted_descriptor():
+        nonlocal next_fetch
+        cached = re.search(r"(?m)^revision-counter (\d+)$", client_control.get_info(client_key, ""))
+        if cached:
+            # The client may use either descriptor around a time-period boundary.
+            service_revisions = re.findall(r"descriptor of revision (\d+) initiated upload request",
+                                           tor_log_since(service_log, restart_log_start))
+            if cached.group(1) in service_revisions:
+                return True
+        now = time.monotonic()
+        if now >= next_fetch:
+            assert client_control.msg(f"HSFETCH {address}").is_ok(), "Tor client rejected descriptor fetch"
+            next_fetch = now + 5
+        return False
+
+    wait_for("client to receive a descriptor from the restarted service",
+             received_restarted_descriptor, timeout=60)
+
+
+def transfer(client, service, control, log, explicit_layers, *, microdesc=True, restart_log_start=None):
+    assert (control.get_conf("UseMicrodescriptors") != "0") == microdesc
     path = service / "hidden_service" / "hostname"
     wait_for("onion service identity", path.is_file)
     wait_for("an established service introduction circuit", lambda: any(
@@ -184,16 +217,17 @@ def transfer(client, service, control, log, explicit_layers, *, after_reconnect=
 
     def circuit_bandwidth(event):
         if (event.id in rendezvous and BW_FIELDS <= event.keyword_args.keys()
-                and int(event.keyword_args["DELIVERED_WRITTEN"]) > 0):
+                and int(event.keyword_args["DELIVERED_WRITTEN"]) >= MIN_PAYLOAD_SAMPLE_BYTES):
             bandwidth.add(event.id)
 
     def accounted_rendezvous():
         diagnostics = log.read_text()[log_start:]
-        accounted = set(re.findall(
-            r"(?m)^DEBUG\[[^\n]+\]: (?:650 )?CIRC_BW ID=(\d+) [^\n]*\bDELIVERED_WRITTEN=[1-9]\d*\b",
+        accounted = re.findall(
+            r"(?m)^DEBUG\[[^\n]+\]: (?:650 )?CIRC_BW ID=(\d+) [^\n]*\bDELIVERED_WRITTEN=(\d+)\b",
             diagnostics,
-        ))
-        return bool(accounted & bandwidth)
+        )
+        return any(circ_id in bandwidth and int(delivered) >= MIN_PAYLOAD_SAMPLE_BYTES
+                   for circ_id, delivered in accounted)
 
     control.add_event_listener(circuit, "CIRC")
     control.add_event_listener(circuit_bandwidth, "CIRC_BW")
@@ -205,10 +239,12 @@ def transfer(client, service, control, log, explicit_layers, *, after_reconnect=
             )
             client_control.signal("NEWNYM")
             assert newnym.wait(12), "Tor client did not clear its old circuit and descriptor state"
+            if restart_log_start is not None:
+                wait_for_restarted_descriptor(service, client_control, onion, restart_log_start)
             socks = client_control.get_info("net/listeners/socks").strip('"')
         deadline = time.monotonic() + 55
-        count = 2 if after_reconnect else 4
-        phase = "reconnect" if after_reconnect else "initial"
+        count = 4 if restart_log_start is None else 2
+        phase = "initial" if restart_log_start is None else "reconnect"
         for index in range(count):
             while True:
                 try:
@@ -243,7 +279,8 @@ def transfer(client, service, control, log, explicit_layers, *, after_reconnect=
         layer2, layer3 = explicit_layers
         assert all(len(path) > 3 and path[1] in layer2 and path[2] in layer3 for path in selected)
     else:
-        tor_layer2 = set(re.findall(r"Adding Layer2 guard ([A-Fa-f0-9]{40})", (service / "info.log").read_text()))
+        service_log = tor_log_since(service / "info.log", restart_log_start or 0)
+        tor_layer2 = set(re.findall(r"Adding Layer2 guard ([A-Fa-f0-9]{40})", service_log))
         assert tor_layer2 and all(len(path) > 2 and path[1] in tor_layer2 for path in selected)
 
     diagnostics = log.read_text()[log_start:]
@@ -251,9 +288,10 @@ def transfer(client, service, control, log, explicit_layers, *, after_reconnect=
     assert not re.search(r"Application (read|written) data exceeds cell data", diagnostics)
     assert "Event listener raised an uncaught exception" not in diagnostics
     assert "We force-closed circuit" not in diagnostics, "Addon closed a circuit during valid traffic"
+    flavor = "microdescriptor" if microdesc else "NS"
     print(f"Transferred {len(BODY) * count} bytes on {len(rendezvous)} rendezvous circuits "
           f"with {'explicit' if explicit_layers else 'Tor-selected'} guard layers "
-          f"({phase}), with CIRC_BW accounting.", flush=True)
+          f"and {flavor} consensus ({phase}), with CIRC_BW accounting.", flush=True)
 
 
 def built_in_mode(work, service, client):
@@ -275,10 +313,10 @@ def built_in_mode(work, service, client):
             transfer(client, service, control, log, None)
             wait_for_refresh(state)
             assert tor_settings(control) == expected, "Monitoring-only addon modified Tor guard settings"
-            restart_tor(work, service, control, log, state)
+            restart_log_start = restart_tor(work, service, control, log, state)
             with connect(service) as reconnected:
                 assert tor_settings(reconnected) == expected
-                transfer(client, service, reconnected, log, None, after_reconnect=True)
+                transfer(client, service, reconnected, log, None, restart_log_start=restart_log_start)
                 wait_for_refresh(state)
                 assert tor_settings(reconnected) == expected
             assert "Reapplying vanguards" not in log.read_text()
@@ -286,10 +324,12 @@ def built_in_mode(work, service, client):
     assert VanguardState.read_from_file(str(state)).rendguard.total_use_counts > 0
 
 
-def addon_mode(work, service, client):
-    log = work / "managed.log"
-    state = work / "managed.state"
+def addon_mode(work, service, client, *, microdesc):
+    mode = "managed-microdesc" if microdesc else "managed-ns"
+    log = work / f"{mode}.log"
+    state = work / f"{mode}.state"
     with connect(service) as control:
+        assert (control.get_conf("UseMicrodescriptors") != "0") == microdesc
         listen = control.get_info("net/listeners/control").split()[0].strip('"')
         host, port = listen.split(":")
         options = ["--control_ip", host, "--control_port", port, "--state", str(state)]
@@ -319,14 +359,15 @@ def addon_mode(work, service, client):
                 raise RuntimeError(f"{exc}; reload callback ran: {reapplied}; "
                                    f"settings differed: {mismatches}") from None
             layers = [set(layer.split(",")) for layer in expected[:2]]
-            transfer(client, service, control, log, layers)
+            transfer(client, service, control, log, layers, microdesc=microdesc)
             wait_for_refresh(state)
             assert tor_settings(control) == expected
-            restart_tor(work, service, control, log, state)
+            restart_log_start = restart_tor(work, service, control, log, state)
             with connect(service) as reconnected:
                 wait_for("guard state after reconnect", lambda: tor_settings(reconnected) == expected)
                 assert reconnected.get_conf("VanguardsLiteEnabled") == "1"
-                transfer(client, service, reconnected, log, layers, after_reconnect=True)
+                transfer(client, service, reconnected, log, layers, microdesc=microdesc,
+                         restart_log_start=restart_log_start)
                 wait_for_refresh(state)
                 assert tor_settings(reconnected) == expected
     persisted = VanguardState.read_from_file(str(state))
@@ -357,26 +398,31 @@ def main():
                           CHUTNEY_TOR_SANDBOX="0")
         nodes = work / "net" / "nodes"
         service = nodes / "025h"
-        managed_service = nodes / "026h"
+        managed_ns = nodes / "026h"
+        managed_microdesc = nodes / "027h"
         client = nodes / "024c"
 
         with ThreadingHTTPServer(("127.0.0.1", 4747), PayloadHandler) as server:
             Thread(target=server.serve_forever, daemon=True).start()
             try:
                 chutney("configure", work)
-                for node in (service, managed_service):
+                for node in (service, managed_ns, managed_microdesc):
                     with (node / "torrc").open("a") as config:
                         config.write("\nVanguardsLiteEnabled 1\n")
+                with (managed_ns / "torrc").open("a") as config:
+                    config.write("UseMicrodescriptors 0\n")
                 chutney("start", work)
                 print("Private Tor network started", flush=True)
                 wait_for("client and service bootstrap with usable consensuses",
-                         lambda: ready(client) and ready(service) and ready(managed_service), timeout=145)
+                         lambda: all(ready(node) for node in (client, service, managed_ns, managed_microdesc)),
+                         timeout=145)
                 print("Private service and client bootstrapped with usable consensuses", flush=True)
                 built_in_mode(work, service, client)
-                addon_mode(work, managed_service, client)
+                addon_mode(work, managed_ns, client, microdesc=False)
+                addon_mode(work, managed_microdesc, client, microdesc=True)
                 print("Verified bootstrap, consensus refresh, reload, reconnect, state, and SAVECONF.", flush=True)
             except Exception:
-                for mode in ("built-in", "managed"):
+                for mode in ("built-in", "managed-ns", "managed-microdesc"):
                     path = work / (mode + ".log")
                     if not path.exists():
                         continue
@@ -396,5 +442,5 @@ def main():
 
 
 if __name__ == "__main__":
-    signal.alarm(420)
+    signal.alarm(540)
     main()

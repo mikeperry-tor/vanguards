@@ -8,4 +8,4 @@ Client = Node(tag="c", client=1, torrc="client.tmpl")
 Service = Node(tag="h", hs=1, torrc="hs-v3.tmpl")
 
 ConfigureNodes(Authority.getN(3) + Guard.getN(4) + Middle.getN(10)
-               + Exit.getN(4) + Dual.getN(3) + Client.getN(1) + Service.getN(2))
+               + Exit.getN(4) + Dual.getN(3) + Client.getN(1) + Service.getN(3))

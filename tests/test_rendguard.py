@@ -1,5 +1,5 @@
-import stem
 import time
+from pathlib import Path
 
 from stem.response import ControlMessage
 
@@ -29,17 +29,16 @@ class MockController:
   def close_circuit(self, circ_id):
     self.closed_circ = circ_id
 
-  # FIXME: os.path.join
-  def get_network_statuses(self):
-    return list(stem.descriptor.parse_file("tests/cached-microdesc-consensus",
-                   document_handler =
-                      stem.descriptor.DocumentHandler.ENTRIES))
-
-  def get_conf(self, key):
+  def get_conf(self, key, default=None):
     if key == "DataDirectory":
       return "tests"
 
-  def get_info(self, key, default=None):
+  def get_info(self, key, default=None, get_bytes=False):
+    if key == "consensus/valid-after":
+      return "2018-04-21 18:00:00"
+    if key == "dir/status-vote/current/consensus-microdesc":
+      assert get_bytes
+      return Path("tests/cached-microdesc-consensus").read_bytes().rstrip(b"\n")
     return default
 
   def set_conf(self, key, val):

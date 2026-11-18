@@ -45,12 +45,8 @@ before bootstrap.
 
 Use a disposable checkout of the pinned Chutney revision. Run these commands
 from the Vanguards checkout. The test starts its own directory authorities and
-relays, and uses separate v3 onion services for the two guard modes. A Tor
-client exercises both services inside the Docker container.
-
-Each service transfers data before its Tor process restarts and again after
-the addon reconnects. The post-reconnect check waits for a fresh descriptor
-and observes Bandguards accounting and Rendguard on new rendezvous circuits.
+relays, and uses a separate v3 onion service for each scenario. A Tor client
+exercises all three services inside the Docker container.
 
 ```sh
 chutney_dir=$(mktemp -d /tmp/vanguards-chutney.XXXXXX)
@@ -65,8 +61,13 @@ docker run --rm --network none -e PYTHONPATH=/checkout/src \
 ```
 
 The fixture uses Tor 0.4.9.17 and synthetic authority votes. It exercises
-`VanguardsLiteEnabled=1` with Tor-selected guards and with explicit addon guard
-layers, including four throttled transfers per mode. It verifies circuit
-bandwidth events, reload, reconnect, persisted state, and one-shot configuration.
+`VanguardsLiteEnabled=1` with Tor-selected guards and the default microdescriptor
+consensus, and with explicit addon guard layers on both the microdescriptor and
+NS consensus (`UseMicrodescriptors 0`). Each scenario exercises four throttled
+transfers before restarting Tor and two after the addon reconnects. The fixture
+waits for the client to receive a fresh descriptor after restart. It checks
+rendezvous paths, Bandguards accounting, and Rendguard observations during
+those transfers, as well as reload, persisted state, and one-shot configuration
+for managed guards.
 The container discards its test identities and run data. Remove the temporary
 Chutney checkout after the run.
