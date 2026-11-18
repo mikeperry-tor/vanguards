@@ -59,9 +59,9 @@ onion service or client.
 To defend against these attacks, this addon has three defense subsystems:
 Vanguards, Rendguard, and Bandguards.
 
-All three subsystems apply to both service-side and client-side onion service
-activity. The Bandguards subsystem also applies to client traffic that exits the
-Tor network to the normal Internet.
+The Vanguards subsystem protects client-side and service-side onion service
+circuits. Rendguard monitors service-side rendezvous circuits. Bandguards
+monitors circuits on both sides and also applies to ordinary exit traffic.
 
 ## The Vanguards Subsystem
 
@@ -71,10 +71,11 @@ select nodes from the Tor consensus for use with the torrc options HSLayer2Nodes
 and HSLayer3Nodes.
 
 Guard selection and Rendguard use the consensus bandwidth weights. A running
-addon logs and skips a consensus update if it cannot read the cache or if the
-update lacks usable weights. The last accepted guard and rendezvous state
-stays in use until a usable consensus arrives. During long-running startup,
-the addon retries until it can load a usable consensus or reaches its retry limit.
+addon logs and skips a consensus update if it cannot read the cache, if the
+weights are unusable, or if the initial candidate pool is empty. The last
+accepted guard and rendezvous state stays in use until a usable consensus
+arrives. During long-running startup, the addon retries until it can load a
+usable consensus or reaches its retry limit.
 
 Each of these options is assigned its own set of nodes, which are rotated
 based on the randomized selection algorithm specified in [the Mesh Vanguards
@@ -83,6 +84,10 @@ Proposal](https://gitweb.torproject.org/torspec.git/tree/proposals/292-mesh-vang
 These options ensure that all onion service circuits are restricted to a set
 of second and third layer guards, instead of sampling random ones from the
 whole network every time.
+
+On C Tor 0.4.9, `VanguardsLiteEnabled` also controls whether onion-service
+circuits use explicit `HSLayer2Nodes` and `HSLayer3Nodes`. Set it to `1` if
+you want explicit guard layers to apply independently of the consensus setting.
 
 The change to fixed nodes for the second and third layer guards is designed
 to force the adversary to have to run many more nodes, and to execute both an
@@ -95,9 +100,6 @@ run 5% of the network.
 The analysis behind our choice for the number of guards at each layer, and for
 rotation duration parameters is [available on
 GitHub](https://github.com/asn-d6/vanguard_simulator/wiki/Optimizing-vanguard-topologies).
-Here is how our current vanguard 2-3-8 topology looks like:
-
-![Vanguard Layer Topology](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustrations/illustrations/vanguard_system.jpg)
 
 Due to the risk of long-term information disclosure of interior guard layers,
 path restrictions have been disabled for onion service circuits built when
@@ -121,6 +123,8 @@ Lengths](https://raw.githubusercontent.com/asn-d6/vanguard_simulator/illustratio
 The number of nodes in each of these sets, as well as the ranges on rotation
 times for each set, can be specified as config file parameters. The subsystem
 currently uses 2 entry guards, 4 layer2 guards, and 8 layer3 guards.
+Each layer needs enough distinct eligible relays after configured exclusions.
+Replenishing guards can stall if too few relays remain to fill a layer.
 
 ## The Rendguard Subsystem
 

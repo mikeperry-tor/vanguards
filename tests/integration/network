@@ -1,0 +1,11 @@
+Authority = Node(tag="a", authority=1, relay=1, torrc="vanguards-authority.tmpl")
+
+Guard = Node(tag="g", relay=1, torrc="relay-non-exit.tmpl")
+Middle = Node(tag="r", relay=1, torrc="relay-non-exit.tmpl")
+Exit = Node(tag="e", relay=1, torrc="relay.tmpl")
+Dual = Node(tag="d", relay=1, torrc="relay.tmpl")
+Client = Node(tag="c", client=1, torrc="client.tmpl")
+Service = Node(tag="h", hs=1, torrc="hs-v3.tmpl")
+
+ConfigureNodes(Authority.getN(3) + Guard.getN(4) + Middle.getN(10)
+               + Exit.getN(4) + Dual.getN(3) + Client.getN(1) + Service.getN(2))
