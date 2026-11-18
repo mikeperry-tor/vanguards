@@ -439,7 +439,10 @@ class BandwidthStats:
     self.check_circ_ages(now)
 
   def check_circuit_limits(self, circ):
-    if circ.dropped_read_cells() > circ.dropped_cells_allowed:
+    # A Conflux leg established before we disabled Conflux can still carry
+    # traffic. Its reordering queue makes the dropped-cell count ambiguous.
+    dropped_cells = 0 if circ.purpose == "CONFLUX_LINKED" else circ.dropped_read_cells()
+    if dropped_cells > circ.dropped_cells_allowed:
       # Workaround for Tor bug #29699 (see also
       # https://github.com/mikeperry-tor/vanguards/issues/37).
       # Case 2. Intro circs can get dupped cells on retries while in use.
@@ -450,7 +453,7 @@ class BandwidthStats:
         control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #29699: Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).",
-                       circ.dropped_read_cells(), circ.circ_id,
+                       dropped_cells, circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       elif circ.purpose == "CIRCUIT_PADDING" and \
@@ -459,7 +462,7 @@ class BandwidthStats:
         control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #40359. Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s)",
-                       circ.dropped_read_cells(), circ.circ_id,
+                       dropped_cells, circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       # Workaround for Tor bug #29927 (see also
@@ -474,7 +477,7 @@ class BandwidthStats:
         control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #29927: Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).",
-                       circ.dropped_read_cells(), circ.circ_id,
+                       dropped_cells, circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       # Workaround for Tor bug #29700 (see also
@@ -487,7 +490,7 @@ class BandwidthStats:
         control.try_close_circuit(self.controller, circ.circ_id)
         plog("INFO", "Tor bug #29700: Got %d dropped cell on circ %s "\
                        +"(in state %s %s; old state %s %s).",
-                       circ.dropped_read_cells(), circ.circ_id,
+                       dropped_cells, circ.circ_id,
                        str(circ.purpose), str(circ.hs_state),
                        str(circ.old_purpose), str(circ.old_hs_state))
       elif circ.purpose == "PATH_BIAS_TESTING":
@@ -510,10 +513,10 @@ class BandwidthStats:
         plog("WARN", "Possible Tor bug, or possible attack if very frequent: "\
                      +"Got %d dropped cell on circ %s "\
                      +"(in state %s %s; old state %s %s)",
-                     circ.dropped_read_cells(), circ.circ_id,
+                     dropped_cells, circ.circ_id,
                      str(circ.purpose), str(circ.hs_state),
                      str(circ.old_purpose), str(circ.old_hs_state))
-    elif circ.dropped_read_cells() > 0:
+    elif dropped_cells > 0:
       # Log workaround drop cell cases for completeness
       if circ.purpose == "PATH_BIAS_TESTING":
         plog("INFO", "Tor bug #29786: Got a dropped cell on circ %s "\

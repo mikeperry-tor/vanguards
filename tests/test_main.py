@@ -1,6 +1,7 @@
 import sys
 import stem
 import getpass
+import logging
 import os
 import shutil
 import pytest
@@ -396,8 +397,41 @@ def test_rendguard_only_does_not_reapply_guard_settings(monkeypatch, tmp_path):
   monkeypatch.setattr(MockController, "add_event_listener",
                       lambda controller, handler, *events: subscribed.update(events))
   monkeypatch.setattr(vanguards.config, "ENABLE_VANGUARDS", True)
-  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards",
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards", "--disable_bandguards",
                                    "--state", str(tmp_path / "state")])
   vanguards.main.main()
   assert "CIRC" in subscribed and "NEWCONSENSUS" in subscribed
   assert "SIGNAL" not in subscribed
+
+def test_bandguards_disables_conflux_on_attach_and_reload(monkeypatch, tmp_path, caplog):
+  caplog.set_level(logging.INFO, logger="TorCtl")
+  monkeypatch.setattr(sys.modules[__name__], "TOR_VERSION", stem.version.Version("0.4.9.17"))
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards",
+                                   "--loglevel", "NOTICE",
+                                   "--state", str(tmp_path / "state")])
+  original_get_conf = MockController.get_conf
+  handlers = {}
+  settings = {"ConfluxEnabled": "auto"}
+
+  def get_conf(controller, key, default=None):
+    if key in settings:
+      return settings[key]
+    return original_get_conf(controller, key, default)
+
+  def subscribe(controller, handler, *events):
+    for event in events:
+      handlers.setdefault(event, []).append(handler)
+
+  monkeypatch.setattr(MockController, "get_conf", get_conf)
+  monkeypatch.setattr(MockController, "set_conf",
+                      lambda controller, key, value: settings.update({key: value}))
+  monkeypatch.setattr(MockController, "add_event_listener", subscribe)
+  vanguards.main.main()
+  assert settings["ConfluxEnabled"] == "0"
+  assert "Onion services do not use Conflux" in caplog.text
+  settings["ConfluxEnabled"] = "1"
+  reload_event = stem.response.ControlMessage.from_str("650 SIGNAL RELOAD\r\n", "EVENT")
+  for handler in handlers["SIGNAL"]:
+    handler(reload_event)
+  assert settings["ConfluxEnabled"] == "0"

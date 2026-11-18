@@ -202,6 +202,16 @@ Guard discovery.
    The dropped-cell allowance is zero. Some circuits that are still building
    produce a log message without a close.
 
+   While Bandguards is active, the addon sets `ConfluxEnabled=0` on supported
+   Tor versions and reapplies it on reload. Conflux splits ordinary client
+   exit traffic across circuits. Its receive counters can count a cell before
+   the reordering queue delivers it, which can trigger an incorrect circuit
+   close. Bandguards skips the dropped-cell check on already linked Conflux
+   circuits since the runtime setting prevents new sets from forming while
+   Tor can still use existing ones. Changing the setting can interrupt
+   existing Conflux exit streams. Other Bandguards circuit limits still
+   apply. Onion services do not use Conflux.
+
    Note that if your guard is malicious, it can ignore the DESTROY cell
 
 2. ***Total Hidden Service Descriptor Kilobytes***
