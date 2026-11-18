@@ -163,7 +163,7 @@ class VanguardState:
     for r in sorted_r: dict_r[r.fingerprint] = r
     return (sorted_r, dict_r)
 
-  def consensus_update(self, routers, weights, exclude, *, update_guards=True):
+  def consensus_update(self, routers, weights, exclude, *, update_guards=True, require_guards=True):
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
 
     rend_nodes = BwWeightedGenerator(sorted_r,
@@ -178,35 +178,44 @@ class VanguardState:
       if total <= 0:
         raise stem.DescriptorUnavailable("Consensus has zero rendezvous weight")
 
-    if self.enable_vanguards and update_guards:
-      guard_nodes = BwWeightedGenerator(sorted_r,
-                       NodeRestrictionList(
-                             [FlagsRestriction(["Fast", "Stable", "Valid"],
-                                               ["Authority"])]),
-                             weights, BwWeightedGenerator.POSITION_MIDDLE)
-      if guard_nodes.weight_total <= 0:
-        raise stem.DescriptorUnavailable("Consensus has zero guard selection weight")
-
-      # Remove any nodes that are now down in the consensus
-      self.remove_down_from_layer(self.layer2, dict_r)
-      self.remove_down_from_layer(self.layer3, dict_r)
-
-      # Remove any nodes whose rotation times are past due.
-      # FIXME: We should check this more often... But we also
-      # need to replenish our layers if they get too low/empty.
-      # This can be slow (consensus parse required)... :/
-      self.remove_expired_from_layer(self.layer2)
-      self.remove_expired_from_layer(self.layer3)
-
-      # Remove any nodes in case ExcludeNodes changed.
-      self.remove_excluded_from_layer(self.layer2, dict_r, exclude)
-      self.remove_excluded_from_layer(self.layer3, dict_r, exclude)
-
-      # Replenish our guard lists with new nodes
-      self.replenish_layers(guard_nodes.generate(), exclude)
+    guards_updated = self.enable_vanguards and update_guards
+    if guards_updated:
+      try:
+        self._update_guard_layers(sorted_r, dict_r, weights, exclude)
+      except (stem.DescriptorUnavailable, NoNodesRemain, UnusableWeight) as exc:
+        if require_guards:
+          raise
+        plog("WARN", "Skipping guard update: %s", str(exc))
+        guards_updated = False
 
     # Transfer and scale RP use counts to this consensus
     self.rendguard.xfer_use_counts(rend_nodes)
+    return guards_updated
+
+  def _update_guard_layers(self, sorted_r, dict_r, weights, exclude):
+    guard_nodes = BwWeightedGenerator(sorted_r,
+                     NodeRestrictionList(
+                           [FlagsRestriction(["Fast", "Stable", "Valid"],
+                                             ["Authority"])]),
+                           weights, BwWeightedGenerator.POSITION_MIDDLE)
+    if guard_nodes.weight_total <= 0:
+      raise stem.DescriptorUnavailable("Consensus has zero guard selection weight")
+
+    layer2 = self.update_guard_layer(self.layer2, 2, NUM_LAYER2_GUARDS, dict_r,
+                                     exclude, guard_nodes.generate(),
+                                     MIN_LAYER2_LIFETIME_HOURS, MAX_LAYER2_LIFETIME_HOURS)
+    layer3 = self.update_guard_layer(self.layer3, 3, NUM_LAYER3_GUARDS, dict_r,
+                                     exclude, guard_nodes.generate(),
+                                     MIN_LAYER3_LIFETIME_HOURS, MAX_LAYER3_LIFETIME_HOURS)
+
+    for number, old, updated in ((2, self.layer2, layer2), (3, self.layer3, layer3)):
+      for guard in old:
+        if guard not in updated:
+          plog("INFO", "Removing layer%d guard: %s", number, guard.idhex)
+      for guard in updated:
+        if guard not in old:
+          plog("INFO", "New layer%d guard: %s", number, guard.idhex)
+    self.layer2, self.layer3 = layer2, layer3
 
   def new_consensus_event(self, controller, event, *, require_guards=False):
     try:
@@ -301,16 +310,19 @@ class VanguardState:
     exclude_nodes = ExcludeNodes(controller)
 
     try:
-      self.consensus_update(consensus.routers.values(), consensus.bandwidth_weights,
-                            exclude_nodes, update_guards=update_guards)
+      guards_updated = self.consensus_update(consensus.routers.values(), consensus.bandwidth_weights,
+                                             exclude_nodes, update_guards=update_guards,
+                                             require_guards=require_guards)
     except NoNodesRemain:
       raise stem.DescriptorUnavailable("No eligible relays in the consensus")
     except UnusableWeight as exc:
       raise stem.DescriptorUnavailable("Missing or invalid consensus weight: " + str(exc))
 
-    self._guards_deferred = self.enable_vanguards and not update_guards
-    if update_guards:
+    if guards_updated:
       self.configure_tor(controller)
+      self._guards_deferred = False
+    elif self.enable_vanguards and not update_guards:
+      self._guards_deferred = True
 
     try:
       self.write_to_file(open(self.state_file, "wb"))
@@ -321,7 +333,9 @@ class VanguardState:
   def signal_event(self, controller, event):
     if event.signal == "RELOAD":
       try:
-        if getattr(self, "_guards_deferred", False):
+        if (getattr(self, "_guards_deferred", False)
+            or (NUM_LAYER2_GUARDS and not self.layer2)
+            or (NUM_LAYER3_GUARDS and not self.layer3)):
           self._update_from_consensus(controller, require_guards=True)
         else:
           self._check_vanguards_lite(controller)
@@ -365,61 +379,24 @@ class VanguardState:
   def layer3_guardset(self):
     return ",".join(map(lambda g: g.idhex, self.layer3))
 
-  # Adds a new layer2 guard
-  def add_new_layer2(self, generator, excluded):
-    guard = next(generator)
-    while guard.fingerprint in map(lambda g: g.idhex, self.layer2) or \
-      excluded.router_is_excluded(guard):
-      guard = next(generator)
-
+  def update_guard_layer(self, layer, number, size, routers, excluded,
+                         candidates, min_hours, max_hours):
     now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR,
-                                       MAX_LAYER2_LIFETIME_HOURS*_SEC_PER_HOUR))
-    self.layer2.append(GuardNode(guard.fingerprint, now, expires))
-    plog("INFO", "New layer2 guard: "+guard.fingerprint)
+    updated = [guard for guard in layer if guard.idhex in routers
+               and guard.expires_at >= now
+               and not excluded.router_is_excluded(routers[guard.idhex])][:size]
+    if len(updated) >= size:
+      return updated
 
-  def add_new_layer3(self, generator, excluded):
-    guard = next(generator)
-    while guard.fingerprint in map(lambda g: g.idhex, self.layer3) or \
-      excluded.router_is_excluded(guard):
-      guard = next(generator)
+    used = {guard.idhex for guard in updated}
+    for router in candidates:
+      if router.fingerprint in used or excluded.router_is_excluded(router):
+        continue
+      expires = now + _SEC_PER_HOUR * max(random.uniform(min_hours, max_hours),
+                                          random.uniform(min_hours, max_hours))
+      updated.append(GuardNode(router.fingerprint, now, expires))
+      used.add(router.fingerprint)
+      if len(updated) == size:
+        return updated
 
-    now = time.time()
-    expires = now + max(random.uniform(MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR),
-                        random.uniform(MIN_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR,
-                                       MAX_LAYER3_LIFETIME_HOURS*_SEC_PER_HOUR))
-    self.layer3.append(GuardNode(guard.fingerprint, now, expires))
-    plog("INFO", "New layer3 guard: "+guard.fingerprint)
-
-  def remove_excluded_from_layer(self, layer, dict_r, excluded):
-    for g in list(layer):
-      if excluded.router_is_excluded(dict_r[g.idhex]):
-        layer.remove(g)
-        plog("INFO", "Removing newly-excluded guard "+g.idhex)
-
-  def remove_expired_from_layer(self, layer):
-    now = time.time()
-    for g in list(layer):
-      if g.expires_at < now:
-        layer.remove(g)
-        plog("INFO", "Removing expired guard "+g.idhex)
-
-  def remove_down_from_layer(self, layer, dict_r):
-    for g in list(layer):
-      if not g.idhex in dict_r:
-        layer.remove(g)
-        plog("INFO", "Removing down guard "+g.idhex)
-
-  def replenish_layers(self, generator, excluded):
-    # Trim layers in case params changed
-    self.layer2 = self.layer2[:NUM_LAYER2_GUARDS]
-    self.layer3 = self.layer3[:NUM_LAYER3_GUARDS]
-
-    while len(self.layer2) < NUM_LAYER2_GUARDS:
-      self.add_new_layer2(generator, excluded)
-
-    while len(self.layer3) < NUM_LAYER3_GUARDS:
-      self.add_new_layer3(generator, excluded)
+    raise stem.DescriptorUnavailable("Too few eligible relays to fill guard layer %d" % number)

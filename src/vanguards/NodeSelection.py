@@ -155,14 +155,12 @@ class BwWeightedGenerator(NodeGenerator):
     NodeGenerator.__init__(self, sorted_r, rstr_list)
 
   def generate(self):
-    while True:
-      choice_val = random.uniform(0, self.weight_total)
-      choose_total = 0
-      choice_idx = 0
-      while choose_total < choice_val:
-        choose_total += self.node_weights[choice_idx]
-        choice_idx += 1
-      yield self.rstr_routers[choice_idx-1]
+    # Ordering independent exponential draws samples proportionally to
+    # weight without replacement. Zero-weight relays cannot be selected.
+    ranked = sorted((random.expovariate(weight), index)
+                    for index, weight in enumerate(self.node_weights) if weight > 0)
+    for _, index in ranked:
+      yield self.rstr_routers[index]
 
 # FIXME: FlagsRestriction: Uptime, capacity (NodeRestriction: always want)
 # FIXME: Subnet16Restriction: Set restriction: at least one be different

@@ -126,7 +126,10 @@ The number of nodes in each of these sets, as well as the ranges on rotation
 times for each set, can be specified as config file parameters. The subsystem
 currently uses 2 entry guards, 4 layer2 guards, and 8 layer3 guards.
 Each layer needs enough distinct eligible relays after configured exclusions.
-Replenishing guards can stall if too few relays remain to fill a layer.
+The addon keeps both previous layers and logs a skipped update when either
+layer cannot be filled. Rendguard still refreshes its weights and independent
+monitors continue handling events. Tor can have fewer usable guards until
+the layer is replenished.
 
 ## The Rendguard Subsystem
 
