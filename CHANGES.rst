@@ -31,7 +31,7 @@ next
 - Ensure Tor proprly handles explicit onion guard layers and reapplies
   them after transient consensus failures and reloads. #40.
 - Skip dropped-cell inference on linked Conflux exit circuits, where reordering
-  can make valid traffic look like drops. Other circuit limits still apply. #90.
+  counts all traffic as drops. Other circuit limits still apply. #100.
 - Keep the parallel launcher from using an older installed CLI when a checkout
   launcher is available. Give its Rendguard worker a separate ``.rendguard``
   state file to avoid overwriting the guard worker's state. #62.
