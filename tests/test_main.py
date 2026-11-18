@@ -386,3 +386,15 @@ def test_oneshot_requires_addon_guard_management(monkeypatch):
     vanguards.main.main()
   assert error.value.code == 1
   assert not GOT_SAVE_CONF
+
+def test_rendguard_only_does_not_reapply_guard_settings(monkeypatch, tmp_path):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  subscribed = set()
+  monkeypatch.setattr(MockController, "add_event_listener",
+                      lambda controller, handler, event: subscribed.add(event))
+  monkeypatch.setattr(vanguards.config, "ENABLE_VANGUARDS", True)
+  monkeypatch.setattr(sys, "argv", ["vanguards", "--disable_vanguards",
+                                   "--state", str(tmp_path / "state")])
+  vanguards.main.main()
+  assert "CIRC" in subscribed and "NEWCONSENSUS" in subscribed
+  assert "SIGNAL" not in subscribed
