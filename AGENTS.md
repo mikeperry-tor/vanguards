@@ -1,15 +1,29 @@
 # Development guidance for Vanguards
 
 Vanguards is a Python/Stem controller addon for C Tor. It manages onion-service
-guard layers and monitors circuit, bandwidth, and rendezvous behavior. Start
-with [the README](README.md) for operator entry points,
-[the technical README](README_TECHNICAL.md) for defense rationale,
-[the security README](README_SECURITY.md) for the threat model and logging
-guidance, and [the test README](README_TESTS.md) for existing test commands.
-Verify historical version, dependency, and configuration claims against the
-checkout and the selected runtime.
+guard layers and monitors circuit, bandwidth, and rendezvous behavior.
 
-## Documentation
+Support and qualify maintained C Tor releases from 0.4.9 onward. Earlier
+series are end of life and outside the compatibility contract. Verify
+historical version, dependency, and configuration claims against the checkout
+and the selected runtime.
+
+## Reference documentation
+
+| Reference | Purpose |
+| --- | --- |
+| [Accepted Tor receive behavior](agent_docs/tor-receive-behavior.md) | Start here for Bandguards or Tor receive reviews. It records the accepted limits of dropped-cell accounting on half-closed streams and linked Conflux exit circuits, and explains the scope of first- and second-hop padding. |
+| [Planning workflow](agent_docs/planning-workflow.md) | Use when asked for a plan or when work spans staged changes to packaging, runtime support, Docker qualification, or Tor behavior. Read before creating, materially revising, implementing, or closing a plan. Look under `agent_docs/plans/` when a plan is active. |
+| [README](README.md) | Operator entry points, installation, configuration, and operation. |
+| [Technical README](README_TECHNICAL.md) | Defense rationale, behavior, and practical limits. |
+| [Security README](README_SECURITY.md) | Threat model and logging guidance. |
+| [Test README](README_TESTS.md) | Supported test commands and what the local and live tests cover. |
+
+Use the accepted receive behavior as the baseline for reviews. Report changes
+in end-to-end acceptance, accounting, or compensating controls. For an
+existing limitation, explain what new evidence changes the earlier assessment.
+
+## Documentation update rules
 
 - Keep `README*` user-facing. Cover what the addon does, installation,
   configuration, operation, defense rationale, and practical limits. Keep
@@ -22,15 +36,9 @@ checkout and the selected runtime.
   phase histories out of maintained guides. Active plans hold concise evidence
   and decisions needed for completion. Git history preserves completed work,
   and raw logs and generated reports belong in private or disposable storage.
-- Index maintained agent guides here by purpose when adding or moving them.
+- Update the reference table when adding or moving a maintained agent guide.
   Treat imported guides as references. Keep reference checkouts read-only and
   put build and runtime state elsewhere.
-- See [accepted Tor receive behavior](agent_docs/tor-receive-behavior.md) when
-  reviewing Bandguards accounting, flow control, Conflux, or padding.
-- Use the [planning workflow](agent_docs/planning-workflow.md) when asked for a
-  plan or when work spans staged changes to packaging, runtime support, Docker
-  qualification, or Tor behavior. Read it before creating, materially revising,
-  implementing, or closing a plan. Find active plans under `agent_docs/plans/`.
 
 ## Engineering rules
 
@@ -43,10 +51,10 @@ checkout and the selected runtime.
   Scope checks, fallbacks, and retries to the affected operation. Before adding
   a fallback for Tor or Stem behavior, verify how the relevant component handles
   the input. Review effects on the defenses and guard state involved.
-- A live Tor integration harness is in scope. Keep it focused on the fixtures,
-  lifecycle, and assertions the agreed scenarios require. Prefer a small
-  Docker setup and explicit helpers where needed. Avoid generic orchestration,
-  adapter layers, and custom lifecycle or reporting frameworks.
+- Reuse the control smoke test and private Chutney onion-service fixture under
+  `tests/integration/` for live Tor qualification. Keep any extensions focused
+  on the fixtures, lifecycle, and assertions the agreed scenarios require.
+  Prefer explicit fixture helpers and Docker's lifecycle controls.
 - Trace the affected path through the real entry points before editing.
   The source launcher is `src/vanguards.py` and the installed `vanguards`
   command calls `vanguards.main:main`. Check CLI, config file and environment
@@ -68,7 +76,8 @@ checkout and the selected runtime.
   [Tor control protocol](https://spec.torproject.org/control-spec/index.html)
   · [Tor Vanguards specification](https://spec.torproject.org/vanguards-spec/index.html)
 - Use the local C Tor checkout at `reference_repos/tor/` as a read-only
-  compatibility reference. Start with `doc/man/tor.1.txt` and
+  compatibility reference when available. Use the selected release's source
+  when the checkout is absent. Start with `doc/man/tor.1.txt` and
   `src/app/config/` for torrc options, defaults, and validation,
   `src/feature/control/` for control commands, replies, and events, and
   `src/core/or/` for circuit behavior, dropped or ignored cell handling, and
@@ -138,20 +147,22 @@ change. A small, self-contained documentation edit can use focused validation.
   actions, reload, reconnect, and state continuity. Ask what happens on both
   success and failure, including unintended effects and what the tests can
   actually establish.
-- Record an independent assessment before consulting the author's rationale or
-  prior findings. Then reconcile it with the plan, deviations from it, and prior
-  findings and fixes. Look for repeated assumptions, cross-component hazards,
-  and coverage gaps elsewhere in the affected paths. Record findings with
-  evidence, the scope examined, and review limitations. Resolve material issues
-  and document the disposition of proposed simplifications within scope.
+- Use the maintained guides to establish the baseline. Record an independent
+  assessment before reading the author's rationale for the current change or
+  other reviews of it. Then reconcile it with the plan, deviations from it, and
+  prior findings and fixes. Look for repeated assumptions, cross-component
+  hazards, and coverage gaps elsewhere in the affected paths. Record findings
+  with evidence, the scope examined, and review limitations. Resolve material
+  issues and document the disposition of proposed simplifications within scope.
 
 ## Validation
 
-- Run focused tests first, then the affected suite. With compatible
-  dependencies installed in an isolated environment, the source-tree entry
-  point is `PYTHONPATH=src python3 -m pytest tests/`. Use `tox.ini` to exercise
-  the installed package across the supported CPython versions. Record actual
-  versions and baseline failures.
+- Run focused tests first, then the affected suite. Follow
+  [README_TESTS.md](README_TESTS.md) for isolated source-tree tests and use
+  [tox.ini](tox.ini) for the installed-wheel matrix. Package requirements are
+  declared in [pyproject.toml](pyproject.toml). The checkout installer and
+  qualification fixtures use the pins in [requirements.txt](requirements.txt).
+  Record actual versions and baseline failures.
 - Keep unit tests independent of Docker and the public Tor network. Use
   controlled fixtures for event parsing, defense decisions, and failure paths.
   Exercise the production logic responsible for the behavior under test. Where
@@ -162,7 +173,8 @@ change. A small, self-contained documentation edit can use focused validation.
   and exercise the installed command. Documentation-only changes call for
   document, link, and whitespace checks.
 - Run affected Tor contracts through the local Docker workflow. Record the
-  observed checks, environment, and gaps. A passing mocked test establishes
+  observed checks, environment, and gaps, including the guard ownership mode
+  and consensus flavor when relevant. A passing mocked test establishes
   behavior for its fixture. A passing control smoke test establishes the
   exercised control operations. Qualify service or circuit behavior with
   observations at those layers. Inspect diagnostics and skips to confirm the
@@ -170,26 +182,25 @@ change. A small, self-contained documentation edit can use focused validation.
 
 ## Local Docker integration
 
-- Use [dockurr/tor](https://hub.docker.com/r/dockurr/tor) as the first image
-  candidate. Select a supported C Tor target when planning the qualification,
-  pin the chosen image by digest, and record the platform and actual
-  `tor --version`. Inspect the chosen image's entrypoint, effective torrc,
-  listeners, and healthcheck. The upstream entrypoint defaults its control
-  listener to container loopback and generates password authentication from
-  `PASSWORD`. [Image entrypoint](https://github.com/dockur/tor/blob/master/entrypoint.sh)
-- Give each run a dedicated Docker project or network and disposable Tor data,
-  addon config, and addon state. Pass the controller an explicit endpoint and
-  use test-only authentication. Prefer a private Docker network for any
-  inter-container listener. If the controller runs on the host, bind any
-  published control port to host loopback and verify that the Tor listener
-  inside the container is reachable through that mapping. Publish only ports
-  the scenario needs.
-- Check filesystem access as well as network access. The current consensus
-  code reads `cached-microdesc-consensus` under the `DataDirectory` returned
-  by Tor. A separate controller needs that path to resolve in its own
-  filesystem and sufficient read access, or a verified replacement for the
-  file-based lookup. Prefer narrowly scoped, read-only access to test data
-  where sharing is necessary, with a separate writable addon state path.
+- Start with the digest-pinned image and targets in the
+  [integration Dockerfile](tests/integration/Dockerfile). Each fixture runs
+  in a single container with `--network none` and starts Tor with its own
+  configuration. [GitHub Actions](.github/workflows/ci.yml) runs them on Linux
+  ARM64. For a new image or topology, check the effective entrypoint, torrc,
+  listeners, and healthcheck. Record the image digest, platform, and actual
+  `tor --version`.
+- Use disposable Tor data, addon config, and addon state. Pass the controller
+  an explicit endpoint and use test-only authentication. For multi-container
+  tests, use a run-specific private network. If the controller runs on the
+  host, publish only the required ports on host loopback and verify that the
+  Tor listener is reachable through the mapping.
+- Check filesystem access as well as network access. The addon reads
+  `cached-microdesc-consensus` by default and `cached-consensus` when
+  `UseMicrodescriptors 0` is set. It uses Tor's `CacheDirectory` when set and
+  `DataDirectory` otherwise, and checks the file against Tor's control
+  responses. For a separate controller, make the applicable absolute path
+  readable in its filesystem. Prefer a narrow, read-only mount with a
+  separate writable addon state path.
 - Verify readiness with authenticated control probes and, for bootstrapped
   cases, bootstrap status and the consensus input the addon needs. Use bounded
   waits and capture sanitized diagnostics on failure. Keep public-network
