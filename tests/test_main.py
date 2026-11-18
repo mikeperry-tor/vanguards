@@ -4,6 +4,7 @@ import getpass
 import logging
 import os
 import shutil
+from types import SimpleNamespace
 import pytest
 
 import stem.connection
@@ -378,6 +379,45 @@ def test_oneshot_requires_addon_guard_management(monkeypatch):
     vanguards.main.main()
   assert error.value.code == 1
   assert not GOT_SAVE_CONF
+
+@pytest.mark.parametrize("rendguard_enabled", [False, True])
+def test_oneshot_requires_weights_only_for_enabled_features(monkeypatch, tmp_path, rendguard_enabled):
+  vanguards.config.apply_config(DEFAULT_CONFIG)
+  state_type = vanguards.main.vanguards.VanguardState
+  state_file = tmp_path / "state"
+  state = state_type(str(state_file))
+  count = vanguards.main.vanguards.rendguard.RendUseCount("prior", 0.5)
+  count.used = 42.0
+  state.rendguard.use_counts["prior"] = count
+  state.rendguard.total_use_counts = count.used
+  with state_file.open("wb") as output:
+    state.write_to_file(output)
+
+  relays = {str(index): SimpleNamespace(fingerprint=str(index), nickname=f"relay{index}",
+                                      address="192.0.2.1", flags=["Fast", "Stable", "Valid"],
+                                      measured=100)
+            for index in range(8)}
+  relays["exit"] = SimpleNamespace(fingerprint="exit", address="192.0.2.2",
+                                   flags=["Fast", "Valid", "Exit"], measured=100)
+  consensus = SimpleNamespace(routers=relays,
+                              bandwidth_weights={"Wmm": 10000, "Wme": 0, "Wee": 0})
+  monkeypatch.setattr(state_type, "_read_tor_consensus", lambda self, controller: consensus)
+  monkeypatch.setattr(sys.modules[__name__], "GOT_SAVE_CONF", False)
+  monkeypatch.setattr(sys.modules[__name__], "FAIL_SAVE_CONF", False)
+  monkeypatch.setattr(vanguards.config, "ENABLE_RENDGUARD", True)
+  arguments = ["vanguards", "--one_shot_vanguards", "--state", str(state_file)]
+  if not rendguard_enabled:
+    arguments.append("--disable_rendguard")
+  monkeypatch.setattr(sys, "argv", arguments)
+
+  with pytest.raises(SystemExit) as error:
+    vanguards.main.main()
+  saved = state_type.read_from_file(str(state_file))
+  assert error.value.code == int(rendguard_enabled)
+  assert GOT_SAVE_CONF == (not rendguard_enabled)
+  assert (len(saved.layer2), len(saved.layer3)) == ((0, 0) if rendguard_enabled else (4, 8))
+  assert saved.rendguard.total_use_counts == count.used
+  assert saved.rendguard.use_counts["prior"].used == count.used
 
 @pytest.mark.parametrize("bandguards", [False, True])
 def test_monitoring_only_leaves_tor_settings_owned_by_tor(monkeypatch, tmp_path, bandguards):

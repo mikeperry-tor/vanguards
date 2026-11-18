@@ -64,6 +64,7 @@ def run_main():
     state = vanguards.VanguardState(state_file)
 
   state.enable_vanguards = config.ENABLE_VANGUARDS
+  state.enable_rendguard = config.ENABLE_RENDGUARD
   stem.response.events.PARSE_NEWCONSENSUS_EVENTS = False
 
   reconnects = 0

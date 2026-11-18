@@ -141,6 +141,8 @@ class ExcludeNodes:
     return False
 
 class VanguardState:
+  enable_rendguard = True  # Default for callers and older pickles; CLI sets it on load.
+
   def __init__(self, state_file):
     self.layer2 = []
     self.layer3 = []
@@ -169,17 +171,19 @@ class VanguardState:
   def consensus_update(self, routers, weights, exclude, *, update_guards=True, require_guards=True):
     (sorted_r, dict_r) = self.sort_and_index_routers(routers)
 
-    rend_nodes = BwWeightedGenerator(sorted_r,
-                       NodeRestrictionList(
-                             [FlagsRestriction(["Fast", "Valid"],
-                                               ["Authority", "MiddleOnly"])]),
-                             weights, BwWeightedGenerator.POSITION_MIDDLE)
-    # Cannibalized circuits can use Exit relays as rendezvous points.
-    rend_nodes.repair_exits()
-    for router in rend_nodes.rstr_routers:
-      total = rend_nodes.exit_total if "Exit" in router.flags else rend_nodes.weight_total
-      if total <= 0:
-        raise stem.DescriptorUnavailable("Consensus has zero rendezvous weight")
+    rend_nodes = None
+    if self.enable_rendguard:
+      rend_nodes = BwWeightedGenerator(sorted_r,
+                         NodeRestrictionList(
+                               [FlagsRestriction(["Fast", "Valid"],
+                                                 ["Authority", "MiddleOnly"])]),
+                               weights, BwWeightedGenerator.POSITION_MIDDLE)
+      # Cannibalized circuits can use Exit relays as rendezvous points.
+      rend_nodes.repair_exits()
+      for router in rend_nodes.rstr_routers:
+        total = rend_nodes.exit_total if "Exit" in router.flags else rend_nodes.weight_total
+        if total <= 0:
+          raise stem.DescriptorUnavailable("Consensus has zero rendezvous weight")
 
     guards_updated = self.enable_vanguards and update_guards
     if guards_updated:
@@ -192,7 +196,8 @@ class VanguardState:
         guards_updated = False
 
     # Transfer and scale RP use counts to this consensus
-    self.rendguard.xfer_use_counts(rend_nodes)
+    if rend_nodes is not None:
+      self.rendguard.xfer_use_counts(rend_nodes)
     return guards_updated
 
   def _update_guard_layers(self, sorted_r, dict_r, weights, exclude):
