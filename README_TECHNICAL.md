@@ -210,6 +210,13 @@ Guard discovery.
    The dropped-cell allowance is zero. Some circuits that are still building
    produce a log message without a close.
 
+   Dropped-cell protection addresses end-to-end traffic across a circuit.
+   Tor connection padding operates on the first-hop link, and the built-in
+   circuit-padding machines in C Tor 0.4.9 target the second hop. Tor credits
+   circuit padding from the negotiated hop as valid protocol overhead. These
+   early-hop padding budgets govern cover traffic. They are outside the
+   end-to-end dropped-cell security check.
+
    Conflux splits ordinary client exit traffic across circuits. Its receive
    counters can count a cell before the reordering queue delivers it.
    Bandguards warns when it encounters linked Conflux traffic and skips the
